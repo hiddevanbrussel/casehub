@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= t('onboard.title') %> · <%= meta.orgName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/css/app.css">
+</head>
+<body class="login-body">
+  <main class="login-card setup-card">
+    <div class="setup-top">
+      <div class="brand brand-lg">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3zm3 5a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/></svg>
+        </span>
+        <strong><%= meta.orgName %></strong>
+      </div>
+      <div class="login-lang">
+        <%- include("partials/lang-switcher") %>
+      </div>
+    </div>
+    <h1><%= t('onboard.title') %></h1>
+    <p class="lede"><%= t('onboard.lede') %></p>
+    <p class="hint"><%= t('onboard.stepOf', { n: stepIndex + 1, total: steps.length }) %></p>
+    <ol class="setup-steps">
+      <% steps.forEach(function (item, i) { %>
+        <li class="<%= i < stepIndex ? 'is-done' : (i === stepIndex ? 'is-active' : '') %>"><%= t('onboard.' + item) %></li>
+      <% }) %>
+    </ol>
+    <% if (error) { %><p class="alert"><%= error %></p><% } %>
+
+    <% if (step === "org") { %>
+    <form method="post" action="/setup">
+      <input type="hidden" name="step" value="org">
+      <label><%= t('settings.orgName') %>
+        <input name="orgName" required autofocus value="<%= values.orgName || meta.orgName %>">
+      </label>
+      <label><%= t('settings.prefix') %>
+        <input name="zaakPrefix" required maxlength="6" value="<%= values.zaakPrefix || meta.zaakPrefix %>">
+      </label>
+      <p class="hint"><%= t('onboard.orgLede') %></p>
+      <div class="setup-actions">
+        <button class="btn" type="submit"><%= t('onboard.next') %></button>
+      </div>
+    </form>
+    <% } %>
+
+    <% if (step === "admin") { %>
+    <form method="post" action="/setup">
+      <input type="hidden" name="step" value="admin">
+      <p class="hint"><%= t('onboard.adminLede') %></p>
+      <div class="form-row form-row-2">
+        <label><%= t('employees.firstName') %>
+          <input name="voornaam" required autofocus value="<%= values.voornaam || '' %>">
+        </label>
+        <label><%= t('employees.lastName') %>
+          <input name="achternaam" required value="<%= values.achternaam || '' %>">
+        </label>
+      </div>
+      <label><%= t('employees.email') %>
+        <input type="email" name="email" required value="<%= values.email || '' %>">
+      </label>
+      <label><%= t('employees.password') %>
+        <input type="password" name="wachtwoord" required minlength="8" autocomplete="new-password">
+      </label>
+      <label><%= t('onboard.passwordConfirm') %>
+        <input type="password" name="wachtwoord2" required minlength="8" autocomplete="new-password">
+      </label>
+      <div class="setup-actions">
+        <a class="ghost" href="/setup?step=org"><%= t('onboard.back') %></a>
+        <button class="btn" type="submit"><%= t('onboard.next') %></button>
+      </div>
+    </form>
+    <% } %>
+
+    <% if (step === "create") { %>
+    <form method="post" action="/setup">
+      <input type="hidden" name="step" value="create">
+      <p class="hint"><%= t('onboard.createLede') %></p>
+      <label><%= t('create.baseUrl') %>
+        <input name="baseUrl" value="<%= values.baseUrl || 'https://app.omnidocs.cloud' %>">
+      </label>
+      <div class="form-row form-row-2">
+        <label><%= t('create.clientId') %>
+          <input name="clientId" value="<%= values.clientId || '' %>" autocomplete="off">
+        </label>
+        <label><%= t('create.clientSecret') %>
+          <input name="clientSecret" type="password" value="" autocomplete="new-password">
+        </label>
+      </div>
+      <div class="form-row form-row-2">
+        <label><%= t('create.unitId') %>
+          <input name="unitId" value="<%= values.unitId || '' %>">
+        </label>
+        <label><%= t('create.contentSourceId') %>
+          <input name="contentSourceId" value="<%= values.contentSourceId || '' %>">
+        </label>
+      </div>
+      <label><%= t('create.authDomain') %>
+        <input name="authDomain" value="<%= values.authDomain || '' %>" placeholder="auth.example.com" autocomplete="off">
+      </label>
+      <div class="setup-actions">
+        <a class="ghost" href="/setup?step=admin"><%= t('onboard.back') %></a>
+        <button class="ghost" type="submit" name="skip" value="1"><%= t('onboard.skip') %></button>
+        <button class="btn" type="submit"><%= t('onboard.next') %></button>
+      </div>
+    </form>
+    <% } %>
+
+    <% if (step === "azure") { %>
+    <form method="post" action="/setup">
+      <input type="hidden" name="step" value="azure">
+      <p class="hint"><%= t('onboard.azureLede') %></p>
+      <label><%= t('azure.tenantId') %>
+        <input name="tenantId" value="<%= values.tenantId || '' %>" autocomplete="off">
+      </label>
+      <label><%= t('azure.clientId') %>
+        <input name="clientId" value="<%= values.clientId || '' %>" autocomplete="off">
+      </label>
+      <label><%= t('azure.clientSecret') %>
+        <input name="clientSecret" type="password" value="" autocomplete="new-password">
+      </label>
+      <label><%= t('azure.redirectUri') %>
+        <input value="<%= redirectUri %>" readonly>
+      </label>
+      <p class="hint"><%= t('azure.redirectHint') %></p>
+      <div class="setup-actions">
+        <a class="ghost" href="/setup?step=create"><%= t('onboard.back') %></a>
+        <button class="ghost" type="submit" name="skip" value="1"><%= t('onboard.skip') %></button>
+        <button class="btn" type="submit"><%= t('onboard.finish') %></button>
+      </div>
+    </form>
+    <% } %>
+  </main>
+</body>
+</html>

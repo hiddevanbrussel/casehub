@@ -1,0 +1,79 @@
+<% const z = zaak || {} %>
+<% const isModal = typeof modal !== "undefined" && modal; %>
+<form class="form<%= isModal ? ' modal-form' : '' %>" method="post" action="<%= zaak ? '/zaken/' + zaak.id : '/zaken' %>">
+  <%- include("../partials/form-head", {
+    heading: zaak ? t("cases.edit") : t("cases.new"),
+    eyebrow: t("nav.cases"),
+    cancelHref: zaak ? "/zaken/" + zaak.id : "/zaken"
+  }) %>
+  <div class="<%= isModal ? 'modal-body' : '' %>">
+    <div class="form-row">
+      <label><%= t('cases.title') %>
+        <input name="titel" required value="<%= z.titel || '' %>">
+      </label>
+      <label><%= t('cases.type') %>
+        <select name="zaaktypeId">
+          <option value="">—</option>
+          <% (typeof zaaktypen !== "undefined" ? zaaktypen : []).forEach(function (type) { %>
+            <option value="<%= type.id %>" data-lead="<%= type.leadTimeDays || 0 %>" <%= z.zaaktypeId === type.id ? "selected" : "" %>><%= type.naam %></option>
+          <% }) %>
+        </select>
+      </label>
+    </div>
+    <label class="span-2"><%= t('cases.description') %>
+      <textarea name="omschrijving" rows="3"><%= z.omschrijving || '' %></textarea>
+    </label>
+    <div class="form-row">
+      <label><%= t('cases.reference') %>
+        <input name="referentie" value="<%= z.referentie || '' %>" placeholder="PA-1233-8765">
+      </label>
+      <label><%= t('cases.progressPct') %>
+        <input type="number" name="voortgang" min="0" max="100" value="<%= z.voortgang ?? 0 %>">
+      </label>
+      <label><%= t('cases.deadline') %>
+        <input type="date" name="deadline" value="<%= z.deadline || '' %>" data-deadline>
+      </label>
+    </div>
+    <div class="form-row">
+      <label><%= t('cases.status') %>
+        <select name="status">
+          <% statussen.forEach(function (s) { %>
+            <option value="<%= s.id %>" <%= (z.status || 'nieuw') === s.id ? 'selected' : '' %>><%= t('status.' + s.id) %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label><%= t('cases.priority') %>
+        <select name="prioriteit">
+          <% prioriteiten.forEach(function (s) { %>
+            <option value="<%= s.id %>" <%= (z.prioriteit || 'normaal') === s.id ? 'selected' : '' %>><%= t('priority.' + s.id) %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label><%= t('cases.assignee') %>
+        <select name="behandelaarId">
+          <option value="">—</option>
+          <% werknemers.forEach(function (w) { %>
+            <option value="<%= w.id %>" <%= z.behandelaarId === w.id ? 'selected' : '' %>><%= w.naam %></option>
+          <% }) %>
+        </select>
+      </label>
+    </div>
+    <div class="form-row">
+      <label><%= t('cases.companies') %>
+        <select name="bedrijfIds" multiple size="3">
+          <% bedrijven.forEach(function (b) { %>
+            <option value="<%= b.id %>" <%= (z.bedrijfIds || []).includes(b.id) ? 'selected' : '' %>><%= b.handelsnaam %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label><%= t('cases.persons') %>
+        <select name="persoonIds" multiple size="3">
+          <% personen.forEach(function (p) { %>
+            <option value="<%= p.id %>" <%= (z.persoonIds || []).includes(p.id) ? 'selected' : '' %>><%= p.naam %></option>
+          <% }) %>
+        </select>
+      </label>
+    </div>
+  </div>
+  <%- include("../partials/form-foot") %>
+</form>

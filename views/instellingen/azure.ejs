@@ -1,0 +1,24 @@
+<p class="back-link"><a href="/instellingen/integraties"><%= t('integrations.back') %></a></p>
+<div class="page-head">
+  <div>
+    <h1><%= t('azure.title') %></h1>
+    <p class="lede"><%= t('azure.lede') %></p>
+  </div>
+  <span class="badge <%= azureReady ? 'badge-afgerond' : 'badge-wacht_op_info' %>"><%= azureReady ? t('common.connected') : t('common.notConfigured') %></span>
+</div>
+
+<% if (azure.lastError) { %><p class="alert"><%= azure.lastError %></p><% } %>
+<form class="form" method="post" action="/instellingen/azure">
+  <label><%= t('azure.tenantId') %> <input name="tenantId" required value="<%= azure.tenantId %>" autocomplete="off"></label>
+  <label><%= t('azure.clientId') %> <input name="clientId" required value="<%= azure.clientId %>" autocomplete="off"></label>
+  <label><%= t('azure.clientSecret') %>
+    <input name="clientSecret" type="password" value="" placeholder="<%= azure.hasSecret ? '••••••••  (' + t('azure.keepSecret') + ')' : '' %>" autocomplete="new-password">
+  </label>
+  <label><%= t('azure.redirectUri') %>
+    <input value="<%= redirectUri %>" readonly>
+  </label>
+  <p class="hint"><%= t('azure.redirectHint') %></p>
+  <div class="form-actions">
+    <button class="btn" type="submit"><%= t('azure.save') %></button>
+  </div>
+</form>

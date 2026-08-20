@@ -1,0 +1,27 @@
+<div class="page-head">
+  <div>
+    <p class="eyebrow"><%= t('role.' + werknemer.rol) %></p>
+    <h1><%= werknemer.naam %></h1>
+  </div>
+  <div class="actions">
+    <a class="ghost" href="/werknemers/<%= werknemer.id %>/bewerken"><%= t('common.edit') %></a>
+    <form method="post" action="/werknemers/<%= werknemer.id %>/verwijderen" data-confirm="<%= t('employees.confirmDelete') %>">
+      <button class="danger" type="submit"><%= t('common.delete') %></button>
+    </form>
+  </div>
+</div>
+<section class="panel">
+  <dl class="kv">
+    <div><dt><%= t('employees.email') %></dt><dd><%= werknemer.email %></dd></div>
+    <div><dt><%= t('employees.department') %></dt><dd><%= werknemer.afdeling || '—' %></dd></div>
+  </dl>
+</section>
+<section class="panel">
+  <header><h2><%= t('employees.assignedCases') %></h2></header>
+  <% if (!zaken.length) { %><p class="muted"><%= t('employees.noCases') %></p><% } %>
+  <ul class="rows">
+    <% zaken.forEach(function (z) { %>
+      <li><a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a></li>
+    <% }) %>
+  </ul>
+</section>

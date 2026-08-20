@@ -1,0 +1,36 @@
+<p class="back-link"><a href="/instellingen/integraties"><%= t('integrations.back') %></a></p>
+<div class="page-head">
+  <div>
+    <h1><%= t('create.title') %></h1>
+    <p class="lede"><%= t('create.lede') %></p>
+  </div>
+  <span class="badge <%= createReady ? 'badge-afgerond' : 'badge-wacht_op_info' %>"><%= createReady ? t('common.connected') : t('common.notConfigured') %></span>
+</div>
+
+<% if (create.lastError) { %><p class="alert"><%= create.lastError %></p><% } %>
+<form class="form" method="post" action="/instellingen/create">
+  <label><%= t('create.baseUrl') %> <input name="baseUrl" required value="<%= create.baseUrl %>"></label>
+    <div class="form-row form-row-2">
+    <label><%= t('create.clientId') %> <input name="clientId" required value="<%= create.clientId %>" autocomplete="off"></label>
+    <label><%= t('create.clientSecret') %> <input name="clientSecret" type="password" value="" placeholder="<%= create.hasSecret ? '••••••••  (' + t('create.keepSecret') + ')' : '' %>" autocomplete="new-password"></label>
+  </div>
+    <div class="form-row form-row-2">
+    <label><%= t('create.unitId') %> <input name="unitId" required value="<%= create.unitId %>"></label>
+    <label><%= t('create.contentSourceId') %> <input name="contentSourceId" required value="<%= create.contentSourceId %>"></label>
+  </div>
+  <label><%= t('create.publicUrl') %>
+    <input name="publicBaseUrl" value="<%= create.publicBaseUrl %>" placeholder="https://zaakhub.example.nl">
+  </label>
+  <p class="hint"><%= t('create.webhookHint') %></p>
+  <label><%= t('create.authDomain') %>
+    <input name="authDomain" value="<%= create.authDomain %>" placeholder="auth.example.com" autocomplete="off">
+  </label>
+  <p class="hint"><%= t('create.authDomainHint') %></p>
+  <div class="form-actions">
+    <button class="btn" type="submit"><%= t('create.save') %></button>
+    <button class="ghost" type="submit" form="create-test"><%= t('integrations.test') %></button>
+    <a class="ghost" href="/templates"><%= t('create.templates', { n: recipeCount }) %></a>
+  </div>
+</form>
+<form id="create-test" method="post" action="/instellingen/create/test" hidden></form>
+<% if (create.lastSyncAt) { %><p class="hint"><%= t('create.lastSync') %> <%= formatDateTime(create.lastSyncAt) %></p><% } %>

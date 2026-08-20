@@ -1,0 +1,35 @@
+<% const p = persoon || {} %>
+<% const isModal = typeof modal !== "undefined" && modal; %>
+<form class="form<%= isModal ? ' modal-form' : '' %>" method="post" action="<%= persoon ? '/personen/' + persoon.id : '/personen' %>">
+  <%- include("../partials/form-head", {
+    heading: persoon ? t("persons.edit") : t("persons.new"),
+    eyebrow: t("nav.persons"),
+    cancelHref: persoon ? "/personen/" + persoon.id : "/personen"
+  }) %>
+  <div class="<%= isModal ? 'modal-body' : '' %>">
+    <div class="form-row">
+      <label><%= t('persons.firstName') %> <input name="voornaam" required value="<%= p.voornaam || '' %>"></label>
+      <label><%= t('persons.lastName') %> <input name="achternaam" required value="<%= p.achternaam || '' %>"></label>
+    </div>
+    <div class="form-row">
+      <label><%= t('persons.email') %> <input type="email" name="email" value="<%= p.email || '' %>"></label>
+      <label><%= t('persons.phone') %> <input name="telefoon" value="<%= p.telefoon || '' %>"></label>
+      <label><%= t('persons.dob') %> <input type="date" name="geboortedatum" value="<%= p.geboortedatum || '' %>"></label>
+    </div>
+    <label class="span-2"><%= t('persons.bsn') %> <input name="bsn" inputmode="numeric" placeholder="<%= persoon ? t('persons.keepBsn') : t('persons.storedEnc') %>"></label>
+    <label class="span-2"><%= t('persons.address') %> <input name="adres" value="<%= p.adres || '' %>"></label>
+    <div class="form-row">
+      <label><%= t('persons.postcode') %> <input name="postcode" value="<%= p.postcode || '' %>"></label>
+      <label><%= t('persons.place') %> <input name="plaats" value="<%= p.plaats || '' %>"></label>
+      <label><%= t('persons.company') %>
+        <select name="bedrijfId">
+          <option value="">—</option>
+          <% bedrijven.forEach(function (b) { %>
+            <option value="<%= b.id %>" <%= p.bedrijfId === b.id ? 'selected' : '' %>><%= b.handelsnaam %></option>
+          <% }) %>
+        </select>
+      </label>
+    </div>
+  </div>
+  <%- include("../partials/form-foot") %>
+</form>

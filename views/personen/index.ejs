@@ -1,0 +1,98 @@
+<%- include("../partials/overview-head", { heading: t("persons.overview"), newHref: "/personen/nieuw", newLabel: t("persons.new"), showNew: canWrite, base: "/personen", view: view }) %>
+
+<form class="filters overview-filters <%= q || group ? 'is-open' : '' %>" method="get" action="/personen">
+  <% if (view !== 'overview') { %><input type="hidden" name="view" value="<%= view %>"><% } %>
+  <input type="search" name="q" value="<%= q %>" placeholder="<%= t('persons.search') %>">
+  <select name="group">
+    <option value=""><%= t('persons.all') %></option>
+    <% groups.forEach(function (g) { %>
+      <option value="<%= g.id %>" <%= group === g.id ? 'selected' : '' %>><%= t('personGroup.' + g.id) %></option>
+    <% }) %>
+  </select>
+  <button class="ghost" type="submit"><%= t('common.apply') %></button>
+</form>
+
+<% if (view === 'board') { %>
+  <div class="board">
+    <% groups.forEach(function (g) { %>
+      <% const items = personen.filter(function (p) { return p.group === g.id; }); %>
+      <section class="board-col">
+        <h3 class="status-<%= g.id %>"><%= t('personGroup.' + g.id) %> · <%= items.length %></h3>
+        <% items.forEach(function (p) { %>
+          <a class="board-card" href="/personen/<%= p.id %>">
+            <strong><%= p.naam %></strong>
+            <small class="mono"><%= p.nummer || p.id.slice(0, 8) %></small>
+          </a>
+        <% }) %>
+      </section>
+    <% }) %>
+  </div>
+<% } else if (view === 'table') { %>
+  <% if (!personen.length) { %>
+    <div class="empty"><%= t('persons.noFound') %></div>
+  <% } else { %>
+  <table class="table">
+    <thead><tr><th><%= t('persons.name') %></th><th><%= t('persons.personId') %></th><th><%= t('persons.company') %></th><th><%= t('persons.email') %></th><th><%= t('cases.status') %></th></tr></thead>
+    <tbody>
+      <% personen.forEach(function (p) { %>
+      <tr>
+        <td><a href="/personen/<%= p.id %>"><%= p.naam %></a></td>
+        <td class="mono"><%= p.nummer %></td>
+        <td><%= p.bedrijf ? p.bedrijf.handelsnaam : '—' %></td>
+        <td><%= p.email || '—' %></td>
+        <td><%= t('personGroup.' + p.group) %></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+<% } else { %>
+  <% groups.forEach(function (g) { %>
+    <% const items = personen.filter(function (p) { return p.group === g.id; }); %>
+    <section class="case-group">
+      <header class="case-group-head">
+        <h2 class="status-<%= g.id %>"><%= t('personGroup.' + g.id) %></h2>
+        <span class="count-pill"><%= items.length %></span>
+      </header>
+      <% if (!items.length) { %>
+        <div class="empty-status"><%= t('persons.noInStatus') %></div>
+      <% } else { %>
+      <table class="overview-table">
+        <thead>
+          <tr>
+            <th><%= t('persons.name') %></th>
+            <th><%= t('persons.personId') %></th>
+            <th><%= t('persons.company') %></th>
+            <th><%= t('persons.email') %></th>
+            <th><%= t('persons.phone') %></th>
+            <th><%= t('persons.place') %></th>
+            <th><%= t('persons.cases') %></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(function (p) { %>
+          <tr class="overview-row" data-expand>
+            <td><a href="/personen/<%= p.id %>"><%= p.naam %></a></td>
+            <td class="mono muted"><%= p.nummer %></td>
+            <td class="muted"><%= p.bedrijf ? p.bedrijf.handelsnaam : '—' %></td>
+            <td class="muted"><%= p.email || '—' %></td>
+            <td class="muted"><%= p.telefoon || '—' %></td>
+            <td><%= p.plaats || '—' %></td>
+            <td class="muted"><%= p.caseCount %></td>
+            <td class="chevron">▾</td>
+          </tr>
+          <tr class="overview-detail">
+            <td colspan="8">
+              <p class="muted"><%= t('persons.bsn') %> <%= p.bsnMasked %> · <%= p.adres || t('persons.noAddress') %> <%= p.postcode || '' %></p>
+              <a href="/personen/<%= p.id %>"><%= t('persons.open') %></a>
+              · <a href="/personen/<%= p.id %>/bewerken"><%= t('common.edit') %></a>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </section>
+  <% }) %>
+<% } %>

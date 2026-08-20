@@ -1,0 +1,39 @@
+<p class="back-link"><a href="/instellingen"><%= t('settings.back') %></a></p>
+<div class="page-head">
+  <div>
+    <h1><%= t('caseTypes.title') %></h1>
+    <p class="lede"><%= t('caseTypes.lede') %></p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/instellingen/zaaktypen/nieuw"><%= t('caseTypes.new') %></a>
+  </div>
+</div>
+
+<% if (!zaaktypen.length) { %>
+  <p class="empty"><%= t('caseTypes.empty') %></p>
+<% } else { %>
+<table class="int-table">
+  <thead>
+    <tr>
+      <th><%= t('caseTypes.name') %></th>
+      <th><%= t('caseTypes.leadTime') %></th>
+      <th><%= t('caseTypes.templates') %></th>
+      <th><%= t('caseTypes.cases') %></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% zaaktypen.forEach(function (type) { %>
+    <tr>
+      <td><strong><%= type.naam %></strong></td>
+      <td class="muted"><%= type.leadTimeDays ? t('common.days', { n: type.leadTimeDays }) : "—" %></td>
+      <td class="muted"><%= type.templateNames.length ? type.templateNames.join(", ") : "—" %></td>
+      <td class="muted"><%= type.caseCount %></td>
+      <td>
+        <a href="/instellingen/zaaktypen/<%= type.id %>"><%= t('caseTypes.edit') %></a>
+      </td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>

@@ -1,0 +1,51 @@
+<p class="back-link"><a href="/instellingen/zaaktypen"><%= t('caseTypes.back') %></a></p>
+<div class="page-head">
+  <div>
+    <h1><%= zaaktype && zaaktype.id ? t('caseTypes.editTitle') : t('caseTypes.newTitle') %></h1>
+    <p class="lede"><%= t('caseTypes.formLede') %></p>
+  </div>
+</div>
+
+<% if (typeof error !== "undefined" && error) { %><p class="alert"><%= error %></p><% } %>
+<% const type = zaaktype || {} %>
+<form class="form" method="post" action="<%= type.id ? '/instellingen/zaaktypen/' + type.id : '/instellingen/zaaktypen' %>">
+  <label><%= t('caseTypes.name') %>
+    <input name="naam" required value="<%= type.naam || '' %>">
+  </label>
+  <label><%= t('caseTypes.leadDays') %>
+    <input type="number" name="leadTimeDays" min="0" step="1" value="<%= type.leadTimeDays ?? 28 %>">
+  </label>
+  <fieldset class="check-set">
+    <legend><%= t('caseTypes.templates') %></legend>
+    <% if (!recipes.length) { %>
+      <p class="hint"><%= t('caseTypes.noTemplates') %> <a href="/templates"><%= t('templates.title') %></a>.</p>
+    <% } else { %>
+      <p class="hint"><%= t('caseTypes.templatesHint') %></p>
+      <div class="tpl-picker" data-template-picker>
+        <div class="tpl-picker-bar">
+          <input type="search" data-tpl-filter placeholder="<%= t('caseTypes.search') %>" autocomplete="off">
+          <button class="ghost" type="button" data-tpl-all><%= t('caseTypes.selectAll') %></button>
+          <button class="ghost" type="button" data-tpl-none><%= t('caseTypes.clear') %></button>
+          <span class="tpl-picker-count" data-tpl-count></span>
+        </div>
+        <div class="tpl-picker-list">
+          <% recipes.forEach(function (recipe) { %>
+            <label class="check-item">
+              <input type="checkbox" name="recipeIds" value="<%= recipe.itemId %>" <%= (type.recipeIds || []).includes(recipe.itemId) ? "checked" : "" %>>
+              <span><%= recipe.name %> <small class="tpl-type"><%= recipe.recipeType || "" %></small></span>
+            </label>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+  </fieldset>
+  <div class="form-actions">
+    <button class="btn" type="submit"><%= t('common.save') %></button>
+    <% if (type.id) { %>
+      <button class="danger" type="submit" form="delete-type" data-confirm="<%= t('caseTypes.confirmDelete') %>"><%= t('common.delete') %></button>
+    <% } %>
+  </div>
+</form>
+<% if (type.id) { %>
+<form id="delete-type" method="post" action="/instellingen/zaaktypen/<%= type.id %>/verwijderen" data-confirm="<%= t('caseTypes.confirmDelete') %>" hidden></form>
+<% } %>

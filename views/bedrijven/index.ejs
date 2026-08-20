@@ -1,0 +1,98 @@
+<%- include("../partials/overview-head", { heading: t("companies.overview"), newHref: "/bedrijven/nieuw", newLabel: t("companies.new"), showNew: canWrite, base: "/bedrijven", view: view }) %>
+
+<form class="filters overview-filters <%= q || group ? 'is-open' : '' %>" method="get" action="/bedrijven">
+  <% if (view !== 'overview') { %><input type="hidden" name="view" value="<%= view %>"><% } %>
+  <input type="search" name="q" value="<%= q %>" placeholder="<%= t('companies.search') %>">
+  <select name="group">
+    <option value=""><%= t('companies.all') %></option>
+    <% groups.forEach(function (g) { %>
+      <option value="<%= g.id %>" <%= group === g.id ? 'selected' : '' %>><%= t('companyGroup.' + g.id) %></option>
+    <% }) %>
+  </select>
+  <button class="ghost" type="submit"><%= t('common.apply') %></button>
+</form>
+
+<% if (view === 'board') { %>
+  <div class="board">
+    <% groups.forEach(function (g) { %>
+      <% const items = bedrijven.filter(function (b) { return b.group === g.id; }); %>
+      <section class="board-col">
+        <h3 class="status-<%= g.id %>"><%= t('companyGroup.' + g.id) %> · <%= items.length %></h3>
+        <% items.forEach(function (b) { %>
+          <a class="board-card" href="/bedrijven/<%= b.id %>">
+            <strong><%= b.handelsnaam %></strong>
+            <small class="mono"><%= b.nummer || b.kvk || '—' %></small>
+          </a>
+        <% }) %>
+      </section>
+    <% }) %>
+  </div>
+<% } else if (view === 'table') { %>
+  <% if (!bedrijven.length) { %>
+    <div class="empty"><%= t('companies.noFound') %></div>
+  <% } else { %>
+  <table class="table">
+    <thead><tr><th><%= t('companies.name') %></th><th><%= t('companies.companyId') %></th><th><%= t('companies.kvk') %></th><th><%= t('companies.place') %></th><th><%= t('companies.cases') %></th></tr></thead>
+    <tbody>
+      <% bedrijven.forEach(function (b) { %>
+      <tr>
+        <td><a href="/bedrijven/<%= b.id %>"><%= b.handelsnaam %></a></td>
+        <td class="mono"><%= b.nummer %></td>
+        <td class="mono"><%= b.kvk || '—' %></td>
+        <td><%= b.plaats || '—' %></td>
+        <td><%= b.caseCount %></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+<% } else { %>
+  <% groups.forEach(function (g) { %>
+    <% const items = bedrijven.filter(function (b) { return b.group === g.id; }); %>
+    <section class="case-group">
+      <header class="case-group-head">
+        <h2 class="status-<%= g.id %>"><%= t('companyGroup.' + g.id) %></h2>
+        <span class="count-pill"><%= items.length %></span>
+      </header>
+      <% if (!items.length) { %>
+        <div class="empty-status"><%= t('companies.noInStatus') %></div>
+      <% } else { %>
+      <table class="overview-table">
+        <thead>
+          <tr>
+            <th><%= t('companies.name') %></th>
+            <th><%= t('companies.companyId') %></th>
+            <th><%= t('companies.kvk') %></th>
+            <th><%= t('companies.place') %></th>
+            <th><%= t('companies.email') %></th>
+            <th><%= t('companies.phone') %></th>
+            <th><%= t('companies.cases') %></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(function (b) { %>
+          <tr class="overview-row" data-expand>
+            <td><a href="/bedrijven/<%= b.id %>"><%= b.handelsnaam %></a></td>
+            <td class="mono muted"><%= b.nummer %></td>
+            <td class="mono muted"><%= b.kvk || '—' %></td>
+            <td><%= b.plaats || '—' %></td>
+            <td class="muted"><%= b.email || '—' %></td>
+            <td class="muted"><%= b.telefoon || '—' %></td>
+            <td class="muted"><%= b.caseCount %></td>
+            <td class="chevron">▾</td>
+          </tr>
+          <tr class="overview-detail">
+            <td colspan="8">
+              <p class="muted"><%= [b.adres, b.postcode, b.plaats].filter(Boolean).join(', ') || t('companies.noAddress') %></p>
+              <a href="/bedrijven/<%= b.id %>"><%= t('companies.open') %></a>
+              · <a href="/bedrijven/<%= b.id %>/bewerken"><%= t('common.edit') %></a>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </section>
+  <% }) %>
+<% } %>

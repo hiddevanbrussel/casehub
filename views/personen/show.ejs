@@ -1,0 +1,48 @@
+<div class="page-head">
+  <div>
+    <p class="eyebrow"><%= t('persons.eyebrow') %></p>
+    <h1><%= persoon.naam || t('persons.anonymised') %></h1>
+  </div>
+  <% if (canWrite) { %>
+  <div class="actions">
+    <% if (!persoon.anoniem) { %>
+      <a class="ghost" href="/personen/<%= persoon.id %>/bewerken"><%= t('common.edit') %></a>
+      <form method="post" action="/personen/<%= persoon.id %>/anonimiseren" data-confirm="<%= t('persons.confirmAnon') %>">
+        <button class="ghost" type="submit"><%= t('persons.anonymise') %></button>
+      </form>
+    <% } %>
+    <% if (user.rol === 'admin') { %>
+    <form method="post" action="/personen/<%= persoon.id %>/verwijderen" data-confirm="<%= t('persons.confirmDelete') %>">
+      <button class="danger" type="submit"><%= t('common.delete') %></button>
+    </form>
+    <% } %>
+  </div>
+  <% } %>
+</div>
+<section class="panel">
+  <dl class="kv">
+    <div>
+      <dt><%= t('persons.bsn') %></dt>
+      <dd class="mono">
+        <% if (showBsn && persoon.bsn) { %><%= persoon.bsn %><% } else { %><%= persoon.bsnMasked %><% } %>
+        <% if (user.rol === 'admin' && !persoon.anoniem) { %>
+          <a href="/personen/<%= persoon.id %><%= showBsn ? '' : '?bsn=1' %>"><%= showBsn ? t('persons.hide') : t('persons.show') %></a>
+        <% } %>
+      </dd>
+    </div>
+    <div><dt><%= t('persons.email') %></dt><dd><%= persoon.email || '—' %></dd></div>
+    <div><dt><%= t('persons.phone') %></dt><dd><%= persoon.telefoon || '—' %></dd></div>
+    <div><dt><%= t('persons.address') %></dt><dd><%= [persoon.adres, persoon.postcode, persoon.plaats].filter(Boolean).join(', ') || '—' %></dd></div>
+    <div><dt><%= t('persons.dob') %></dt><dd><%= formatDate(persoon.geboortedatum) %></dd></div>
+    <div><dt><%= t('persons.company') %></dt><dd><% if (persoon.bedrijf) { %><a href="/bedrijven/<%= persoon.bedrijf.id %>"><%= persoon.bedrijf.handelsnaam %></a><% } else { %>—<% } %></dd></div>
+  </dl>
+</section>
+<section class="panel">
+  <header><h2><%= t('persons.linkedCases') %></h2></header>
+  <% if (!zaken.length) { %><p class="muted"><%= t('persons.noCases') %></p><% } %>
+  <ul class="rows">
+    <% zaken.forEach(function (z) { %>
+      <li><a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a></li>
+    <% }) %>
+  </ul>
+</section>

@@ -1,0 +1,13 @@
+<p class="back-link"><a href="/instellingen"><%= t('settings.back') %></a></p>
+<div class="page-head">
+  <div>
+    <h1><%= t('settings.generalTitle') %></h1>
+    <p class="lede"><%= t('settings.generalLede') %></p>
+  </div>
+</div>
+<form class="form" method="post" action="/instellingen/algemeen">
+  <label><%= t('settings.orgName') %> <input name="orgName" required value="<%= meta.orgName %>"></label>
+  <label><%= t('settings.prefix') %> <input name="zaakPrefix" required maxlength="6" value="<%= meta.zaakPrefix %>"></label>
+  <p class="hint"><%= t('settings.nextNumber') %> <%= meta.zaakPrefix %>-<%= new Date().getFullYear() %>-<%= String(meta.nextZaakSeq).padStart(4,'0') %></p>
+  <button class="btn" type="submit"><%= t('settings.save') %></button>
+</form>

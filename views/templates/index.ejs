@@ -1,0 +1,62 @@
+<p class="back-link"><a href="/instellingen"><%= t('settings.back') %></a></p>
+<div class="page-head">
+  <div>
+    <h1><%= t('templates.title') %></h1>
+    <p class="lede"><%= t('templates.lede') %></p>
+  </div>
+  <div class="actions">
+    <form method="post" action="/templates/sync">
+      <button class="btn" type="submit" <%= createReady ? '' : 'disabled' %>><%= t('templates.sync') %></button>
+    </form>
+  </div>
+</div>
+
+<% if (!createReady) { %>
+  <p class="alert"><%= t('templates.notConfigured') %></p>
+<% } else if (lastError) { %>
+  <p class="alert"><%= lastError %></p>
+<% } %>
+<% if (lastSyncAt) { %><p class="hint"><%= t('create.lastSync') %> <%= formatDateTime(lastSyncAt) %></p><% } %>
+
+<form class="filters" method="get" action="/templates">
+  <input name="q" value="<%= q %>" placeholder="<%= t('templates.search') %>">
+  <button class="ghost" type="submit"><%= t('common.filter') %></button>
+</form>
+
+<% const rows = recipes.filter(function (recipe) {
+  return !q || (recipe.name || '').toLowerCase().indexOf(String(q).toLowerCase()) !== -1;
+}); %>
+
+<% if (!rows.length) { %>
+  <p class="empty"><%= t('templates.empty') %></p>
+<% } else { %>
+<table class="table">
+  <thead>
+    <tr>
+      <th><%= t('caseTypes.name') %></th>
+      <th><%= t('cases.type') %></th>
+      <th><%= t('templates.fields') %></th>
+      <th><%= t('templates.visibility') %></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% rows.forEach(function (recipe) { %>
+    <tr>
+      <td>
+        <strong><%= recipe.name %></strong>
+        <div class="muted mono"><%= recipe.itemId %></div>
+      </td>
+      <td><%= recipe.recipeType %></td>
+      <td>
+        <% if (!(recipe.fields || []).length) { %>
+          <span class="muted">—</span>
+        <% } else { %>
+          <span class="muted"><%= recipe.fields.map(function (f) { return f.key; }).join(', ') %></span>
+        <% } %>
+      </td>
+      <td><%= recipe.hideFromUserView ? t('templates.hidden') : t('templates.visible') %></td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>

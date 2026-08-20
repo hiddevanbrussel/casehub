@@ -1,0 +1,30 @@
+services:
+  zaakhub:
+    build: .
+    image: zaakhub:latest
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      SESSION_SECRET: ${SESSION_SECRET:-wijzig-deze-geheime-sleutel}
+      ORG_NAME: ${ORG_NAME:-Zaakhub}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      CREATE_BASE_URL: ${CREATE_BASE_URL:-https://app.omnidocs.cloud}
+      CREATE_CLIENT_ID: ${CREATE_CLIENT_ID:-}
+      CREATE_CLIENT_SECRET: ${CREATE_CLIENT_SECRET:-}
+      CREATE_UNIT_ID: ${CREATE_UNIT_ID:-}
+      CREATE_CONTENT_SOURCE_ID: ${CREATE_CONTENT_SOURCE_ID:-}
+      CREATE_AUTH_DOMAIN: ${CREATE_AUTH_DOMAIN:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      SEED_DEMO: ${SEED_DEMO:-}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
+    volumes:
+      - zaakhub-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  zaakhub-data:

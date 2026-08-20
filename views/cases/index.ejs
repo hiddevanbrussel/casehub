@@ -1,0 +1,115 @@
+<%- include("../partials/overview-head", { heading: t("cases.overview"), newHref: "/zaken/nieuw", newLabel: t("cases.new"), showNew: true, base: "/zaken", view: view }) %>
+
+<form class="filters overview-filters <%= q || status ? 'is-open' : '' %>" method="get" action="/zaken" id="case-filters">
+  <% if (view !== 'overview') { %><input type="hidden" name="view" value="<%= view %>"><% } %>
+  <input type="search" name="q" value="<%= q %>" placeholder="<%= t('cases.search') %>">
+  <select name="status">
+    <option value=""><%= t('cases.allStatuses') %></option>
+    <% groups.forEach(function (g) { %>
+      <option value="<%= g.id %>" <%= status === g.id ? 'selected' : '' %>><%= t('group.' + g.id) %></option>
+    <% }) %>
+  </select>
+  <button class="ghost" type="submit"><%= t('common.apply') %></button>
+</form>
+
+<% if (view === 'board') { %>
+  <div class="board">
+    <% groups.forEach(function (g) { %>
+      <% const items = zaken.filter(function (z) { return g.statuses.indexOf(z.status) !== -1; }); %>
+      <section class="board-col">
+        <h3 class="status-<%= g.id %>"><%= t('group.' + g.id) %> · <%= items.length %></h3>
+        <% items.forEach(function (z) { %>
+          <a class="board-card" href="/zaken/<%= z.id %>">
+            <strong><%= z.titel %></strong>
+            <small class="mono"><%= z.zaaknummer %></small>
+          </a>
+        <% }) %>
+      </section>
+    <% }) %>
+  </div>
+<% } else if (view === 'table') { %>
+  <% if (!zaken.length) { %>
+    <div class="empty"><%= t('cases.noFound') %></div>
+  <% } else { %>
+  <table class="table">
+    <thead>
+      <tr><th><%= t('cases.title') %></th><th><%= t('cases.caseId') %></th><th><%= t('cases.type') %></th><th><%= t('cases.progress') %></th><th><%= t('cases.name') %></th><th><%= t('cases.status') %></th></tr>
+    </thead>
+    <tbody>
+      <% zaken.forEach(function (z) { %>
+      <tr>
+        <td><a href="/zaken/<%= z.id %>"><%= z.titel %></a></td>
+        <td class="mono"><%= z.zaaknummer %></td>
+        <td><%= z.zaaktype || '—' %></td>
+        <td><%= z.voortgang %>%</td>
+        <td><%= z.contactNaam %></td>
+        <td><span class="badge badge-<%= z.status %>"><%= t('group.' + z.overviewGroup) %></span></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+<% } else { %>
+<table class="overview-table overview-table-cases">
+  <colgroup>
+    <col style="width:22%">
+    <col style="width:12%">
+    <col style="width:18%">
+    <col style="width:13%">
+    <col style="width:12%">
+    <col style="width:13%">
+    <col style="width:8%">
+    <col style="width:32px">
+  </colgroup>
+  <% groups.forEach(function (g) { %>
+    <% const items = zaken.filter(function (z) { return g.statuses.indexOf(z.status) !== -1; }); %>
+    <tbody>
+      <tr class="group-banner">
+        <td colspan="7"><h2 class="status-<%= g.id %>"><%= t('group.' + g.id) %></h2></td>
+        <td><span class="count-pill"><%= items.length %></span></td>
+      </tr>
+      <tr class="col-heads">
+        <th><%= t('cases.title') %></th>
+        <th><%= t('cases.caseId') %></th>
+        <th><%= t('cases.type') %></th>
+        <th><%= t('cases.progress') %></th>
+        <th><%= t('cases.reference') %></th>
+        <th><%= t('cases.name') %></th>
+        <th><%= t('cases.status') %></th>
+        <th></th>
+      </tr>
+      <% if (!items.length) { %>
+      <tr class="empty-row">
+        <td colspan="8"><div class="empty-status"><%= t('cases.noInStatus') %></div></td>
+      </tr>
+      <% } else { %>
+        <% items.forEach(function (z) { %>
+        <tr class="overview-row" data-expand>
+          <td><a href="/zaken/<%= z.id %>"><%= z.titel %></a></td>
+          <td class="mono muted"><%= z.zaaknummer %></td>
+          <td class="muted"><%= z.zaaktype || '—' %></td>
+          <td>
+            <div class="prog">
+              <span class="prog-track"><span class="prog-fill" style="width: <%= z.voortgang %>%"></span></span>
+              <span><%= z.voortgang %>%</span>
+            </div>
+          </td>
+          <td class="mono muted"><%= z.referentie || '—' %></td>
+          <td><%= z.contactNaam %></td>
+          <td class="muted"><%= t('status.' + z.status) %></td>
+          <td class="chevron">▾</td>
+        </tr>
+        <tr class="overview-detail">
+          <td colspan="8">
+            <p><%= z.omschrijving || t('cases.noDescription') %></p>
+            <p class="muted"><%= t('cases.assignee') %> <%= z.behandelaarNaam %> · <%= t('cases.deadline') %> <%= formatDate(z.deadline) %></p>
+            <a href="/zaken/<%= z.id %>"><%= t('cases.open') %></a>
+            · <a href="/zaken/<%= z.id %>/bewerken"><%= t('common.edit') %></a>
+          </td>
+        </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  <% }) %>
+</table>
+<% } %>

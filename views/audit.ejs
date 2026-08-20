@@ -1,0 +1,86 @@
+<%- include("partials/overview-head", { heading: t("audit.overview"), newHref: "/audit", newLabel: t("audit.refresh"), showNew: true, base: "/audit", view: view }) %>
+
+<form class="filters overview-filters <%= q || group ? 'is-open' : '' %>" method="get" action="/audit">
+  <% if (view !== 'overview') { %><input type="hidden" name="view" value="<%= view %>"><% } %>
+  <input type="search" name="q" value="<%= q %>" placeholder="<%= t('audit.search') %>">
+  <select name="group">
+    <option value=""><%= t('audit.all') %></option>
+    <% groups.forEach(function (g) { %>
+      <option value="<%= g.id %>" <%= group === g.id ? 'selected' : '' %>><%= t('entity.' + g.id) %></option>
+    <% }) %>
+  </select>
+  <button class="ghost" type="submit"><%= t('common.apply') %></button>
+</form>
+
+<% if (view === 'board') { %>
+  <div class="board">
+    <% groups.forEach(function (g) { %>
+      <% const rows = items.filter(function (item) { return item.entity === g.id; }); %>
+      <section class="board-col">
+        <h3><%= t('entity.' + g.id) %> · <%= rows.length %></h3>
+        <% rows.forEach(function (item) { %>
+          <div class="board-card">
+            <strong><%= item.action %></strong>
+            <small><%= item.actor %> · <%= formatDateTime(item.at) %></small>
+          </div>
+        <% }) %>
+      </section>
+    <% }) %>
+  </div>
+<% } else if (view === 'table') { %>
+  <table class="table">
+    <thead><tr><th><%= t('audit.time') %></th><th><%= t('audit.user') %></th><th><%= t('audit.action') %></th><th><%= t('audit.entity') %></th><th><%= t('audit.detail') %></th></tr></thead>
+    <tbody>
+      <% items.forEach(function (item) { %>
+      <tr>
+        <td><%= formatDateTime(item.at) %></td>
+        <td><%= item.actor %></td>
+        <td><%= item.action %></td>
+        <td><%= t('entity.' + item.entity) %></td>
+        <td><%= item.detail %></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } else { %>
+  <% groups.forEach(function (g) { %>
+    <% const rows = items.filter(function (item) { return item.entity === g.id; }); %>
+    <section class="case-group">
+      <header class="case-group-head">
+        <h2 class="status-active"><%= t('entity.' + g.id) %></h2>
+        <span class="count-pill"><%= rows.length %></span>
+      </header>
+      <% if (!rows.length) { %>
+        <div class="empty-status"><%= t('audit.noEvents') %></div>
+      <% } else { %>
+      <table class="overview-table">
+        <thead>
+          <tr>
+            <th><%= t('audit.time') %></th>
+            <th><%= t('audit.user') %></th>
+            <th><%= t('audit.action') %></th>
+            <th><%= t('audit.detail') %></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.forEach(function (item) { %>
+          <tr class="overview-row" data-expand>
+            <td class="muted"><%= formatDateTime(item.at) %></td>
+            <td><%= item.actor %></td>
+            <td><%= item.action %></td>
+            <td class="muted"><%= item.detail %></td>
+            <td class="chevron">▾</td>
+          </tr>
+          <tr class="overview-detail">
+            <td colspan="5">
+              <p class="muted"><%= t('entity.' + item.entity) %> · <%= item.entityId %></p>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </section>
+  <% }) %>
+<% } %>

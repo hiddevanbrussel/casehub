@@ -1,0 +1,12 @@
+<% const isModal = typeof modal !== "undefined" && modal; %>
+<div class="<%= isModal ? 'modal-head' : 'page-head' %>">
+  <div>
+    <% if (!isModal && typeof eyebrow !== "undefined") { %><p class="eyebrow"><%= eyebrow %></p><% } %>
+    <h1><%= heading %></h1>
+  </div>
+  <% if (isModal) { %>
+    <button type="button" class="icon-btn" data-modal-close aria-label="<%= t('common.close') %>">×</button>
+  <% } else { %>
+    <a class="ghost" href="<%= cancelHref %>"><%= t('common.cancel') %></a>
+  <% } %>
+</div>

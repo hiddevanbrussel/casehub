@@ -1,0 +1,57 @@
+<p class="back-link"><a href="/instellingen"><%= t('settings.back') %></a></p>
+<div class="page-head">
+  <div>
+    <h1><%= t('integrations.title') %></h1>
+    <p class="lede"><%= t('integrations.lede') %></p>
+  </div>
+</div>
+
+<form method="post" action="/instellingen/integraties/active">
+  <button class="ghost" type="submit"><%= t('integrations.saveActive') %></button>
+  <table class="int-table">
+    <thead>
+      <tr>
+        <th><%= t('integrations.integration') %></th>
+        <th><%= t('integrations.summary') %></th>
+        <th><%= t('integrations.active') %></th>
+        <th><%= t('integrations.actions') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Create</strong></td>
+        <td class="muted"><%= createSummary %></td>
+        <td>
+          <input type="checkbox" name="createActive" value="1" <%= create.active ? "checked" : "" %> aria-label="Create <%= t('integrations.active') %>">
+        </td>
+        <td>
+          <details class="menu-dots">
+            <summary aria-label="<%= t('integrations.actions') %>">⋯</summary>
+            <div class="menu-dots-list">
+              <a href="/instellingen/integraties/create"><%= t('integrations.edit') %></a>
+              <button type="submit" form="create-test"><%= t('integrations.test') %></button>
+              <button type="submit" form="create-sync"><%= t('integrations.sync') %></button>
+            </div>
+          </details>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Microsoft Entra ID</strong></td>
+        <td class="muted"><%= azureSummary %></td>
+        <td>
+          <input type="checkbox" name="azureActive" value="1" <%= azure.active ? "checked" : "" %> aria-label="Azure <%= t('integrations.active') %>">
+        </td>
+        <td>
+          <details class="menu-dots">
+            <summary aria-label="<%= t('integrations.actions') %>">⋯</summary>
+            <div class="menu-dots-list">
+              <a href="/instellingen/integraties/azure"><%= t('integrations.edit') %></a>
+            </div>
+          </details>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</form>
+<form id="create-test" method="post" action="/instellingen/create/test" hidden></form>
+<form id="create-sync" method="post" action="/templates/sync" hidden></form>

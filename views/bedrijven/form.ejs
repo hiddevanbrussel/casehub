@@ -1,0 +1,24 @@
+<% const b = bedrijf || {} %>
+<% const isModal = typeof modal !== "undefined" && modal; %>
+<form class="form<%= isModal ? ' modal-form' : '' %>" method="post" action="<%= bedrijf ? '/bedrijven/' + bedrijf.id : '/bedrijven' %>">
+  <%- include("../partials/form-head", {
+    heading: bedrijf ? t("companies.edit") : t("companies.new"),
+    eyebrow: t("nav.companies"),
+    cancelHref: bedrijf ? "/bedrijven/" + bedrijf.id : "/bedrijven"
+  }) %>
+  <div class="<%= isModal ? 'modal-body' : '' %>">
+    <label class="span-2"><%= t('companies.name') %> <input name="handelsnaam" required value="<%= b.handelsnaam || '' %>"></label>
+    <div class="form-row">
+      <label><%= t('companies.kvk') %> <input name="kvk" value="<%= b.kvk || '' %>"></label>
+      <label><%= t('companies.phone') %> <input name="telefoon" value="<%= b.telefoon || '' %>"></label>
+      <label><%= t('companies.email') %> <input type="email" name="email" value="<%= b.email || '' %>"></label>
+    </div>
+    <label class="span-2"><%= t('companies.address') %> <input name="adres" value="<%= b.adres || '' %>"></label>
+    <div class="form-row">
+      <label><%= t('companies.postcode') %> <input name="postcode" value="<%= b.postcode || '' %>"></label>
+      <label><%= t('companies.place') %> <input name="plaats" value="<%= b.plaats || '' %>"></label>
+    </div>
+    <label class="span-2"><%= t('companies.notes') %> <textarea name="notities" rows="3"><%= b.notities || '' %></textarea></label>
+  </div>
+  <%- include("../partials/form-foot") %>
+</form>

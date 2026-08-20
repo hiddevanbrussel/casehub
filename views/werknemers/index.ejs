@@ -1,0 +1,86 @@
+<%- include("../partials/overview-head", { heading: t("employees.overview"), newHref: "/werknemers/nieuw", newLabel: t("employees.new"), showNew: true, base: "/werknemers", view: view }) %>
+
+<form class="filters overview-filters <%= q || group ? 'is-open' : '' %>" method="get" action="/werknemers">
+  <% if (view !== 'overview') { %><input type="hidden" name="view" value="<%= view %>"><% } %>
+  <input type="search" name="q" value="<%= q %>" placeholder="<%= t('employees.search') %>">
+  <select name="group">
+    <option value=""><%= t('employees.allRoles') %></option>
+    <% groups.forEach(function (g) { %>
+      <option value="<%= g.id %>" <%= group === g.id ? 'selected' : '' %>><%= t('role.' + g.id) %></option>
+    <% }) %>
+  </select>
+  <button class="ghost" type="submit"><%= t('common.apply') %></button>
+</form>
+
+<% if (view === 'board') { %>
+  <div class="board">
+    <% groups.forEach(function (g) { %>
+      <% const items = werknemers.filter(function (w) { return w.rol === g.id; }); %>
+      <section class="board-col">
+        <h3 class="status-<%= g.id %>"><%= t('role.' + g.id) %> · <%= items.length %></h3>
+        <% items.forEach(function (w) { %>
+          <a class="board-card" href="/werknemers/<%= w.id %>">
+            <strong><%= w.naam %></strong>
+            <small><%= w.email %></small>
+          </a>
+        <% }) %>
+      </section>
+    <% }) %>
+  </div>
+<% } else if (view === 'table') { %>
+  <table class="table">
+    <thead><tr><th><%= t('employees.name') %></th><th><%= t('employees.email') %></th><th><%= t('employees.role') %></th><th><%= t('employees.department') %></th></tr></thead>
+    <tbody>
+      <% werknemers.forEach(function (w) { %>
+      <tr>
+        <td><a href="/werknemers/<%= w.id %>"><%= w.naam %></a></td>
+        <td><%= w.email %></td>
+        <td><%= t('role.' + w.rol) %></td>
+        <td><%= w.afdeling || '—' %></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } else { %>
+  <% groups.forEach(function (g) { %>
+    <% const items = werknemers.filter(function (w) { return w.rol === g.id; }); %>
+    <section class="case-group">
+      <header class="case-group-head">
+        <h2 class="status-<%= g.id %>"><%= t('role.' + g.id) %></h2>
+        <span class="count-pill"><%= items.length %></span>
+      </header>
+      <% if (!items.length) { %>
+        <div class="empty-status"><%= t('employees.noInRole') %></div>
+      <% } else { %>
+      <table class="overview-table">
+        <thead>
+          <tr>
+            <th><%= t('employees.name') %></th>
+            <th><%= t('employees.email') %></th>
+            <th><%= t('employees.role') %></th>
+            <th><%= t('employees.department') %></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(function (w) { %>
+          <tr class="overview-row" data-expand>
+            <td><a href="/werknemers/<%= w.id %>"><%= w.naam %></a></td>
+            <td class="muted"><%= w.email %></td>
+            <td class="muted"><%= t('role.' + w.rol) %></td>
+            <td><%= w.afdeling || '—' %></td>
+            <td class="chevron">▾</td>
+          </tr>
+          <tr class="overview-detail">
+            <td colspan="5">
+              <a href="/werknemers/<%= w.id %>"><%= t('employees.open') %></a>
+              · <a href="/werknemers/<%= w.id %>/bewerken"><%= t('common.edit') %></a>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </section>
+  <% }) %>
+<% } %>

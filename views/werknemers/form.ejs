@@ -1,0 +1,31 @@
+<% const w = werknemer || {} %>
+<% const isModal = typeof modal !== "undefined" && modal; %>
+<form class="form<%= isModal ? ' modal-form' : '' %>" method="post" action="<%= werknemer && werknemer.id ? '/werknemers/' + werknemer.id : '/werknemers' %>">
+  <%- include("../partials/form-head", {
+    heading: werknemer && werknemer.id ? t("employees.edit") : t("employees.new"),
+    eyebrow: t("employees.eyebrow"),
+    cancelHref: werknemer && werknemer.id ? "/werknemers/" + werknemer.id : "/werknemers"
+  }) %>
+  <div class="<%= isModal ? 'modal-body' : '' %>">
+    <% if (typeof error !== 'undefined' && error) { %><p class="alert"><%= error %></p><% } %>
+    <div class="form-row">
+      <label><%= t('employees.firstName') %> <input name="voornaam" required value="<%= w.voornaam || '' %>"></label>
+      <label><%= t('employees.lastName') %> <input name="achternaam" required value="<%= w.achternaam || '' %>"></label>
+    </div>
+    <label><%= t('employees.email') %> <input type="email" name="email" required value="<%= w.email || '' %>"></label>
+    <div class="form-row">
+      <label><%= t('employees.role') %>
+        <select name="rol">
+          <% rollen.forEach(function (r) { %>
+            <option value="<%= r.id %>" <%= (w.rol || 'medewerker') === r.id ? 'selected' : '' %>><%= t('role.' + r.id) %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label><%= t('employees.department') %> <input name="afdeling" value="<%= w.afdeling || '' %>"></label>
+    </div>
+    <label><%= t('employees.password') %>
+      <input type="password" name="wachtwoord" <%= werknemer && werknemer.id ? '' : 'required' %> placeholder="<%= werknemer && werknemer.id ? t('employees.keepPassword') : '' %>">
+    </label>
+  </div>
+  <%- include("../partials/form-foot") %>
+</form>

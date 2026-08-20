@@ -1,0 +1,32 @@
+<div class="page-head">
+  <div>
+    <p class="eyebrow"><%= t('companies.eyebrow') %></p>
+    <h1><%= bedrijf.handelsnaam %></h1>
+  </div>
+  <% if (canWrite) { %>
+  <div class="actions">
+    <a class="ghost" href="/bedrijven/<%= bedrijf.id %>/bewerken"><%= t('common.edit') %></a>
+    <form method="post" action="/bedrijven/<%= bedrijf.id %>/verwijderen" data-confirm="<%= t('companies.confirmDelete') %>">
+      <button class="danger" type="submit"><%= t('common.delete') %></button>
+    </form>
+  </div>
+  <% } %>
+</div>
+<section class="panel">
+  <dl class="kv">
+    <div><dt><%= t('companies.kvk') %></dt><dd class="mono"><%= bedrijf.kvk || '—' %></dd></div>
+    <div><dt><%= t('companies.address') %></dt><dd><%= [bedrijf.adres, bedrijf.postcode, bedrijf.plaats].filter(Boolean).join(', ') || '—' %></dd></div>
+    <div><dt><%= t('companies.email') %></dt><dd><%= bedrijf.email || '—' %></dd></div>
+    <div><dt><%= t('companies.phone') %></dt><dd><%= bedrijf.telefoon || '—' %></dd></div>
+  </dl>
+  <% if (bedrijf.notities) { %><p class="body-copy"><%= bedrijf.notities %></p><% } %>
+</section>
+<section class="panel">
+  <header><h2><%= t('companies.linkedCases') %></h2></header>
+  <% if (!zaken.length) { %><p class="muted"><%= t('companies.noCases') %></p><% } %>
+  <ul class="rows">
+    <% zaken.forEach(function (z) { %>
+      <li><a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a></li>
+    <% }) %>
+  </ul>
+</section>

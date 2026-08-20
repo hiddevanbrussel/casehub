@@ -1,0 +1,9 @@
+<% const isModal = typeof modal !== "undefined" && modal; %>
+<% if (isModal) { %>
+<footer class="modal-foot">
+  <button type="button" class="ghost" data-modal-close><%= t('common.cancel') %></button>
+  <button class="btn" type="submit"><%= t('common.save') %></button>
+</footer>
+<% } else { %>
+  <button class="btn" type="submit"><%= t('common.save') %></button>
+<% } %>

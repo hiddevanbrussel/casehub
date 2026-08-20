@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= t('login.title') %> · <%= meta.orgName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/css/app.css">
+</head>
+<body class="login-body">
+  <main class="login-card">
+    <div class="brand brand-lg">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3zm3 5a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/></svg>
+      </span>
+      <strong><%= meta.orgName %></strong>
+    </div>
+    <h1><%= t('login.title') %></h1>
+    <% if (error) { %><p class="alert"><%= error %></p><% } %>
+    <% if (typeof azureReady !== "undefined" && azureReady) { %>
+      <a class="ghost btn-block ms-btn" href="/auth/azure"><%= t('login.microsoft') %></a>
+      <p class="hint login-or"><%= t('login.orEmail') %></p>
+    <% } %>
+    <form method="post" action="/login">
+      <input type="hidden" name="next" value="<%= next %>">
+      <label><%= t('login.email') %>
+        <input type="email" name="email" required autofocus value="<%= typeof showDemo !== 'undefined' && showDemo ? 'admin@zaakhub.local' : '' %>">
+      </label>
+      <label><%= t('login.password') %>
+        <input type="password" name="password" required>
+      </label>
+      <button class="btn btn-block" type="submit"><%= t('login.continue') %></button>
+    </form>
+    <% if (typeof showDemo !== "undefined" && showDemo) { %>
+    <p class="hint"><%= t('login.demo') %>: <code>admin@zaakhub.local</code> / <code>ChangeMe!Admin</code></p>
+    <% } %>
+    <div class="login-lang">
+      <%- include("partials/lang-switcher") %>
+    </div>
+  </main>
+</body>
+</html>

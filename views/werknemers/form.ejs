@@ -8,12 +8,55 @@
   }) %>
   <div class="<%= isModal ? 'modal-body' : '' %>">
     <% if (typeof error !== 'undefined' && error) { %><p class="alert"><%= error %></p><% } %>
-    <div class="form-row">
+    <% if (isHr) { %>
+    <h2 class="form-section"><%= t('hr.contact') %></h2>
+    <label><%= t('hr.salutation') %>
+      <select name="aanhef">
+        <option value="" <%= !w.aanhef ? 'selected' : '' %>>—</option>
+        <option value="heer" <%= w.aanhef === 'heer' ? 'selected' : '' %>><%= t('hr.heer') %></option>
+        <option value="mevrouw" <%= w.aanhef === 'mevrouw' ? 'selected' : '' %>><%= t('hr.mevrouw') %></option>
+      </select>
+    </label>
+    <% } %>
+    <div class="form-row form-row-2">
       <label><%= t('employees.firstName') %> <input name="voornaam" required value="<%= w.voornaam || '' %>"></label>
       <label><%= t('employees.lastName') %> <input name="achternaam" required value="<%= w.achternaam || '' %>"></label>
     </div>
-    <label><%= t('employees.email') %> <input type="email" name="email" required value="<%= w.email || '' %>"></label>
-    <div class="form-row">
+    <% if (isHr) { %>
+    <label><%= t('hr.dob') %> <input type="date" name="geboortedatum" value="<%= w.geboortedatum || '' %>"></label>
+
+    <h2 class="form-section"><%= t('hr.address') %></h2>
+    <div class="form-row form-row-2">
+      <label><%= t('hr.street') %> <input name="straat" value="<%= w.straat || '' %>"></label>
+      <label><%= t('hr.houseNo') %> <input name="huisnummer" value="<%= w.huisnummer || '' %>"></label>
+    </div>
+    <div class="form-row form-row-2">
+      <label><%= t('hr.postcode') %> <input name="postcode" value="<%= w.postcode || '' %>"></label>
+      <label><%= t('hr.city') %> <input name="plaats" value="<%= w.plaats || '' %>"></label>
+    </div>
+
+    <h2 class="form-section"><%= t('hr.employment') %></h2>
+    <div class="form-row form-row-2">
+      <label><%= t('hr.startDate') %> <input type="date" name="datumIndiensttreding" value="<%= w.datumIndiensttreding || '' %>"></label>
+      <label><%= t('hr.job') %> <input name="functiebenaming" value="<%= w.functiebenaming || '' %>"></label>
+    </div>
+    <div class="form-row form-row-2">
+      <label><%= t('hr.scale') %> <input name="inschaling" value="<%= w.inschaling || '' %>"></label>
+      <label><%= t('hr.salary') %> <input name="salaris" inputmode="decimal" value="<%= w.salaris || '' %>"></label>
+    </div>
+    <div class="form-row form-row-2">
+      <label><%= t('hr.location') %> <input name="vestiging" value="<%= w.vestiging || w.afdeling || '' %>"></label>
+      <label class="check-label">
+        <input type="hidden" name="leaseauto" value="0">
+        <input type="checkbox" name="leaseauto" value="1" <%= w.leaseauto ? 'checked' : '' %>>
+        <%= t('hr.companyCar') %>
+      </label>
+    </div>
+
+    <h2 class="form-section"><%= t('hr.account') %></h2>
+    <% } %>
+    <label><%= t('employees.email') %> <input type="email" name="email" <%= isHr ? '' : 'required' %> value="<%= w.email || '' %>"></label>
+    <div class="form-row form-row-2">
       <label><%= t('employees.role') %>
         <select name="rol">
           <% rollen.forEach(function (r) { %>
@@ -21,10 +64,12 @@
           <% }) %>
         </select>
       </label>
+      <% if (!isHr) { %>
       <label><%= t('employees.department') %> <input name="afdeling" value="<%= w.afdeling || '' %>"></label>
+      <% } %>
     </div>
     <label><%= t('employees.password') %>
-      <input type="password" name="wachtwoord" <%= werknemer && werknemer.id ? '' : 'required' %> placeholder="<%= werknemer && werknemer.id ? t('employees.keepPassword') : '' %>">
+      <input type="password" name="wachtwoord" <%= (!isHr && !(werknemer && werknemer.id)) ? 'required' : '' %> placeholder="<%= werknemer && werknemer.id ? t('employees.keepPassword') : (isHr ? t('hr.passwordHint') : '') %>">
     </label>
   </div>
   <%- include("../partials/form-foot") %>

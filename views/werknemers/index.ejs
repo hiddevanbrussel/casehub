@@ -1,4 +1,4 @@
-<%- include("../partials/overview-head", { heading: t("employees.overview"), newHref: "/werknemers/nieuw", newLabel: t("employees.new"), showNew: true, base: "/werknemers", view: view }) %>
+<%- include("../partials/overview-head", { heading: t("employees.overview"), newHref: "/werknemers/nieuw", newLabel: t("employees.new"), showNew: canWrite, base: "/werknemers", view: view }) %>
 
 <form class="filters overview-filters <%= q || group ? 'is-open' : '' %>" method="get" action="/werknemers">
   <% if (view !== 'overview') { %><input type="hidden" name="view" value="<%= view %>"><% } %>
@@ -21,7 +21,7 @@
         <% items.forEach(function (w) { %>
           <a class="board-card" href="/werknemers/<%= w.id %>">
             <strong><%= w.naam %></strong>
-            <small><%= w.email %></small>
+            <small><%= isHr ? (w.personeelsnummer || w.functiebenaming || w.email) : w.email %></small>
           </a>
         <% }) %>
       </section>
@@ -29,14 +29,33 @@
   </div>
 <% } else if (view === 'table') { %>
   <table class="table">
-    <thead><tr><th><%= t('employees.name') %></th><th><%= t('employees.email') %></th><th><%= t('employees.role') %></th><th><%= t('employees.department') %></th></tr></thead>
+    <thead>
+      <tr>
+        <th><%= t('employees.name') %></th>
+        <% if (isHr) { %>
+        <th><%= t('hr.staffNo') %></th>
+        <th><%= t('hr.job') %></th>
+        <th><%= t('hr.location') %></th>
+        <% } else { %>
+        <th><%= t('employees.email') %></th>
+        <th><%= t('employees.role') %></th>
+        <th><%= t('employees.department') %></th>
+        <% } %>
+      </tr>
+    </thead>
     <tbody>
       <% werknemers.forEach(function (w) { %>
       <tr>
         <td><a href="/werknemers/<%= w.id %>"><%= w.naam %></a></td>
+        <% if (isHr) { %>
+        <td class="mono"><%= w.personeelsnummer || '—' %></td>
+        <td><%= w.functiebenaming || '—' %></td>
+        <td><%= w.vestiging || '—' %></td>
+        <% } else { %>
         <td><%= w.email %></td>
         <td><%= t('role.' + w.rol) %></td>
         <td><%= w.afdeling || '—' %></td>
+        <% } %>
       </tr>
       <% }) %>
     </tbody>
@@ -56,9 +75,15 @@
         <thead>
           <tr>
             <th><%= t('employees.name') %></th>
+            <% if (isHr) { %>
+            <th><%= t('hr.staffNo') %></th>
+            <th><%= t('hr.job') %></th>
+            <th><%= t('hr.location') %></th>
+            <% } else { %>
             <th><%= t('employees.email') %></th>
             <th><%= t('employees.role') %></th>
             <th><%= t('employees.department') %></th>
+            <% } %>
             <th></th>
           </tr>
         </thead>
@@ -66,15 +91,21 @@
           <% items.forEach(function (w) { %>
           <tr class="overview-row" data-expand>
             <td><a href="/werknemers/<%= w.id %>"><%= w.naam %></a></td>
+            <% if (isHr) { %>
+            <td class="mono muted"><%= w.personeelsnummer || '—' %></td>
+            <td class="muted"><%= w.functiebenaming || '—' %></td>
+            <td><%= w.vestiging || '—' %></td>
+            <% } else { %>
             <td class="muted"><%= w.email %></td>
             <td class="muted"><%= t('role.' + w.rol) %></td>
             <td><%= w.afdeling || '—' %></td>
+            <% } %>
             <td class="chevron">▾</td>
           </tr>
           <tr class="overview-detail">
             <td colspan="5">
               <a href="/werknemers/<%= w.id %>"><%= t('employees.open') %></a>
-              · <a href="/werknemers/<%= w.id %>/bewerken"><%= t('common.edit') %></a>
+              <% if (canWrite) { %> · <a href="/werknemers/<%= w.id %>/bewerken"><%= t('common.edit') %></a><% } %>
             </td>
           </tr>
           <% }) %>

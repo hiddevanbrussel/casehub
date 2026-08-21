@@ -1,27 +1,338 @@
-<div class="page-head">
-  <div>
-    <p class="eyebrow"><%= t('role.' + werknemer.rol) %></p>
-    <h1><%= werknemer.naam %></h1>
+<%
+  const canGenerate = Boolean(createReady && recipes.length);
+  const detailsTab = tab !== "documents";
+  const aanhefLabel = werknemer.aanhef === "heer" ? t("hr.heer") : (werknemer.aanhef === "mevrouw" ? t("hr.mevrouw") : (werknemer.aanhef || "—"));
+  const v = function (value) { return value || "—"; };
+%>
+<div class="case-page">
+  <div class="case-top">
+    <div class="case-title">
+      <a class="case-back" href="/werknemers" aria-label="<%= t('common.back') %>">
+        <svg viewBox="0 0 24 24"><path d="M15.4 4.6 14 3.2 6.2 11 14 18.8l1.4-1.4L9 11z"/></svg>
+      </a>
+      <div>
+        <h1><%= werknemer.naam %></h1>
+        <p class="lede"><%= t('hr.staffNo') %>: <%= v(werknemer.personeelsnummer) %></p>
+      </div>
+    </div>
+    <div class="actions">
+      <% if (canWrite) { %>
+      <% if (canGenerate && recipes.length === 1) { %>
+        <form method="post" action="/werknemers/<%= werknemer.id %>/documenten">
+          <input type="hidden" name="recipeId" value="<%= recipes[0].itemId %>">
+          <input type="hidden" name="mode" value="generate">
+          <button class="btn" type="submit"><%= t('cases.generateDoc') %></button>
+        </form>
+        <form method="post" action="/werknemers/<%= werknemer.id %>/documenten">
+          <input type="hidden" name="recipeId" value="<%= recipes[0].itemId %>">
+          <input type="hidden" name="mode" value="interactive">
+          <button class="ghost" type="submit"><%= t('cases.generateInteractive') %></button>
+        </form>
+      <% } else { %>
+        <details class="gen-menu">
+          <summary class="btn<%= canGenerate ? '' : ' is-disabled' %>" <%= canGenerate ? '' : 'aria-disabled="true"' %>><%= t('cases.generateDoc') %></summary>
+          <% if (canGenerate) { %>
+          <div class="menu-dots-list">
+            <% recipes.forEach(function (recipe) { %>
+            <form method="post" action="/werknemers/<%= werknemer.id %>/documenten">
+              <input type="hidden" name="recipeId" value="<%= recipe.itemId %>">
+              <input type="hidden" name="mode" value="generate">
+              <button type="submit"><%= recipe.name %></button>
+            </form>
+            <% }) %>
+          </div>
+          <% } %>
+        </details>
+        <details class="gen-menu">
+          <summary class="ghost<%= canGenerate ? '' : ' is-disabled' %>" <%= canGenerate ? '' : 'aria-disabled="true"' %>><%= t('cases.generateInteractive') %></summary>
+          <% if (canGenerate) { %>
+          <div class="menu-dots-list">
+            <% recipes.forEach(function (recipe) { %>
+            <form method="post" action="/werknemers/<%= werknemer.id %>/documenten">
+              <input type="hidden" name="recipeId" value="<%= recipe.itemId %>">
+              <input type="hidden" name="mode" value="interactive">
+              <button type="submit"><%= recipe.name %></button>
+            </form>
+            <% }) %>
+          </div>
+          <% } %>
+        </details>
+      <% } %>
+      <a class="ghost" href="/werknemers/<%= werknemer.id %>/bewerken">
+        <svg viewBox="0 0 24 24"><path d="M4 17.3V20h2.7l8-8-2.7-2.7zM17.8 7.2a.8.8 0 0 0 0-1.1l-1.9-1.9a.8.8 0 0 0-1.1 0l-1.5 1.5 3 3z"/></svg>
+        <%= t('common.edit') %>
+      </a>
+      <details class="menu-dots">
+        <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>">⋯</summary>
+        <div class="menu-dots-list">
+          <form method="post" action="/werknemers/<%= werknemer.id %>/verwijderen" data-confirm="<%= t('employees.confirmDelete') %>">
+            <button class="danger-text" type="submit"><%= t('common.delete') %></button>
+          </form>
+        </div>
+      </details>
+      <% } %>
+    </div>
   </div>
-  <div class="actions">
-    <a class="ghost" href="/werknemers/<%= werknemer.id %>/bewerken"><%= t('common.edit') %></a>
-    <form method="post" action="/werknemers/<%= werknemer.id %>/verwijderen" data-confirm="<%= t('employees.confirmDelete') %>">
-      <button class="danger" type="submit"><%= t('common.delete') %></button>
-    </form>
+
+  <nav class="case-tabs">
+    <a class="<%= detailsTab ? 'is-active' : '' %>" href="/werknemers/<%= werknemer.id %>">
+      <svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2z"/></svg>
+      <%= t('hr.tabContact') %>
+    </a>
+    <a class="<%= detailsTab ? '' : 'is-active' %>" href="/werknemers/<%= werknemer.id %>?tab=documents">
+      <svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm8 1.5V9h4.5z"/></svg>
+      <%= t('cases.tabDocuments') %>
+    </a>
+  </nav>
+
+  <section class="meta-bar">
+    <div>
+      <span><%= t('hr.staffNo') %></span>
+      <strong class="mono"><%= v(werknemer.personeelsnummer) %></strong>
+    </div>
+    <% if (isHr) { %>
+    <div>
+      <span><%= t('hr.job') %></span>
+      <strong><%= v(werknemer.functiebenaming) %></strong>
+    </div>
+    <div>
+      <span><%= t('hr.location') %></span>
+      <strong><%= v(werknemer.vestiging) %></strong>
+    </div>
+    <div>
+      <span><%= t('hr.startDate') %></span>
+      <strong><%= formatDate(werknemer.datumIndiensttreding) %></strong>
+    </div>
+    <% } else { %>
+    <div>
+      <span><%= t('employees.role') %></span>
+      <strong><%= t('role.' + werknemer.rol) %></strong>
+    </div>
+    <div>
+      <span><%= t('employees.department') %></span>
+      <strong><%= v(werknemer.afdeling) %></strong>
+    </div>
+    <% } %>
+    <div>
+      <span><%= t('hr.updated') %></span>
+      <strong><%= formatDateTime(werknemer.updatedAt) %></strong>
+    </div>
+  </section>
+
+  <% if (detailsTab) { %>
+  <div class="case-cols">
+    <div>
+      <section class="case-card">
+        <h2>
+          <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z"/></svg>
+          <%= t('hr.contact') %>
+        </h2>
+        <div class="detail-grid">
+          <% if (isHr) { %>
+          <div>
+            <span><%= t('hr.salutation') %></span>
+            <strong><%= aanhefLabel %></strong>
+          </div>
+          <% } %>
+          <div>
+            <span><%= t('employees.firstName') %></span>
+            <strong><%= v(werknemer.voornaam) %></strong>
+          </div>
+          <div>
+            <span><%= t('employees.lastName') %></span>
+            <strong><%= v(werknemer.achternaam) %></strong>
+          </div>
+          <% if (isHr) { %>
+          <div>
+            <span><%= t('hr.dob') %></span>
+            <strong><%= formatDate(werknemer.geboortedatum) %></strong>
+          </div>
+          <% } else { %>
+          <div>
+            <span><%= t('employees.email') %></span>
+            <strong><%= v(werknemer.email) %></strong>
+          </div>
+          <% } %>
+        </div>
+      </section>
+
+      <% if (isHr) { %>
+      <section class="case-card">
+        <h2>
+          <svg viewBox="0 0 24 24"><path d="M4 7h16v2H4zm0 4h10v2H4zm0 4h16v2H4z"/></svg>
+          <%= t('hr.employment') %>
+        </h2>
+        <div class="detail-grid">
+          <div>
+            <span><%= t('hr.startDate') %></span>
+            <strong><%= formatDate(werknemer.datumIndiensttreding) %></strong>
+          </div>
+          <div>
+            <span><%= t('hr.job') %></span>
+            <strong><%= v(werknemer.functiebenaming) %></strong>
+          </div>
+          <div>
+            <span><%= t('hr.scale') %></span>
+            <strong><%= v(werknemer.inschaling) %></strong>
+          </div>
+          <div>
+            <span><%= t('hr.salary') %></span>
+            <strong><%= v(werknemer.salaris) %></strong>
+          </div>
+          <div>
+            <span><%= t('hr.companyCar') %></span>
+            <strong><%= werknemer.leaseauto ? t('hr.yes') : t('hr.no') %></strong>
+          </div>
+          <div>
+            <span><%= t('hr.location') %></span>
+            <strong><%= v(werknemer.vestiging) %></strong>
+          </div>
+        </div>
+      </section>
+      <% } %>
+    </div>
+
+    <div>
+      <% if (isHr) { %>
+      <section class="case-card">
+        <h2>
+          <svg viewBox="0 0 24 24"><path d="M12 3 4 9v12h6v-6h4v6h6V9z"/></svg>
+          <%= t('hr.address') %>
+        </h2>
+        <div class="detail-grid">
+          <div>
+            <span><%= t('hr.street') %></span>
+            <strong><%= v(werknemer.straat) %></strong>
+          </div>
+          <div>
+            <span><%= t('hr.houseNo') %></span>
+            <strong><%= v(werknemer.huisnummer) %></strong>
+          </div>
+          <div>
+            <span><%= t('hr.postcode') %></span>
+            <strong><%= v(werknemer.postcode) %></strong>
+          </div>
+          <div>
+            <span><%= t('hr.city') %></span>
+            <strong><%= v(werknemer.plaats) %></strong>
+          </div>
+        </div>
+      </section>
+      <% } %>
+
+      <% if (isCases) { %>
+      <section class="case-card">
+        <h2>
+          <svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2z"/></svg>
+          <%= t('employees.assignedCases') %>
+        </h2>
+        <% if (!zaken.length) { %><p class="muted"><%= t('employees.noCases') %></p><% } %>
+        <ul class="rows">
+          <% zaken.forEach(function (z) { %>
+            <li><a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a></li>
+          <% }) %>
+        </ul>
+      </section>
+      <% } %>
+    </div>
   </div>
+  <% } else { %>
+  <section class="case-card">
+    <h2>
+      <svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm8 1.5V9h4.5z"/></svg>
+      <%= t('cases.tabDocuments') %>
+    </h2>
+    <%
+      const linkedBijlageIds = {};
+      (werknemer.documentJobs || []).forEach(function (job) {
+        if (job.bijlageId) linkedBijlageIds[job.bijlageId] = true;
+      });
+      const docRows = [];
+      (werknemer.documentJobs || []).forEach(function (job) {
+        const file = job.bijlageId ? werknemer.bijlagen.find(function (b) { return b.id === job.bijlageId; }) : null;
+        const done = Boolean(file) || job.status === "success";
+        docRows.push({
+          name: file ? file.naam : job.recipeName,
+          fileHref: file ? "/werknemers/" + werknemer.id + "/bijlagen/" + file.id : "",
+          isPdf: file ? /pdf/i.test(file.mime || "") || /\.pdf$/i.test(file.naam || "") : false,
+          createUrl: done ? "" : (job.finalizeUrl || ""),
+          status: done ? "success" : job.status,
+          error: job.error || "",
+          deleteHref: file
+            ? "/werknemers/" + werknemer.id + "/bijlagen/" + file.id + "/verwijderen"
+            : "/werknemers/" + werknemer.id + "/documenten/" + job.id + "/verwijderen",
+        });
+      });
+      (werknemer.bijlagen || []).forEach(function (b) {
+        if (linkedBijlageIds[b.id]) return;
+        docRows.push({
+          name: b.naam,
+          fileHref: "/werknemers/" + werknemer.id + "/bijlagen/" + b.id,
+          isPdf: /pdf/i.test(b.mime || "") || /\.pdf$/i.test(b.naam || ""),
+          createUrl: "",
+          status: "uploaded",
+          error: "",
+          deleteHref: "/werknemers/" + werknemer.id + "/bijlagen/" + b.id + "/verwijderen",
+        });
+      });
+      function docStatusLabel(code) {
+        if (code === "uploaded") return t("cases.docUploaded");
+        if (code === "success") return t("cases.docCompleted");
+        if (code === "error") return t("cases.docFailed");
+        if (code === "generating") return t("cases.docGenerating");
+        return t("cases.docInCreate");
+      }
+      function docStatusBadge(code) {
+        if (code === "uploaded" || code === "success") return "afgerond";
+        if (code === "error") return "wacht_op_info";
+        return "nieuw";
+      }
+    %>
+    <% if (!docRows.length) { %>
+      <p class="muted"><%= t('cases.noAttachments') %></p>
+    <% } else { %>
+    <table class="doc-table">
+      <thead>
+        <tr>
+          <th><%= t('cases.name') %></th>
+          <th><%= t('cases.openCreate') %></th>
+          <th><%= t('cases.status') %></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% docRows.forEach(function (row) { %>
+        <tr>
+          <td>
+            <% if (row.fileHref) { %>
+              <a href="<%= row.fileHref %>"<% if (row.isPdf) { %> data-pdf-preview data-pdf-name="<%= row.name %>"<% } %>><%= row.name %></a>
+            <% } else { %>
+              <strong><%= row.name %></strong>
+            <% } %>
+          </td>
+          <td>
+            <% if (row.createUrl) { %>
+              <a href="<%= row.createUrl %>" rel="noopener"><%= t('cases.openCreate') %></a>
+            <% } else { %>
+              <span class="muted">—</span>
+            <% } %>
+          </td>
+          <td>
+            <span class="badge badge-<%= docStatusBadge(row.status) %>"><%= docStatusLabel(row.status) %></span>
+            <% if (row.error) { %><small class="muted"> <%= row.error %></small><% } %>
+          </td>
+          <td>
+            <% if (canWrite) { %>
+            <form method="post" action="<%= row.deleteHref %>" data-confirm="<%= t('cases.confirmDeleteDoc') %>">
+              <button class="linkish danger-text" type="submit"><%= t('common.delete') %></button>
+            </form>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </section>
+  <% } %>
 </div>
-<section class="panel">
-  <dl class="kv">
-    <div><dt><%= t('employees.email') %></dt><dd><%= werknemer.email %></dd></div>
-    <div><dt><%= t('employees.department') %></dt><dd><%= werknemer.afdeling || '—' %></dd></div>
-  </dl>
-</section>
-<section class="panel">
-  <header><h2><%= t('employees.assignedCases') %></h2></header>
-  <% if (!zaken.length) { %><p class="muted"><%= t('employees.noCases') %></p><% } %>
-  <ul class="rows">
-    <% zaken.forEach(function (z) { %>
-      <li><a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a></li>
-    <% }) %>
-  </ul>
-</section>

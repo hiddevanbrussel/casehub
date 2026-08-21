@@ -1,79 +1,145 @@
-<% const z = zaak || {} %>
-<% const isModal = typeof modal !== "undefined" && modal; %>
-<form class="form<%= isModal ? ' modal-form' : '' %>" method="post" action="<%= zaak ? '/zaken/' + zaak.id : '/zaken' %>">
-  <%- include("../partials/form-head", {
-    heading: zaak ? t("cases.edit") : t("cases.new"),
-    eyebrow: t("nav.cases"),
-    cancelHref: zaak ? "/zaken/" + zaak.id : "/zaken"
-  }) %>
-  <div class="<%= isModal ? 'modal-body' : '' %>">
-    <div class="form-row">
-      <label><%= t('cases.title') %>
-        <input name="titel" required value="<%= z.titel || '' %>">
-      </label>
-      <label><%= t('cases.type') %>
-        <select name="zaaktypeId">
-          <option value="">—</option>
-          <% (typeof zaaktypen !== "undefined" ? zaaktypen : []).forEach(function (type) { %>
-            <option value="<%= type.id %>" data-lead="<%= type.leadTimeDays || 0 %>" <%= z.zaaktypeId === type.id ? "selected" : "" %>><%= type.naam %></option>
-          <% }) %>
-        </select>
-      </label>
+<%
+  const z = zaak || {};
+  const today = new Date().toISOString().slice(0, 10);
+  const leadStart = (z.createdAt || "").slice(0, 10) || today;
+  const selectedPersonen = z.personen || [];
+  const selectedBedrijven = z.bedrijven || [];
+  const personOptions = (typeof personen !== "undefined" ? personen : []).map(function (p) {
+    return { id: p.id, name: p.naam, meta: [p.email, p.telefoon].filter(Boolean).join(" · "), extra: p.bedrijf ? p.bedrijf.handelsnaam : "", email: p.email || "" };
+  });
+  const companyOptions = (typeof bedrijven !== "undefined" ? bedrijven : []).map(function (b) {
+    return { id: b.id, name: b.handelsnaam, meta: [b.kvk, b.plaats].filter(Boolean).join(" · "), extra: b.email || "", email: b.email || "" };
+  });
+%>
+<form class="form form-page" method="post" action="<%= zaak && zaak.id ? '/zaken/' + zaak.id : '/zaken' %>" data-case-form>
+  <input type="hidden" name="voortgang" value="<%= z.voortgang ?? 0 %>">
+  <input type="hidden" name="prioriteit" value="<%= z.prioriteit || 'normaal' %>">
+  <input type="hidden" name="deadline" value="<%= z.deadline || '' %>" data-deadline>
+  <div class="page-head">
+    <div>
+      <p class="eyebrow"><%= t('nav.cases') %></p>
+      <h1><%= zaak && zaak.id ? t('cases.edit') : t('cases.new') %></h1>
     </div>
-    <label class="span-2"><%= t('cases.description') %>
-      <textarea name="omschrijving" rows="3"><%= z.omschrijving || '' %></textarea>
-    </label>
-    <div class="form-row">
-      <label><%= t('cases.reference') %>
-        <input name="referentie" value="<%= z.referentie || '' %>" placeholder="PA-1233-8765">
-      </label>
-      <label><%= t('cases.progressPct') %>
-        <input type="number" name="voortgang" min="0" max="100" value="<%= z.voortgang ?? 0 %>">
-      </label>
-      <label><%= t('cases.deadline') %>
-        <input type="date" name="deadline" value="<%= z.deadline || '' %>" data-deadline>
-      </label>
-    </div>
-    <div class="form-row">
-      <label><%= t('cases.status') %>
-        <select name="status">
-          <% statussen.forEach(function (s) { %>
-            <option value="<%= s.id %>" <%= (z.status || 'nieuw') === s.id ? 'selected' : '' %>><%= t('status.' + s.id) %></option>
-          <% }) %>
-        </select>
-      </label>
-      <label><%= t('cases.priority') %>
-        <select name="prioriteit">
-          <% prioriteiten.forEach(function (s) { %>
-            <option value="<%= s.id %>" <%= (z.prioriteit || 'normaal') === s.id ? 'selected' : '' %>><%= t('priority.' + s.id) %></option>
-          <% }) %>
-        </select>
-      </label>
-      <label><%= t('cases.assignee') %>
-        <select name="behandelaarId">
-          <option value="">—</option>
-          <% werknemers.forEach(function (w) { %>
-            <option value="<%= w.id %>" <%= z.behandelaarId === w.id ? 'selected' : '' %>><%= w.naam %></option>
-          <% }) %>
-        </select>
-      </label>
-    </div>
-    <div class="form-row">
-      <label><%= t('cases.companies') %>
-        <select name="bedrijfIds" multiple size="3">
-          <% bedrijven.forEach(function (b) { %>
-            <option value="<%= b.id %>" <%= (z.bedrijfIds || []).includes(b.id) ? 'selected' : '' %>><%= b.handelsnaam %></option>
-          <% }) %>
-        </select>
-      </label>
-      <label><%= t('cases.persons') %>
-        <select name="persoonIds" multiple size="3">
-          <% personen.forEach(function (p) { %>
-            <option value="<%= p.id %>" <%= (z.persoonIds || []).includes(p.id) ? 'selected' : '' %>><%= p.naam %></option>
-          <% }) %>
-        </select>
-      </label>
+    <div class="actions">
+      <a class="ghost" href="<%= zaak && zaak.id ? '/zaken/' + zaak.id : '/zaken' %>"><%= t('common.cancel') %></a>
+      <button class="btn" type="submit"><%= t('common.save') %></button>
     </div>
   </div>
-  <%- include("../partials/form-foot") %>
+
+  <div class="form-cols">
+    <section class="form-card">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+          <rect width="20" height="14" x="2" y="6" rx="2"/>
+        </svg>
+        <%= t('cases.tabDetails') %>
+      </h2>
+      <div class="form-grid">
+        <label class="span-all"><%= t('cases.title') %> *
+          <input name="titel" required value="<%= z.titel || '' %>">
+        </label>
+        <div class="form-grid form-grid-3 span-all">
+          <label><%= t('cases.caseId') %>
+            <input class="is-readonly" value="<%= z.zaaknummer || t('cases.caseIdSoon') %>" readonly>
+          </label>
+          <label><%= t('cases.reference') %>
+            <input name="referentie" value="<%= z.referentie || '' %>" placeholder="PA-1233-8765">
+          </label>
+          <label><%= t('cases.type') %>
+            <select name="zaaktypeId">
+              <option value="" data-lead="0">—</option>
+              <% (typeof zaaktypen !== "undefined" ? zaaktypen : []).forEach(function (type) { %>
+                <option value="<%= type.id %>" data-lead="<%= type.leadTimeDays || 0 %>" <%= z.zaaktypeId === type.id ? "selected" : "" %>><%= type.naam %></option>
+              <% }) %>
+            </select>
+          </label>
+        </div>
+        <label class="span-all"><%= t('cases.description') %>
+          <textarea name="omschrijving" rows="6"><%= z.omschrijving || '' %></textarea>
+        </label>
+        <div class="form-grid form-grid-2 span-all">
+          <label><%= t('cases.status') %>
+            <select name="status">
+              <% statussen.forEach(function (s) { %>
+                <option value="<%= s.id %>" <%= (z.status || 'nieuw') === s.id ? 'selected' : '' %>><%= t('status.' + s.id) %></option>
+              <% }) %>
+            </select>
+          </label>
+          <label><%= t('cases.caseManager') %>
+            <select name="behandelaarId">
+              <option value="">—</option>
+              <% werknemers.forEach(function (w) { %>
+                <option value="<%= w.id %>" <%= z.behandelaarId === w.id ? 'selected' : '' %>><%= w.naam %></option>
+              <% }) %>
+            </select>
+          </label>
+        </div>
+        <div class="form-grid form-grid-2 span-all">
+          <label>
+            <%= t('cases.leadStart') %>
+            <input type="date" value="<%= leadStart %>" data-lead-start>
+            <span class="hint"><%= t('cases.leadHint') %></span>
+          </label>
+          <p class="planned-end"><%= t('cases.plannedEnd') %>: <span data-planned-end><%= z.deadline ? formatDate(z.deadline) : '—' %></span></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-card" data-stakeholder-picker>
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <%= t('cases.stakeholders') %>
+      </h2>
+      <p class="hint"><%= t('cases.stakeholderHint') %></p>
+      <div class="holders" data-stake-list>
+        <% selectedPersonen.forEach(function (p) { %>
+          <details class="holder" data-kind="person" data-id="<%= p.id %>">
+            <summary>
+              <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+              <%= p.naam %>
+            </summary>
+            <div class="holder-body">
+              <% if (p.email || p.telefoon) { %><p><%= [p.email, p.telefoon].filter(Boolean).join(" · ") %></p><% } %>
+              <button type="button" class="linkish danger-text" data-stake-remove><%= t('common.delete') %></button>
+            </div>
+          </details>
+          <input type="hidden" name="persoonIds" value="<%= p.id %>">
+        <% }) %>
+        <% selectedBedrijven.forEach(function (b) { %>
+          <details class="holder" data-kind="company" data-id="<%= b.id %>">
+            <summary>
+              <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+              <%= b.handelsnaam %>
+            </summary>
+            <div class="holder-body">
+              <% if (b.kvk || b.plaats) { %><p><%= [b.kvk, b.plaats].filter(Boolean).join(" · ") %></p><% } %>
+              <button type="button" class="linkish danger-text" data-stake-remove><%= t('common.delete') %></button>
+            </div>
+          </details>
+          <input type="hidden" name="bedrijfIds" value="<%= b.id %>">
+        <% }) %>
+      </div>
+      <div class="stake-add">
+        <div class="stake-add-row">
+          <select data-stake-kind>
+            <option value="person"><%= t('cases.stakeholderPerson') %></option>
+            <option value="company"><%= t('cases.stakeholderCompany') %></option>
+          </select>
+          <input type="search" data-stake-q placeholder="<%= t('cases.searchStakeholder') %>" autocomplete="off">
+        </div>
+        <select data-stake-pick>
+          <option value=""><%= t('common.none') %></option>
+        </select>
+        <button class="btn" type="button" data-stake-add>
+          <span aria-hidden="true">+</span>
+          <%= t('cases.add') %>
+        </button>
+      </div>
+      <script type="application/json" data-stake-json><%- JSON.stringify({ persons: personOptions, companies: companyOptions }).replace(/</g, "\\u003c") %></script>
+    </section>
+  </div>
 </form>

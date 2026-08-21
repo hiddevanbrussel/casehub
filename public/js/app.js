@@ -17,15 +17,102 @@
     });
   });
 
-  document.addEventListener("change", (event) => {
-    const select = event.target.closest("select[name='zaaktypeId']");
-    if (!select) return;
-    const lead = Number(select.selectedOptions[0]?.dataset.lead || 0);
-    const deadline = select.form?.querySelector("[data-deadline]");
-    if (!lead || !deadline || deadline.value) return;
-    const date = new Date();
-    date.setDate(date.getDate() + lead);
-    deadline.value = date.toISOString().slice(0, 10);
+  document.querySelectorAll("form[data-case-form]").forEach((form) => {
+    const type = form.querySelector("select[name='zaaktypeId']");
+    const start = form.querySelector("[data-lead-start]");
+    const deadline = form.querySelector("[data-deadline]");
+    const out = form.querySelector("[data-planned-end]");
+    const lang = document.documentElement.lang || "en-GB";
+    const update = () => {
+      if (!start || !deadline) return;
+      const lead = Number(type?.selectedOptions[0]?.dataset.lead || 0);
+      if (!start.value) {
+        if (out) out.textContent = "—";
+        return;
+      }
+      const date = new Date(`${start.value}T00:00:00`);
+      if (lead) date.setDate(date.getDate() + lead);
+      deadline.value = date.toISOString().slice(0, 10);
+      if (out) out.textContent = date.toLocaleDateString(lang, { day: "2-digit", month: "2-digit", year: "numeric" });
+    };
+    type?.addEventListener("change", update);
+    start?.addEventListener("change", update);
+    update();
+  });
+
+  document.querySelectorAll("[data-stakeholder-picker]").forEach((picker) => {
+    const jsonEl = picker.querySelector("[data-stake-json]");
+    const data = jsonEl ? JSON.parse(jsonEl.textContent || "{}") : { persons: [], companies: [] };
+    const kind = picker.querySelector("[data-stake-kind]");
+    const query = picker.querySelector("[data-stake-q]");
+    const pick = picker.querySelector("[data-stake-pick]");
+    const list = picker.querySelector("[data-stake-list]");
+    const noneLabel = pick?.options[0]?.textContent || "None";
+    const removeLabel = picker.querySelector("[data-stake-remove]")?.textContent || "Delete";
+
+    const selected = () => new Set(
+      [...picker.querySelectorAll("input[name='persoonIds'], input[name='bedrijfIds']")].map((el) => el.value)
+    );
+
+    const itemsForKind = () => (kind.value === "company" ? data.companies : data.persons) || [];
+
+    const refreshPick = () => {
+      if (!pick) return;
+      const q = (query?.value || "").trim().toLowerCase();
+      const taken = selected();
+      const matches = itemsForKind().filter((item) => {
+        if (taken.has(item.id)) return false;
+        if (!q) return true;
+        return `${item.name} ${item.email || ""} ${item.meta || ""}`.toLowerCase().includes(q);
+      }).slice(0, 20);
+      pick.innerHTML = `<option value="">${noneLabel}</option>` + matches
+        .map((item) => `<option value="${item.id}">${item.name}${item.meta ? " · " + item.meta : ""}</option>`)
+        .join("");
+    };
+
+    const addItem = () => {
+      const id = pick?.value;
+      if (!id) return;
+      const item = itemsForKind().find((row) => row.id === id);
+      if (!item || selected().has(id)) return;
+      const isCompany = kind.value === "company";
+      const field = isCompany ? "bedrijfIds" : "persoonIds";
+      const details = document.createElement("details");
+      details.className = "holder";
+      details.dataset.kind = isCompany ? "company" : "person";
+      details.dataset.id = id;
+      details.innerHTML = `
+        <summary>
+          <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+          ${item.name}
+        </summary>
+        <div class="holder-body">
+          ${item.meta ? `<p>${item.meta}</p>` : ""}
+          <button type="button" class="linkish danger-text" data-stake-remove>${removeLabel}</button>
+        </div>`;
+      const hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.name = field;
+      hidden.value = id;
+      list.append(details, hidden);
+      pick.value = "";
+      if (query) query.value = "";
+      refreshPick();
+    };
+
+    picker.addEventListener("click", (event) => {
+      const remove = event.target.closest("[data-stake-remove]");
+      if (!remove) return;
+      const holder = remove.closest(".holder");
+      const id = holder?.dataset.id;
+      holder?.remove();
+      picker.querySelectorAll(`input[name='persoonIds'][value='${id}'], input[name='bedrijfIds'][value='${id}']`).forEach((el) => el.remove());
+      refreshPick();
+    });
+    kind?.addEventListener("change", refreshPick);
+    query?.addEventListener("input", refreshPick);
+    picker.querySelector("[data-stake-add]")?.addEventListener("click", addItem);
+    refreshPick();
   });
 
   document.querySelectorAll("[data-template-picker]").forEach((picker) => {
@@ -89,16 +176,6 @@
     if (pdfFrame) pdfFrame.src = "";
   });
 
-  async function openEditModal(href) {
-    if (!editModal) return;
-    const url = new URL(href, window.location.origin);
-    url.searchParams.set("modal", "1");
-    const html = await fetch(url).then((r) => r.text());
-    editModal.innerHTML = html;
-    editModal.showModal();
-    editModal.querySelector("input, select, textarea, button")?.focus();
-  }
-
   document.addEventListener("click", (event) => {
     if (event.target.closest("[data-modal-close]")) {
       event.preventDefault();
@@ -109,17 +186,9 @@
     if (pdfLink && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
       event.preventDefault();
       openPdfModal(pdfLink.getAttribute("href"), pdfLink.dataset.pdfName || pdfLink.textContent.trim());
-      return;
     }
-    const link = event.target.closest("a[href]");
-    if (!link || event.metaKey || event.ctrlKey || event.shiftKey) return;
-    const path = new URL(link.getAttribute("href"), window.location.origin).pathname;
-    const isEdit = /\/bewerken$/.test(path);
-    const isNew = /^\/(zaken|personen|bedrijven|werknemers)\/nieuw$/.test(path);
-    if (!isEdit && !isNew) return;
-    event.preventDefault();
-    openEditModal(link.href);
   });
+
   const palette = document.getElementById("palette");
   const input = document.getElementById("palette-q");
   const results = document.getElementById("palette-results");

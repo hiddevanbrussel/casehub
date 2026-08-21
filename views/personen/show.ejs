@@ -1,48 +1,180 @@
-<div class="page-head">
-  <div>
-    <p class="eyebrow"><%= t('persons.eyebrow') %></p>
-    <h1><%= persoon.naam || t('persons.anonymised') %></h1>
-  </div>
-  <% if (canWrite) { %>
-  <div class="actions">
-    <% if (!persoon.anoniem) { %>
-      <a class="ghost" href="/personen/<%= persoon.id %>/bewerken"><%= t('common.edit') %></a>
-      <form method="post" action="/personen/<%= persoon.id %>/anonimiseren" data-confirm="<%= t('persons.confirmAnon') %>">
-        <button class="ghost" type="submit"><%= t('persons.anonymise') %></button>
-      </form>
+<%
+  const detailsTab = tab !== "cases";
+  const v = function (value) { return value || "—"; };
+  const genderLabel = persoon.geslacht === "man" ? t("persons.male") : (persoon.geslacht === "vrouw" ? t("persons.female") : (persoon.geslacht === "overig" ? t("persons.other") : "—"));
+%>
+<div class="case-page">
+  <div class="case-top">
+    <div class="case-title">
+      <a class="case-back" href="/personen" aria-label="<%= t('common.back') %>">
+        <svg viewBox="0 0 24 24"><path d="M15.4 4.6 14 3.2 6.2 11 14 18.8l1.4-1.4L9 11z"/></svg>
+      </a>
+      <h1><%= persoon.naam || t('persons.anonymised') %></h1>
+    </div>
+    <% if (canWrite) { %>
+    <div class="actions">
+      <% if (!persoon.anoniem) { %>
+      <a class="ghost" href="/personen/<%= persoon.id %>/bewerken">
+        <svg viewBox="0 0 24 24"><path d="M4 17.3V20h2.7l8-8-2.7-2.7zM17.8 7.2a.8.8 0 0 0 0-1.1l-1.9-1.9a.8.8 0 0 0-1.1 0l-1.5 1.5 3 3z"/></svg>
+        <%= t('common.edit') %>
+      </a>
+      <% } %>
+      <details class="menu-dots">
+        <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>">⋯</summary>
+        <div class="menu-dots-list">
+          <% if (!persoon.anoniem) { %>
+          <form method="post" action="/personen/<%= persoon.id %>/anonimiseren" data-confirm="<%= t('persons.confirmAnon') %>">
+            <button type="submit"><%= t('persons.anonymise') %></button>
+          </form>
+          <% } %>
+          <% if (user.rol === 'admin' && !persoon.anoniem) { %>
+            <a href="/personen/<%= persoon.id %><%= showBsn ? '' : '?bsn=1' %>"><%= showBsn ? t('persons.hide') : t('persons.show') %> <%= t('persons.bsn') %></a>
+          <% } %>
+          <% if (user.rol === 'admin') { %>
+          <form method="post" action="/personen/<%= persoon.id %>/verwijderen" data-confirm="<%= t('persons.confirmDelete') %>">
+            <button class="danger-text" type="submit"><%= t('common.delete') %></button>
+          </form>
+          <% } %>
+        </div>
+      </details>
+    </div>
     <% } %>
-    <% if (user.rol === 'admin') { %>
-    <form method="post" action="/personen/<%= persoon.id %>/verwijderen" data-confirm="<%= t('persons.confirmDelete') %>">
-      <button class="danger" type="submit"><%= t('common.delete') %></button>
-    </form>
-    <% } %>
   </div>
+
+  <nav class="case-tabs">
+    <a class="<%= detailsTab ? 'is-active' : '' %>" href="/personen/<%= persoon.id %>">
+      <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z"/></svg>
+      <%= t('hr.tabContact') %>
+    </a>
+    <a class="<%= detailsTab ? '' : 'is-active' %>" href="/personen/<%= persoon.id %>?tab=cases">
+      <svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2z"/></svg>
+      <%= t('persons.linkedCases') %>
+    </a>
+  </nav>
+
+  <section class="meta-bar meta-bar-5">
+    <div>
+      <span><%= t('persons.email') %></span>
+      <strong><% if (persoon.email) { %><a href="mailto:<%= persoon.email %>"><%= persoon.email %></a><% } else { %>—<% } %></strong>
+    </div>
+    <div>
+      <span><%= t('persons.phone') %></span>
+      <strong><% if (persoon.telefoon) { %><a href="tel:<%= persoon.telefoon %>"><%= persoon.telefoon %></a><% } else { %>—<% } %></strong>
+    </div>
+    <div>
+      <span><%= t('persons.linkedCases') %></span>
+      <strong><a href="/personen/<%= persoon.id %>?tab=cases"><%= zaken.length %></a></strong>
+    </div>
+    <div>
+      <span><%= t('cases.created') %></span>
+      <strong><%= formatDateTime(persoon.createdAt) %></strong>
+    </div>
+    <div>
+      <span><%= t('cases.updated') %></span>
+      <strong><%= formatDateTime(persoon.updatedAt) %></strong>
+    </div>
+  </section>
+
+  <% if (detailsTab) { %>
+  <div class="case-cols">
+    <section class="case-card">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <%= t('hr.contact') %>
+      </h2>
+      <div class="pair-grid">
+        <div>
+          <span><%= t('persons.firstName') %></span>
+          <strong><%= v(persoon.voornaam) %></strong>
+        </div>
+        <div>
+          <span><%= t('persons.infix') %></span>
+          <strong><%= v(persoon.tussenvoegsel) %></strong>
+        </div>
+        <div>
+          <span><%= t('persons.lastName') %></span>
+          <strong><%= v(persoon.achternaam) %></strong>
+        </div>
+      </div>
+      <div class="pair-grid pair-split">
+        <div>
+          <span><%= t('persons.email') %></span>
+          <strong><% if (persoon.email) { %><a href="mailto:<%= persoon.email %>"><%= persoon.email %></a><% } else { %>—<% } %></strong>
+        </div>
+        <div>
+          <span><%= t('persons.phone') %></span>
+          <strong><% if (persoon.telefoon) { %><a href="tel:<%= persoon.telefoon %>"><%= persoon.telefoon %></a><% } else { %>—<% } %></strong>
+        </div>
+        <div>
+          <span><%= t('persons.gender') %></span>
+          <strong><%= genderLabel %></strong>
+        </div>
+      </div>
+      <% if (showBsn || persoon.bedrijf) { %>
+      <div class="pair-grid pair-split">
+        <% if (showBsn) { %>
+        <div>
+          <span><%= t('persons.bsn') %></span>
+          <strong class="mono"><%= persoon.bsn || persoon.bsnMasked %></strong>
+        </div>
+        <% } %>
+        <% if (persoon.bedrijf) { %>
+        <div>
+          <span><%= t('persons.company') %></span>
+          <strong><a href="/bedrijven/<%= persoon.bedrijf.id %>"><%= persoon.bedrijf.handelsnaam %></a></strong>
+        </div>
+        <% } %>
+      </div>
+      <% } %>
+    </section>
+
+    <section class="case-card">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        <%= t('persons.address') %>
+      </h2>
+      <div class="pair-rows">
+        <div>
+          <span><%= t('persons.street') %></span>
+          <strong><%= v(persoon.straat) %></strong>
+        </div>
+        <div>
+          <span><%= t('persons.houseNo') %></span>
+          <strong><%= v(persoon.huisnummer) %></strong>
+        </div>
+        <div>
+          <span><%= t('persons.postcode') %></span>
+          <strong><%= v(persoon.postcode) %></strong>
+        </div>
+        <div>
+          <span><%= t('persons.place') %></span>
+          <strong><%= v(persoon.plaats) %></strong>
+        </div>
+        <div>
+          <span><%= t('persons.country') %></span>
+          <strong><%= v(persoon.land) %></strong>
+        </div>
+      </div>
+    </section>
+  </div>
+  <% } else { %>
+  <section class="case-card">
+    <h2>
+      <svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2z"/></svg>
+      <%= t('persons.linkedCases') %>
+    </h2>
+    <% if (!zaken.length) { %><p class="muted"><%= t('persons.noCases') %></p><% } %>
+    <ul class="rows">
+      <% zaken.forEach(function (z) { %>
+        <li><a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a></li>
+      <% }) %>
+    </ul>
+  </section>
   <% } %>
 </div>
-<section class="panel">
-  <dl class="kv">
-    <div>
-      <dt><%= t('persons.bsn') %></dt>
-      <dd class="mono">
-        <% if (showBsn && persoon.bsn) { %><%= persoon.bsn %><% } else { %><%= persoon.bsnMasked %><% } %>
-        <% if (user.rol === 'admin' && !persoon.anoniem) { %>
-          <a href="/personen/<%= persoon.id %><%= showBsn ? '' : '?bsn=1' %>"><%= showBsn ? t('persons.hide') : t('persons.show') %></a>
-        <% } %>
-      </dd>
-    </div>
-    <div><dt><%= t('persons.email') %></dt><dd><%= persoon.email || '—' %></dd></div>
-    <div><dt><%= t('persons.phone') %></dt><dd><%= persoon.telefoon || '—' %></dd></div>
-    <div><dt><%= t('persons.address') %></dt><dd><%= [persoon.adres, persoon.postcode, persoon.plaats].filter(Boolean).join(', ') || '—' %></dd></div>
-    <div><dt><%= t('persons.dob') %></dt><dd><%= formatDate(persoon.geboortedatum) %></dd></div>
-    <div><dt><%= t('persons.company') %></dt><dd><% if (persoon.bedrijf) { %><a href="/bedrijven/<%= persoon.bedrijf.id %>"><%= persoon.bedrijf.handelsnaam %></a><% } else { %>—<% } %></dd></div>
-  </dl>
-</section>
-<section class="panel">
-  <header><h2><%= t('persons.linkedCases') %></h2></header>
-  <% if (!zaken.length) { %><p class="muted"><%= t('persons.noCases') %></p><% } %>
-  <ul class="rows">
-    <% zaken.forEach(function (z) { %>
-      <li><a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a></li>
-    <% }) %>
-  </ul>
-</section>

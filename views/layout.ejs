@@ -12,9 +12,7 @@
 <body>
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="/">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3zm3 5a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/></svg>
-      </span>
+      <%- include("partials/brand-mark") %>
       <strong><%= meta.orgName %></strong>
     </a>
 
@@ -29,11 +27,20 @@
         <svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg>
         <%= t('nav.dashboard') %>
       </a>
+      <% if (isCases) { %>
       <a class="<%= navActive('/zaken') %>" href="/zaken">
         <svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2z"/></svg>
         <%= t('nav.cases') %>
       </a>
+      <% } %>
+      <% if (isHr) { %>
+      <a class="<%= navActive('/werknemers') %>" href="/werknemers">
+        <svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zM8 12a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm8 2c-2.7 0-5.2 1.3-6 3.2A7.5 7.5 0 0 1 22 19c0-2.8-2.7-5-6-5zM8 14c-3.3 0-6 2-6 4.5V21h7.2A6.7 6.7 0 0 1 8 14z"/></svg>
+        <%= t('nav.employees') %>
+      </a>
+      <% } %>
 
+      <% if (isCases) { %>
       <p class="nav-label"><%= t('nav.naw') %></p>
       <a class="<%= navActive('/personen') %>" href="/personen">
         <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z"/></svg>
@@ -43,13 +50,16 @@
         <svg viewBox="0 0 24 24"><path d="M3 21V8l6-4 6 4v13H3zm8-4h2v2h-2zm6 4V10h4v11h-4z"/></svg>
         <%= t('nav.companies') %>
       </a>
+      <% } %>
 
       <% if (user && user.rol === 'admin') { %>
       <p class="nav-label"><%= t('nav.admin') %></p>
+      <% if (!isHr) { %>
       <a class="<%= navActive('/werknemers') %>" href="/werknemers">
         <svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zM8 12a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm8 2c-2.7 0-5.2 1.3-6 3.2A7.5 7.5 0 0 1 22 19c0-2.8-2.7-5-6-5zM8 14c-3.3 0-6 2-6 4.5V21h7.2A6.7 6.7 0 0 1 8 14z"/></svg>
         <%= t('nav.employees') %>
       </a>
+      <% } %>
       <a class="<%= navActive('/audit') %>" href="/audit">
         <svg viewBox="0 0 24 24"><path d="M8 5h11v2H8zm0 6h11v2H8zm0 6h11v2H8zM5 5h1v2H5zm0 6h1v2H5zm0 6h1v2H5z"/></svg>
         <%= t('nav.audit') %>
@@ -62,7 +72,11 @@
     </nav>
 
     <div class="sidebar-foot">
+      <% if (isCases) { %>
       <a class="btn btn-block" href="/zaken/nieuw"><%= t('nav.newCase') %></a>
+      <% } else if (isHr && canWriteEmployees) { %>
+      <a class="btn btn-block" href="/werknemers/nieuw"><%= t('nav.newEmployee') %></a>
+      <% } %>
       <% if (user) { %>
       <% const initials = String(user.naam || "?").split(/\s+/).filter(Boolean).map(function (part) { return part[0]; }).slice(0, 2).join("").toUpperCase(); %>
       <div class="who-card">
@@ -87,7 +101,7 @@
   </aside>
 
   <div class="shell">
-    <main class="content">
+    <main class="content<%= path === '/instellingen' || path === '/instellingen/algemeen' ? ' is-settings' : '' %>">
       <%- body %>
     </main>
   </div>

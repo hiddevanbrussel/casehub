@@ -1,35 +1,70 @@
 <% const p = persoon || {} %>
-<% const isModal = typeof modal !== "undefined" && modal; %>
-<form class="form<%= isModal ? ' modal-form' : '' %>" method="post" action="<%= persoon ? '/personen/' + persoon.id : '/personen' %>">
-  <%- include("../partials/form-head", {
-    heading: persoon ? t("persons.edit") : t("persons.new"),
-    eyebrow: t("nav.persons"),
-    cancelHref: persoon ? "/personen/" + persoon.id : "/personen"
-  }) %>
-  <div class="<%= isModal ? 'modal-body' : '' %>">
-    <div class="form-row">
-      <label><%= t('persons.firstName') %> <input name="voornaam" required value="<%= p.voornaam || '' %>"></label>
-      <label><%= t('persons.lastName') %> <input name="achternaam" required value="<%= p.achternaam || '' %>"></label>
+<form class="form form-page" method="post" action="<%= persoon && persoon.id ? '/personen/' + persoon.id : '/personen' %>">
+  <div class="page-head">
+    <div>
+      <p class="eyebrow"><%= t('persons.eyebrow') %></p>
+      <h1><%= persoon && persoon.id ? t('persons.edit') : t('persons.new') %></h1>
     </div>
-    <div class="form-row">
-      <label><%= t('persons.email') %> <input type="email" name="email" value="<%= p.email || '' %>"></label>
-      <label><%= t('persons.phone') %> <input name="telefoon" value="<%= p.telefoon || '' %>"></label>
-      <label><%= t('persons.dob') %> <input type="date" name="geboortedatum" value="<%= p.geboortedatum || '' %>"></label>
-    </div>
-    <label class="span-2"><%= t('persons.bsn') %> <input name="bsn" inputmode="numeric" placeholder="<%= persoon ? t('persons.keepBsn') : t('persons.storedEnc') %>"></label>
-    <label class="span-2"><%= t('persons.address') %> <input name="adres" value="<%= p.adres || '' %>"></label>
-    <div class="form-row">
-      <label><%= t('persons.postcode') %> <input name="postcode" value="<%= p.postcode || '' %>"></label>
-      <label><%= t('persons.place') %> <input name="plaats" value="<%= p.plaats || '' %>"></label>
-      <label><%= t('persons.company') %>
-        <select name="bedrijfId">
-          <option value="">—</option>
-          <% bedrijven.forEach(function (b) { %>
-            <option value="<%= b.id %>" <%= p.bedrijfId === b.id ? 'selected' : '' %>><%= b.handelsnaam %></option>
-          <% }) %>
-        </select>
-      </label>
+    <div class="actions">
+      <a class="ghost" href="<%= persoon && persoon.id ? '/personen/' + persoon.id : '/personen' %>"><%= t('common.cancel') %></a>
+      <button class="btn" type="submit"><%= t('common.save') %></button>
     </div>
   </div>
-  <%- include("../partials/form-foot") %>
+  <% if (typeof error !== 'undefined' && error) { %><p class="alert"><%= error %></p><% } %>
+  <div class="form-cols">
+    <section class="form-card">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <%= t('hr.contact') %>
+      </h2>
+      <div class="form-grid">
+        <div class="form-grid form-grid-3 span-all">
+          <label><%= t('persons.firstName') %> * <input name="voornaam" required value="<%= p.voornaam || '' %>"></label>
+          <label><%= t('persons.infix') %> <input name="tussenvoegsel" value="<%= p.tussenvoegsel || '' %>"></label>
+          <label><%= t('persons.lastName') %> * <input name="achternaam" required value="<%= p.achternaam || '' %>"></label>
+        </div>
+        <label><%= t('persons.email') %> <input type="email" name="email" value="<%= p.email || '' %>"></label>
+        <label><%= t('persons.phone') %> <input name="telefoon" value="<%= p.telefoon || '' %>"></label>
+        <label><%= t('persons.gender') %>
+          <select name="geslacht">
+            <option value="">—</option>
+            <option value="man" <%= p.geslacht === 'man' ? 'selected' : '' %>><%= t('persons.male') %></option>
+            <option value="vrouw" <%= p.geslacht === 'vrouw' ? 'selected' : '' %>><%= t('persons.female') %></option>
+            <option value="overig" <%= p.geslacht === 'overig' ? 'selected' : '' %>><%= t('persons.other') %></option>
+          </select>
+        </label>
+        <label><%= t('persons.dob') %> <input type="date" name="geboortedatum" value="<%= p.geboortedatum || '' %>"></label>
+        <label><%= t('persons.bsn') %>
+          <input name="bsn" inputmode="numeric" placeholder="<%= persoon && persoon.id ? t('persons.keepBsn') : t('persons.storedEnc') %>">
+        </label>
+        <label class="span-all"><%= t('persons.company') %>
+          <select name="bedrijfId">
+            <option value="">—</option>
+            <% bedrijven.forEach(function (b) { %>
+              <option value="<%= b.id %>" <%= p.bedrijfId === b.id ? 'selected' : '' %>><%= b.handelsnaam %></option>
+            <% }) %>
+          </select>
+        </label>
+      </div>
+    </section>
+    <section class="form-card">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        <%= t('persons.address') %>
+      </h2>
+      <div class="form-grid">
+        <label><%= t('persons.street') %> <input name="straat" value="<%= p.straat || '' %>"></label>
+        <label><%= t('persons.houseNo') %> <input name="huisnummer" value="<%= p.huisnummer || '' %>"></label>
+        <label><%= t('persons.postcode') %> <input name="postcode" value="<%= p.postcode || '' %>"></label>
+        <label><%= t('persons.place') %> <input name="plaats" value="<%= p.plaats || '' %>"></label>
+        <label class="span-all"><%= t('persons.country') %> <input name="land" value="<%= p.land || '' %>"></label>
+      </div>
+    </section>
+  </div>
 </form>

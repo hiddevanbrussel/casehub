@@ -5,8 +5,9 @@ const cookieParser = require("cookie-parser");
 const config = require("./config");
 const { store, seedIfEmpty } = require("./lib/db");
 const { formatDate, formatDateTime, fullName } = require("./lib/format");
-const { currentUser } = require("./lib/auth");
+const { currentUser, canWriteMaster } = require("./lib/auth");
 const { i18nMiddleware } = require("./lib/i18n");
+const { isHr, isCases, appProfile } = require("./lib/profile");
 const { routes } = require("./routes");
 
 if (["1", "true", "yes"].includes(String(process.env.SEED_DEMO || "").toLowerCase())) {
@@ -31,6 +32,10 @@ app.use((req, res, next) => {
   req.user = user;
   res.locals.user = user;
   res.locals.meta = store.meta();
+  res.locals.isHr = isHr(store.meta());
+  res.locals.isCases = isCases(store.meta());
+  res.locals.appProfile = appProfile(store.meta());
+  res.locals.canWriteEmployees = isHr(store.meta()) ? canWriteMaster(user) : user?.rol === "admin";
   res.locals.toast = req.query.toast || "";
   res.locals.path = req.path;
   res.locals.formatDate = (value) => formatDate(value, req.lang);

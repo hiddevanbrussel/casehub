@@ -52,22 +52,26 @@
 <% } else { %>
 <table class="overview-table overview-table-cases">
   <colgroup>
-    <col style="width:22%">
-    <col style="width:12%">
+    <col style="width:24%">
+    <col style="width:13%">
     <col style="width:18%">
-    <col style="width:13%">
+    <col style="width:14%">
     <col style="width:12%">
-    <col style="width:13%">
+    <col style="width:11%">
     <col style="width:8%">
-    <col style="width:32px">
   </colgroup>
   <% groups.forEach(function (g) { %>
     <% const items = zaken.filter(function (z) { return g.statuses.indexOf(z.status) !== -1; }); %>
     <tbody>
       <tr class="group-banner">
-        <td colspan="7"><h2 class="status-<%= g.id %>"><%= t('group.' + g.id) %></h2></td>
+        <td colspan="6"><h2 class="status-<%= g.id %>"><%= t('group.' + g.id) %></h2></td>
         <td><span class="count-pill"><%= items.length %></span></td>
       </tr>
+      <% if (!items.length) { %>
+      <tr class="empty-row">
+        <td colspan="7"><div class="empty-status"><%= t('cases.noInStatus') %></div></td>
+      </tr>
+      <% } else { %>
       <tr class="col-heads">
         <th><%= t('cases.title') %></th>
         <th><%= t('cases.caseId') %></th>
@@ -76,15 +80,9 @@
         <th><%= t('cases.reference') %></th>
         <th><%= t('cases.name') %></th>
         <th><%= t('cases.status') %></th>
-        <th></th>
       </tr>
-      <% if (!items.length) { %>
-      <tr class="empty-row">
-        <td colspan="8"><div class="empty-status"><%= t('cases.noInStatus') %></div></td>
-      </tr>
-      <% } else { %>
         <% items.forEach(function (z) { %>
-        <tr class="overview-row" data-expand>
+        <tr class="overview-row">
           <td><a href="/zaken/<%= z.id %>"><%= z.titel %></a></td>
           <td class="mono muted"><%= z.zaaknummer %></td>
           <td class="muted"><%= z.zaaktype || '—' %></td>
@@ -97,15 +95,6 @@
           <td class="mono muted"><%= z.referentie || '—' %></td>
           <td><%= z.contactNaam %></td>
           <td class="muted"><%= t('status.' + z.status) %></td>
-          <td class="chevron">▾</td>
-        </tr>
-        <tr class="overview-detail">
-          <td colspan="8">
-            <p><%= z.omschrijving || t('cases.noDescription') %></p>
-            <p class="muted"><%= t('cases.assignee') %> <%= z.behandelaarNaam %> · <%= t('cases.deadline') %> <%= formatDate(z.deadline) %></p>
-            <a href="/zaken/<%= z.id %>"><%= t('cases.open') %></a>
-            · <a href="/zaken/<%= z.id %>/bewerken"><%= t('common.edit') %></a>
-          </td>
         </tr>
         <% }) %>
       <% } %>

@@ -11,6 +11,7 @@ const config = require("../config");
 const create = require("../lib/create");
 const azure = require("../lib/azure");
 const { setLangCookie } = require("../lib/i18n");
+const { appProfile, isHr, isCases } = require("../lib/profile");
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -51,7 +52,91 @@ function ids(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [value];
 }
 
-const SETUP_STEPS = ["org", "admin", "create", "azure"];
+function employeesRead(req, res, next) {
+  if (isHr(store.meta())) return next();
+  return requireRole("admin")(req, res, next);
+}
+
+function employeesWrite(req, res, next) {
+  if (isHr(store.meta()) && canWriteMaster(req.user)) return next();
+  return requireRole("admin")(req, res, next);
+}
+
+function employeeBody(req) {
+  const body = { ...req.body };
+  if (isHr(store.meta()) && !String(body.wachtwoord || "").trim() && !req.params.id) {
+    body.authSource = "hr";
+  }
+  return body;
+}
+
+function visibleRecipes() {
+  return store.recipes().filter((recipe) => !recipe.hideFromUserView);
+}
+
+async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl, backUrl }) {
+  const recipe = store.recipe(req.body.recipeId);
+  if (!recipe) return toastT(req, res, backUrl, "toast.pickTemplate");
+  const settings = create.createSettings(store);
+  if (!create.enabled(settings)) return toastT(req, res, backUrl, "toast.createOff");
+  const interactive = String(req.body.mode || "") === "interactive";
+  const job = store.addDocumentJob(
+    {
+      zaakId: owner.zaakId || "",
+      werknemerId: owner.werknemerId || "",
+      recipeId: recipe.itemId,
+      recipeName: recipe.name,
+      status: interactive ? "prepared" : "generating",
+    },
+    req.user
+  );
+  try {
+    if (interactive) {
+      const webhookUrl = create.webhookUrlFor(settings, job);
+      const prepared = await create.prepareGenerate(settings, {
+        recipeId: recipe.itemId,
+        data,
+        webhookUrl,
+        webhookHeaders: webhookUrl ? { "X-Zaakhub-Token": job.token } : undefined,
+      });
+      store.updateDocumentJob(
+        job.id,
+        { finalizeUrl: prepared.finalizeUrl || "", expiresAtUtc: prepared.expiresAtUtc || "" },
+        req.user
+      );
+      if (prepared.finalizeUrl) return res.redirect(create.withAuthDomain(prepared.finalizeUrl, settings));
+      return toastT(req, res, docsUrl, "toast.noFinalize");
+    }
+    const generated = await create.generateDocument(settings, {
+      recipeId: recipe.itemId,
+      values: data,
+      fileName,
+      mimeType: "application/pdf",
+    });
+    const fileUri = generated?.fileUri || generated?.url || "";
+    if (!fileUri) {
+      store.updateDocumentJob(job.id, { status: "error", error: "No fileUri" }, req.user);
+      return toastT(req, res, docsUrl, "toast.noFileUri");
+    }
+    const file = await create.fetchGeneratedFile(settings, fileUri);
+    if (!file) {
+      store.updateDocumentJob(job.id, { status: "error", documentUrl: fileUri, error: "Download failed" }, req.user);
+      return toastT(req, res, docsUrl, "toast.noFileUri");
+    }
+    if (generated.contentType && (!file.mime || file.mime === "application/octet-stream")) file.mime = generated.contentType;
+    if (!file.mime || file.mime === "application/octet-stream") file.mime = "application/pdf";
+    if (!file.naam || file.naam === "document") file.naam = fileName;
+    const bijlage = store.addBijlage(owner, create.saveGeneratedFile(file), req.user);
+    store.updateDocumentJob(job.id, { status: "success", documentUrl: fileUri, bijlageId: bijlage.id }, req.user);
+    toastT(req, res, docsUrl, "toast.documentGenerated");
+  } catch (err) {
+    store.updateDocumentJob(job.id, { status: "error", error: err.message }, req.user);
+    store.patchCreate({ lastError: err.message });
+    toast(res, docsUrl, `Create: ${err.message}`);
+  }
+}
+
+const SETUP_STEPS = ["org", "profile", "admin", "create", "azure"];
 
 function allowedSetupStep(requested) {
   const current = store.setupStep();
@@ -75,6 +160,7 @@ function renderSetup(req, res, step, extra = {}) {
   const admin = store.werknemers().find((w) => w.rol === "admin");
   const defaults = {
     org: { orgName: store.meta().orgName, zaakPrefix: store.meta().zaakPrefix },
+    profile: { appProfile: appProfile(store.meta()), personeelPrefix: store.meta().personeelPrefix || "P" },
     admin: admin ? { voornaam: admin.voornaam, achternaam: admin.achternaam, email: admin.email } : {},
     create: {
       baseUrl: createCfg.baseUrl,
@@ -178,7 +264,11 @@ function routes() {
           const settings = create.createSettings(store);
           const file = await create.fetchGeneratedFile(settings, fileUrl);
           if (file) {
-            const bijlage = store.addBijlage(job.zaakId, create.saveGeneratedFile(file), null);
+            const bijlage = store.addBijlage(
+              { zaakId: job.zaakId, werknemerId: job.werknemerId },
+              create.saveGeneratedFile(file),
+              null
+            );
             patch.bijlageId = bijlage.id;
           }
         } catch (err) {
@@ -210,6 +300,19 @@ function routes() {
           orgName: String(req.body.orgName || "").trim() || "Zaakhub",
           zaakPrefix: String(req.body.zaakPrefix || "ZH").trim().toUpperCase().slice(0, 6),
           setupOrgDone: true,
+        },
+        null
+      );
+      return res.redirect("/setup?step=profile");
+    }
+
+    if (step === "profile") {
+      const chosen = appProfile({ appProfile: req.body.appProfile });
+      store.saveMeta(
+        {
+          appProfile: chosen,
+          personeelPrefix: String(req.body.personeelPrefix || "P").trim().toUpperCase().slice(0, 6) || "P",
+          setupProfileDone: true,
         },
         null
       );
@@ -336,6 +439,19 @@ function routes() {
 
   r.use(requireAuth);
 
+  r.use((req, res, next) => {
+    if (isCases(store.meta())) return next();
+    if (
+      req.path.startsWith("/zaken") ||
+      req.path.startsWith("/personen") ||
+      req.path.startsWith("/bedrijven")
+    ) {
+      return res.redirect("/werknemers");
+    }
+    if (req.path.startsWith("/instellingen/zaaktypen")) return res.redirect("/instellingen");
+    next();
+  });
+
   r.get("/", (req, res) => {
     res.render("dashboard", {
       title: req.t("dash.title"),
@@ -343,11 +459,18 @@ function routes() {
       zaken: store.recentZaken(),
       overdue: store.overdueZaken(),
       documenten: store.recentBijlagen(),
+      werknemers: store.werknemers().slice(0, 8),
     });
   });
 
   r.get("/api/search", (req, res) => {
-    res.json(store.search(req.query.q));
+    const data = store.search(req.query.q);
+    if (!isCases(store.meta())) {
+      data.zaken = [];
+      data.personen = [];
+      data.bedrijven = [];
+    }
+    res.json(data);
   });
 
   r.get("/zaken", (req, res) => {
@@ -653,6 +776,7 @@ function routes() {
       zaken,
       canWrite: canWriteMaster(req.user),
       showBsn,
+      tab: req.query.tab === "cases" ? "cases" : "details",
     });
   });
 
@@ -677,10 +801,12 @@ function routes() {
     toastT(req, res, "/personen", "toast.personDeleted");
   });
 
-  r.get("/werknemers", requireRole("admin"), (req, res) => {
+  r.get("/werknemers", employeesRead, (req, res) => {
     const q = req.query.q || "";
     const group = req.query.group || "";
-    const werknemers = store.werknemers().filter((w) => includesQ(`${w.naam} ${w.email} ${w.afdeling}`, q) && (!group || w.rol === group));
+    const werknemers = store.werknemers().filter((w) =>
+      includesQ(`${w.naam} ${w.email} ${w.afdeling} ${w.personeelsnummer} ${w.functiebenaming} ${w.vestiging}`, q) && (!group || w.rol === group)
+    );
     res.render("werknemers/index", {
       title: req.t("employees.overview"),
       werknemers,
@@ -688,16 +814,17 @@ function routes() {
       group,
       view: parseView(req.query.view),
       groups: ROLLEN,
+      canWrite: isHr(store.meta()) ? canWriteMaster(req.user) : req.user.rol === "admin",
     });
   });
 
-  r.get("/werknemers/nieuw", requireRole("admin"), (req, res) => {
+  r.get("/werknemers/nieuw", employeesWrite, (req, res) => {
     res.render("werknemers/form", withModal(req, { title: req.t("employees.new"), werknemer: null, rollen: ROLLEN }));
   });
 
-  r.post("/werknemers", requireRole("admin"), (req, res) => {
+  r.post("/werknemers", employeesWrite, (req, res) => {
     try {
-      const row = store.saveWerknemer(req.body, req.user);
+      const row = store.saveWerknemer(employeeBody(req), req.user);
       toastT(req, res, `/werknemers/${row.id}`, "toast.employeeSaved");
     } catch (err) {
       res.status(400).render("werknemers/form", {
@@ -709,28 +836,100 @@ function routes() {
     }
   });
 
-  r.get("/werknemers/:id", requireRole("admin"), (req, res) => {
+  r.get("/werknemers/:id", employeesRead, (req, res) => {
     const werknemer = store.werknemer(req.params.id);
     if (!werknemer) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
-    const zaken = store.zaken({}).filter((z) => z.behandelaarId === werknemer.id);
-    res.render("werknemers/show", { title: werknemer.naam, werknemer, zaken });
+    const settings = create.createSettings(store);
+    const zaken = isCases(store.meta())
+      ? store.zaken({}).filter((z) => z.behandelaarId === werknemer.id)
+      : [];
+    res.render("werknemers/show", {
+      title: werknemer.naam,
+      werknemer: {
+        ...werknemer,
+        documentJobs: (werknemer.documentJobs || []).map((job) => ({
+          ...job,
+          finalizeUrl: create.withAuthDomain(job.finalizeUrl, settings),
+        })),
+      },
+      zaken,
+      recipes: visibleRecipes(),
+      createReady: create.enabled(settings),
+      tab: req.query.tab === "documents" ? "documents" : "details",
+      canWrite: isHr(store.meta()) ? canWriteMaster(req.user) : req.user.rol === "admin",
+    });
   });
 
-  r.get("/werknemers/:id/bewerken", requireRole("admin"), (req, res) => {
+  r.get("/werknemers/:id/bewerken", employeesWrite, (req, res) => {
     const werknemer = store.werknemer(req.params.id);
     if (!werknemer) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
     res.render("werknemers/form", withModal(req, { title: req.t("employees.edit"), werknemer, rollen: ROLLEN }));
   });
 
-  r.post("/werknemers/:id", requireRole("admin"), (req, res) => {
-    store.saveWerknemer({ ...req.body, id: req.params.id }, req.user);
-    toastT(req, res, `/werknemers/${req.params.id}`, "toast.employeeSaved");
+  r.post("/werknemers/:id", employeesWrite, (req, res) => {
+    try {
+      store.saveWerknemer({ ...employeeBody(req), id: req.params.id }, req.user);
+      toastT(req, res, `/werknemers/${req.params.id}`, "toast.employeeSaved");
+    } catch (err) {
+      const werknemer = { ...store.werknemer(req.params.id), ...req.body, id: req.params.id };
+      res.status(400).render("werknemers/form", {
+        title: req.t("employees.edit"),
+        werknemer,
+        rollen: ROLLEN,
+        error: formError(req, err),
+      });
+    }
   });
 
-  r.post("/werknemers/:id/verwijderen", requireRole("admin"), (req, res) => {
+  r.post("/werknemers/:id/verwijderen", employeesWrite, (req, res) => {
     if (req.params.id === req.user.id) return toastT(req, res, "/werknemers", "toast.cannotDeleteSelf");
     store.deleteWerknemer(req.params.id, req.user);
     toastT(req, res, "/werknemers", "toast.employeeDeleted");
+  });
+
+  r.get("/werknemers/:id/bijlagen/:bijlageId", employeesRead, (req, res) => {
+    const bijlage = store.bijlage(req.params.bijlageId);
+    if (!bijlage || bijlage.werknemerId !== req.params.id) return res.status(404).send(req.t("error.notFound"));
+    const filePath = path.join(config.dataDir, "uploads", bijlage.stored);
+    const isPdf = /pdf/i.test(bijlage.mime || "") || /\.pdf$/i.test(bijlage.naam || "");
+    if (req.query.download === "1" || !isPdf) {
+      return res.download(filePath, bijlage.naam);
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(bijlage.naam)}`);
+    res.sendFile(path.resolve(filePath));
+  });
+
+  r.post("/werknemers/:id/bijlagen/:bijlageId/verwijderen", employeesWrite, (req, res) => {
+    const bijlage = store.bijlage(req.params.bijlageId);
+    if (!bijlage || bijlage.werknemerId !== req.params.id) {
+      return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
+    }
+    store.deleteBijlage(req.params.bijlageId, req.user);
+    toastT(req, res, `/werknemers/${req.params.id}?tab=documents`, "toast.attachmentDeleted");
+  });
+
+  r.post("/werknemers/:id/documenten/:jobId/verwijderen", employeesWrite, (req, res) => {
+    const job = store.documentJob(req.params.jobId);
+    if (!job || job.werknemerId !== req.params.id) {
+      return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
+    }
+    store.deleteDocumentJob(req.params.jobId, req.user);
+    toastT(req, res, `/werknemers/${req.params.id}?tab=documents`, "toast.attachmentDeleted");
+  });
+
+  r.post("/werknemers/:id/documenten", employeesWrite, async (req, res) => {
+    const werknemer = store.werknemer(req.params.id);
+    if (!werknemer) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
+    const recipe = store.recipe(req.body.recipeId);
+    const fileName = `${(recipe && recipe.name) || "document"}-${werknemer.personeelsnummer || werknemer.naam}.pdf`;
+    await generateOwnerDocument(req, res, {
+      owner: { werknemerId: werknemer.id },
+      data: create.prefillEmployee(werknemer, recipe || {}),
+      fileName,
+      docsUrl: `/werknemers/${werknemer.id}?tab=documents`,
+      backUrl: `/werknemers/${werknemer.id}`,
+    });
   });
 
   r.get("/audit", requireRole("admin"), (req, res) => {
@@ -792,10 +991,20 @@ function routes() {
       {
         orgName: String(req.body.orgName || "Zaakhub").trim(),
         zaakPrefix: String(req.body.zaakPrefix || "ZH").trim().toUpperCase().slice(0, 6),
+        appProfile: appProfile({ appProfile: req.body.appProfile }),
+        personeelPrefix: String(req.body.personeelPrefix || "P").trim().toUpperCase().slice(0, 6) || "P",
       },
       req.user
     );
     toastT(req, res, "/instellingen/algemeen", "toast.settingsSaved");
+  });
+
+  r.post("/instellingen/algemeen/demo", requireRole("admin"), (req, res) => {
+    const result = store.importDemoRegistry(req.lang, req.user);
+    if (!result.companies && !result.persons) {
+      return toastT(req, res, "/instellingen/algemeen", "toast.demoAlready");
+    }
+    toastT(req, res, "/instellingen/algemeen", "toast.demoImported", result);
   });
 
   r.get("/instellingen/zaaktypen", requireRole("admin"), (req, res) => {

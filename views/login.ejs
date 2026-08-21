@@ -12,9 +12,7 @@
 <body class="login-body">
   <main class="login-card">
     <div class="brand brand-lg">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3zm3 5a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/></svg>
-      </span>
+      <%- include("partials/brand-mark") %>
       <strong><%= meta.orgName %></strong>
     </div>
     <h1><%= t('login.title') %></h1>

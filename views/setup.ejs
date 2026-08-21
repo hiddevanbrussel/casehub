@@ -13,9 +13,7 @@
   <main class="login-card setup-card">
     <div class="setup-top">
       <div class="brand brand-lg">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3zm3 5a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/></svg>
-        </span>
+        <%- include("partials/brand-mark") %>
         <strong><%= meta.orgName %></strong>
       </div>
       <div class="login-lang">
@@ -48,6 +46,52 @@
     </form>
     <% } %>
 
+    <% if (step === "profile") { %>
+    <form method="post" action="/setup">
+      <input type="hidden" name="step" value="profile">
+      <p class="hint"><%= t('onboard.profileLede') %></p>
+      <div class="profile-picks">
+        <label class="profile-pick">
+          <input type="radio" name="appProfile" value="cases" <%= (values.appProfile || 'cases') === 'cases' ? 'checked' : '' %>>
+          <span>
+            <strong><%= t('onboard.profileCases') %></strong>
+            <small><%= t('onboard.profileCasesHint') %></small>
+          </span>
+        </label>
+        <label class="profile-pick">
+          <input type="radio" name="appProfile" value="hr" <%= values.appProfile === 'hr' ? 'checked' : '' %>>
+          <span>
+            <strong><%= t('onboard.profileHr') %></strong>
+            <small><%= t('onboard.profileHrHint') %></small>
+          </span>
+        </label>
+        <label class="profile-pick">
+          <input type="radio" name="appProfile" value="both" <%= values.appProfile === 'both' ? 'checked' : '' %>>
+          <span>
+            <strong><%= t('onboard.profileBoth') %></strong>
+            <small><%= t('onboard.profileBothHint') %></small>
+          </span>
+        </label>
+      </div>
+      <div class="setup-hr-fields" id="setup-hr-fields" <%= (values.appProfile || 'cases') === 'cases' ? 'hidden' : '' %>>
+        <label><%= t('onboard.personeelPrefix') %>
+          <input name="personeelPrefix" maxlength="6" value="<%= values.personeelPrefix || 'P' %>">
+        </label>
+      </div>
+      <div class="setup-actions">
+        <a class="ghost" href="/setup?step=org"><%= t('onboard.back') %></a>
+        <button class="btn" type="submit"><%= t('onboard.next') %></button>
+      </div>
+    </form>
+    <script>
+      document.querySelectorAll('input[name="appProfile"]').forEach(function (input) {
+        input.addEventListener("change", function () {
+          document.getElementById("setup-hr-fields").hidden = input.value === "cases";
+        });
+      });
+    </script>
+    <% } %>
+
     <% if (step === "admin") { %>
     <form method="post" action="/setup">
       <input type="hidden" name="step" value="admin">
@@ -70,7 +114,7 @@
         <input type="password" name="wachtwoord2" required minlength="8" autocomplete="new-password">
       </label>
       <div class="setup-actions">
-        <a class="ghost" href="/setup?step=org"><%= t('onboard.back') %></a>
+        <a class="ghost" href="/setup?step=profile"><%= t('onboard.back') %></a>
         <button class="btn" type="submit"><%= t('onboard.next') %></button>
       </div>
     </form>

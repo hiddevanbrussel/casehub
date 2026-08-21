@@ -37,7 +37,10 @@
         <td><%= item.actor %></td>
         <td><%= item.action %></td>
         <td><%= t('entity.' + item.entity) %></td>
-        <td><%= item.detail %></td>
+        <td>
+          <%= item.detail %>
+          <%- include("partials/create-payload", { request: item.payload }) %>
+        </td>
       </tr>
       <% }) %>
     </tbody>
@@ -75,6 +78,7 @@
           <tr class="overview-detail">
             <td colspan="5">
               <p class="muted"><%= t('entity.' + item.entity) %> · <%= item.entityId %></p>
+              <%- include("partials/create-payload", { request: item.payload }) %>
             </td>
           </tr>
           <% }) %>

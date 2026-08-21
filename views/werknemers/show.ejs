@@ -17,47 +17,7 @@
     </div>
     <div class="actions">
       <% if (canWrite) { %>
-      <% if (canGenerate && recipes.length === 1) { %>
-        <form method="post" action="/werknemers/<%= werknemer.id %>/documenten">
-          <input type="hidden" name="recipeId" value="<%= recipes[0].itemId %>">
-          <input type="hidden" name="mode" value="generate">
-          <button class="btn" type="submit"><%= t('cases.generateDoc') %></button>
-        </form>
-        <form method="post" action="/werknemers/<%= werknemer.id %>/documenten">
-          <input type="hidden" name="recipeId" value="<%= recipes[0].itemId %>">
-          <input type="hidden" name="mode" value="interactive">
-          <button class="ghost" type="submit"><%= t('cases.generateInteractive') %></button>
-        </form>
-      <% } else { %>
-        <details class="gen-menu">
-          <summary class="btn<%= canGenerate ? '' : ' is-disabled' %>" <%= canGenerate ? '' : 'aria-disabled="true"' %>><%= t('cases.generateDoc') %></summary>
-          <% if (canGenerate) { %>
-          <div class="menu-dots-list">
-            <% recipes.forEach(function (recipe) { %>
-            <form method="post" action="/werknemers/<%= werknemer.id %>/documenten">
-              <input type="hidden" name="recipeId" value="<%= recipe.itemId %>">
-              <input type="hidden" name="mode" value="generate">
-              <button type="submit"><%= recipe.name %></button>
-            </form>
-            <% }) %>
-          </div>
-          <% } %>
-        </details>
-        <details class="gen-menu">
-          <summary class="ghost<%= canGenerate ? '' : ' is-disabled' %>" <%= canGenerate ? '' : 'aria-disabled="true"' %>><%= t('cases.generateInteractive') %></summary>
-          <% if (canGenerate) { %>
-          <div class="menu-dots-list">
-            <% recipes.forEach(function (recipe) { %>
-            <form method="post" action="/werknemers/<%= werknemer.id %>/documenten">
-              <input type="hidden" name="recipeId" value="<%= recipe.itemId %>">
-              <input type="hidden" name="mode" value="interactive">
-              <button type="submit"><%= recipe.name %></button>
-            </form>
-            <% }) %>
-          </div>
-          <% } %>
-        </details>
-      <% } %>
+      <%- include("../partials/generate-doc", { action: "/werknemers/" + werknemer.id + "/documenten", recipes: recipes, canGenerate: canGenerate }) %>
       <a class="ghost" href="/werknemers/<%= werknemer.id %>/bewerken">
         <svg viewBox="0 0 24 24"><path d="M4 17.3V20h2.7l8-8-2.7-2.7zM17.8 7.2a.8.8 0 0 0 0-1.1l-1.9-1.9a.8.8 0 0 0-1.1 0l-1.5 1.5 3 3z"/></svg>
         <%= t('common.edit') %>

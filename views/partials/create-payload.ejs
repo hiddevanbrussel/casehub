@@ -1,0 +1,7 @@
+<% if (request && request.body) { %>
+<details class="create-payload">
+  <summary><%= t('cases.createPayload') %></summary>
+  <p class="create-payload-path mono"><%= request.method %> <%= request.path %></p>
+  <pre class="create-payload-json"><%= JSON.stringify(request.body, null, 2) %></pre>
+</details>
+<% } %>

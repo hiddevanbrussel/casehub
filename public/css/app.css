@@ -347,6 +347,30 @@ svg { fill: currentColor; }
 }
 .doc-table th:last-child, .doc-table td:last-child { text-align: right; padding-right: 0; width: 1%; white-space: nowrap; }
 .doc-table a { font-weight: 600; }
+.create-payload { margin-top: 8px; }
+.create-payload > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.create-payload-path {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  word-break: break-all;
+}
+.create-payload-json {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  background: var(--bg);
+  border-radius: 10px;
+  overflow: auto;
+  max-height: 320px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+}
 
 .table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .table th, .table td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); }
@@ -502,6 +526,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .palette::backdrop,
 .edit-modal::backdrop,
+.generate-modal::backdrop,
 .pdf-modal::backdrop {
   background: rgba(16, 18, 24, 0.52);
 }
@@ -592,6 +617,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .edit-modal textarea { min-height: 0; resize: none; }
 .edit-modal select[multiple] { height: 4.5rem; }
 .edit-modal .icon-btn { font-size: 22px; line-height: 1; }
+.generate-modal {
+  width: min(520px, calc(100vw - 32px));
+}
+.generate-modal .modal-body {
+  grid-template-columns: 1fr;
+  overflow: auto;
+}
+.generate-modal .hint { margin: 0; }
+.generate-modal .tpl-picker { margin: 0; }
+.generate-modal .form .tpl-picker .check-item { cursor: pointer; }
 @media (max-height: 700px) {
   .modal-body { overflow: auto; }
 }
@@ -684,6 +719,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .overview-detail { display: none; }
 .overview-detail.is-open { display: table-row; }
 .overview-detail td { background: #fafafa; padding: 8px var(--content-pad-x) 18px; color: var(--muted); white-space: normal; overflow: visible; text-overflow: unset; }
+.overview-detail .create-payload-json { background: #fff; }
 .overview-table a,
 .table a {
   color: var(--text);

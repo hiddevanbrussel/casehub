@@ -86,13 +86,35 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
       werknemerId: owner.werknemerId || "",
       recipeId: recipe.itemId,
       recipeName: recipe.name,
+      mode: interactive ? "interactive" : "generate",
       status: interactive ? "prepared" : "generating",
     },
     req.user
   );
+  const webhookUrl = interactive ? create.webhookUrlFor(settings, job) : "";
+  const request = interactive
+    ? create.prepareGenerateRequest(settings, {
+        recipeId: recipe.itemId,
+        data,
+        webhookUrl,
+        webhookHeaders: webhookUrl ? { "X-Zaakhub-Token": job.token } : undefined,
+      })
+    : create.generateDocumentRequest(settings, {
+        recipeId: recipe.itemId,
+        values: data,
+        fileName,
+        mimeType: "application/pdf",
+      });
+  store.log(
+    req.user,
+    interactive ? "voorbereid" : "genereren",
+    "document",
+    job.id,
+    `${recipe.name} · ${request.method} ${request.path}`,
+    request
+  );
   try {
     if (interactive) {
-      const webhookUrl = create.webhookUrlFor(settings, job);
       const prepared = await create.prepareGenerate(settings, {
         recipeId: recipe.itemId,
         data,
@@ -623,75 +645,13 @@ function routes() {
     const zaak = store.zaak(req.params.id);
     if (!zaak) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
     const recipe = store.recipe(req.body.recipeId);
-    if (!recipe) return toastT(req, res, `/zaken/${req.params.id}`, "toast.pickTemplate");
-    const settings = create.createSettings(store);
-    if (!create.enabled(settings)) {
-      return toastT(req, res, `/zaken/${req.params.id}`, "toast.createOff");
-    }
-    const interactive = String(req.body.mode || "") === "interactive";
-    const docsUrl = `/zaken/${zaak.id}?tab=documents`;
-    const job = store.addDocumentJob(
-      {
-        zaakId: zaak.id,
-        recipeId: recipe.itemId,
-        recipeName: recipe.name,
-        status: interactive ? "prepared" : "generating",
-      },
-      req.user
-    );
-    try {
-      if (interactive) {
-        const webhookUrl = create.webhookUrlFor(settings, job);
-        const prepared = await create.prepareGenerate(settings, {
-          recipeId: recipe.itemId,
-          data: create.prefillData(zaak, recipe),
-          webhookUrl,
-          webhookHeaders: webhookUrl ? { "X-Zaakhub-Token": job.token } : undefined,
-        });
-        store.updateDocumentJob(
-          job.id,
-          { finalizeUrl: prepared.finalizeUrl || "", expiresAtUtc: prepared.expiresAtUtc || "" },
-          req.user
-        );
-        if (prepared.finalizeUrl) return res.redirect(create.withAuthDomain(prepared.finalizeUrl, settings));
-        return toastT(req, res, docsUrl, "toast.noFinalize");
-      }
-
-      const generated = await create.generateDocument(settings, {
-        recipeId: recipe.itemId,
-        values: create.prefillData(zaak, recipe),
-        fileName: `${recipe.name}-${zaak.zaaknummer}.pdf`,
-        mimeType: "application/pdf",
-      });
-      const fileUri = generated?.fileUri || generated?.url || "";
-      if (!fileUri) {
-        store.updateDocumentJob(job.id, { status: "error", error: "No fileUri" }, req.user);
-        return toastT(req, res, docsUrl, "toast.noFileUri");
-      }
-      const file = await create.fetchGeneratedFile(settings, fileUri);
-      if (!file) {
-        store.updateDocumentJob(job.id, { status: "error", documentUrl: fileUri, error: "Download failed" }, req.user);
-        return toastT(req, res, docsUrl, "toast.noFileUri");
-      }
-      if (generated.contentType && (!file.mime || file.mime === "application/octet-stream")) {
-        file.mime = generated.contentType;
-      }
-      if (!file.mime || file.mime === "application/octet-stream") file.mime = "application/pdf";
-      if (!file.naam || file.naam === "document") {
-        file.naam = `${recipe.name}-${zaak.zaaknummer}.pdf`;
-      }
-      const bijlage = store.addBijlage(zaak.id, create.saveGeneratedFile(file), req.user);
-      store.updateDocumentJob(
-        job.id,
-        { status: "success", documentUrl: fileUri, bijlageId: bijlage.id },
-        req.user
-      );
-      toastT(req, res, docsUrl, "toast.documentGenerated");
-    } catch (err) {
-      store.updateDocumentJob(job.id, { status: "error", error: err.message }, req.user);
-      store.patchCreate({ lastError: err.message });
-      toast(res, docsUrl, `Create: ${err.message}`);
-    }
+    await generateOwnerDocument(req, res, {
+      owner: { zaakId: zaak.id },
+      data: create.prefillData(zaak, recipe || {}),
+      fileName: `${(recipe && recipe.name) || "document"}-${zaak.zaaknummer}.pdf`,
+      docsUrl: `/zaken/${zaak.id}?tab=documents`,
+      backUrl: `/zaken/${zaak.id}`,
+    });
   });
 
   r.get("/bedrijven", (req, res) => {
@@ -936,7 +896,10 @@ function routes() {
     const q = req.query.q || "";
     const group = req.query.group || "";
     const groups = ["zaak", "persoon", "bedrijf", "werknemer", "instellingen", "zaaktype", "recipe", "document"].map((id) => ({ id }));
-    const items = store.auditLog().filter((item) => includesQ(`${item.actor} ${item.action} ${item.entity} ${item.detail}`, q) && (!group || item.entity === group));
+    const items = store.auditLog().filter((item) => {
+      const payload = item.payload ? JSON.stringify(item.payload) : "";
+      return includesQ(`${item.actor} ${item.action} ${item.entity} ${item.detail} ${payload}`, q) && (!group || item.entity === group);
+    });
     res.render("audit", {
       title: req.t("audit.overview"),
       items,

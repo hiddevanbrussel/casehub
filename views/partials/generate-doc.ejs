@@ -1,0 +1,35 @@
+<button class="btn<%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="generate" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateDoc') %></button>
+<button class="ghost<%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="interactive" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateInteractive') %></button>
+<% if (canGenerate) { %>
+<dialog class="edit-modal generate-modal" id="generate-modal">
+  <form class="form modal-form" method="post" action="<%= action %>">
+    <div class="modal-head">
+      <h1 data-generate-title><%= t('cases.pickTemplate') %></h1>
+      <button type="button" class="icon-btn" data-modal-close aria-label="<%= t('common.close') %>">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" name="mode" value="generate" data-generate-mode>
+      <p class="hint"><%= t('cases.pickTemplate') %></p>
+      <div class="tpl-picker" data-generate-picker>
+        <% if (recipes.length > 6) { %>
+        <div class="tpl-picker-bar">
+          <input type="search" data-generate-filter placeholder="<%= t('templates.search') %>" autocomplete="off">
+        </div>
+        <% } %>
+        <div class="tpl-picker-list">
+          <% recipes.forEach(function (recipe, index) { %>
+          <label class="check-item">
+            <input type="radio" name="recipeId" value="<%= recipe.itemId %>" <%= index === 0 ? "checked" : "" %> required>
+            <span><%= recipe.name %> <small class="tpl-type"><%= recipe.recipeType || "" %></small></span>
+          </label>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+    <footer class="modal-foot">
+      <button type="button" class="ghost" data-modal-close><%= t('common.cancel') %></button>
+      <button class="btn" type="submit" data-generate-submit><%= t('cases.generateDoc') %></button>
+    </footer>
+  </form>
+</dialog>
+<% } %>

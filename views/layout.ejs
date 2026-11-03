@@ -49,12 +49,6 @@
 
       <% if (typeof isAdmin !== "undefined" && isAdmin) { %>
       <p class="nav-label"><%= t('nav.admin') %></p>
-      <% if (typeof isGlobalAdmin !== "undefined" && isGlobalAdmin) { %>
-      <a class="<%= navActive('/instellingen/werkruimtes') %>" href="/instellingen/werkruimtes">
-        <%- icon("building-2") %>
-        <%= t('workspace.manage') %>
-      </a>
-      <% } %>
       <% if (!isHr) { %>
       <a class="<%= navActive('/werknemers') %>" href="/werknemers" data-tour="employees">
         <%- icon("users") %>

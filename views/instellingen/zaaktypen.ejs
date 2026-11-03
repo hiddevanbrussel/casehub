@@ -1,3 +1,4 @@
+<div class="catalog-page">
 <p class="back-link"><a href="/instellingen"><%= t('settings.back') %></a></p>
 <div class="page-head">
   <div>
@@ -12,28 +13,30 @@
 <% if (!zaaktypen.length) { %>
   <p class="empty"><%= t('caseTypes.empty') %></p>
 <% } else { %>
-<table class="int-table">
-  <thead>
-    <tr>
-      <th><%= t('caseTypes.name') %></th>
-      <th><%= t('caseTypes.leadTime') %></th>
-      <th><%= t('caseTypes.templates') %></th>
-      <th><%= t('caseTypes.cases') %></th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% zaaktypen.forEach(function (type) { %>
-    <tr>
-      <td><strong><%= type.naam %></strong></td>
-      <td class="muted"><%= type.leadTimeDays ? t('common.days', { n: type.leadTimeDays }) : "—" %></td>
-      <td class="muted"><%= type.templateNames.length ? type.templateNames.join(", ") : "—" %></td>
-      <td class="muted"><%= type.caseCount %></td>
-      <td>
-        <a href="/instellingen/zaaktypen/<%= type.id %>"><%= t('caseTypes.edit') %></a>
-      </td>
-    </tr>
-    <% }) %>
-  </tbody>
-</table>
+<div class="catalog-grid" role="list">
+  <% zaaktypen.forEach(function (type) { %>
+  <% const templatesText = type.templateNames.length ? type.templateNames.join(", ") : "—"; %>
+  <article class="catalog-tile" role="listitem">
+    <a class="catalog-tile-hero" href="/instellingen/zaaktypen/<%= type.id %>" title="<%= t('caseTypes.edit') %>">
+      <span class="catalog-tile-ico" aria-hidden="true"><%- icon("layers") %></span>
+      <span class="catalog-tile-code"><%= type.leadTimeDays ? t("dash.daysShort", { n: type.leadTimeDays }) : "—" %></span>
+    </a>
+    <div class="catalog-tile-body">
+      <div class="catalog-tile-title">
+        <a href="/instellingen/zaaktypen/<%= type.id %>"><%= type.naam %></a>
+      </div>
+      <% if (type.templateNames.length) { %>
+      <p class="catalog-tile-meta" title="<%= templatesText %>"><%= templatesText %></p>
+      <% } else { %>
+      <p class="catalog-tile-meta"><%= type.leadTimeDays ? t("common.days", { n: type.leadTimeDays }) : t("common.none") %></p>
+      <% } %>
+    </div>
+    <div class="catalog-tile-foot">
+      <span class="catalog-stat"><%= t('caseTypes.cases') %> · <%= type.caseCount %></span>
+      <a href="/instellingen/zaaktypen/<%= type.id %>"><%= t('caseTypes.edit') %></a>
+    </div>
+  </article>
+  <% }) %>
+</div>
 <% } %>
+</div>

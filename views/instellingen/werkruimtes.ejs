@@ -5,7 +5,7 @@
     return t("onboard.profileCases");
   }
 %>
-<div class="workspace-page">
+<div class="catalog-page workspace-page">
 <p class="back-link"><a href="/instellingen"><%= t("settings.back") %></a></p>
 <div class="page-head">
   <div>
@@ -24,60 +24,56 @@
 <% if (!items.length) { %>
 <p class="empty"><%= t("workspace.empty") %></p>
 <% } else { %>
-<table class="int-table workspace-table">
-  <thead>
-    <tr>
-      <th><%= t("workspace.name") %></th>
-      <th class="col-slug"><%= t("workspace.slug") %></th>
-      <th class="col-lang"><%= t("workspace.langCol") %></th>
-      <th class="col-profile"><%= t("workspace.profile") %></th>
-      <th><%= t("workspace.domain") %></th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% items.forEach(function (item) { %>
-    <% const current = workspace && workspace.slug === item.slug; %>
-    <% const selected = focus && focus.slug === item.slug; %>
-    <% const domains = item.domains || []; %>
-    <% const domainText = domains.length ? domains.join(", ") : t("workspace.domainNone"); %>
-    <tr class="<%= selected ? "is-selected" : "" %><%= current ? " is-current" : "" %>"<% if (selected) { %> aria-current="true"<% } %>>
-      <td>
-        <div class="ws-name">
-          <a href="<%= selected ? "/instellingen/werkruimtes" : "/instellingen/werkruimtes?ws=" + encodeURIComponent(item.slug) %>" title="<%= t("workspace.configure") %>">
-            <%= item.orgName || item.name %>
-          </a>
-          <% if (current) { %><span class="badge badge-afgerond"><%= t("workspace.current") %></span><% } %>
+<div class="catalog-grid" role="list">
+  <% items.forEach(function (item) { %>
+  <% const current = workspace && workspace.slug === item.slug; %>
+  <% const selected = focus && focus.slug === item.slug; %>
+  <% const domains = item.domains || []; %>
+  <% const inspectHref = selected ? "/instellingen/werkruimtes" : "/instellingen/werkruimtes?ws=" + encodeURIComponent(item.slug); %>
+  <article class="catalog-tile<%= selected ? " is-selected" : "" %><%= current ? " is-current" : "" %>" role="listitem"<% if (selected) { %> aria-current="true"<% } %>>
+    <a class="catalog-tile-hero" href="<%= inspectHref %>" title="<%= t("workspace.configure") %>">
+      <span class="catalog-tile-ico" aria-hidden="true"><%- icon("building-2") %></span>
+      <span class="catalog-tile-code"><%= String(item.defaultLang || "en").toUpperCase() %></span>
+    </a>
+    <div class="catalog-tile-body">
+      <div class="catalog-tile-title">
+        <a href="<%= inspectHref %>"><%= item.orgName || item.name %></a>
+        <% if (current) { %><span class="badge badge-afgerond"><%= t("workspace.current") %></span><% } %>
+      </div>
+      <p class="catalog-tile-meta"><%= profileLabel(item.profile) %> · /w/<%= item.slug %></p>
+      <div class="catalog-tile-chips">
+        <% if (domains.length) { %>
+          <% domains.forEach(function (domain) { %>
+          <span class="catalog-chip"><%= domain %></span>
+          <% }) %>
+        <% } else { %>
+          <span class="catalog-chip is-muted"><%= t("workspace.domainNone") %></span>
+        <% } %>
+      </div>
+    </div>
+    <% if (!current || !selected) { %>
+    <div class="catalog-tile-foot">
+      <% if (!current) { %>
+      <a href="/w/<%= item.slug %>"><%= t("workspace.choose") %></a>
+      <% } %>
+      <% if (!selected) { %>
+      <a href="/instellingen/werkruimtes?ws=<%= encodeURIComponent(item.slug) %>"><%= t("workspace.configure") %></a>
+      <% } %>
+      <% if (!current) { %>
+      <details class="menu-dots">
+        <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>"><%- icon("ellipsis") %></summary>
+        <div class="menu-dots-list">
+          <form method="post" action="/instellingen/werkruimtes/<%= item.slug %>/verwijderen" data-confirm="<%= t('workspace.confirmDelete') %>">
+            <button class="danger-text" type="submit"><%= t("common.delete") %></button>
+          </form>
         </div>
-      </td>
-      <td class="col-slug muted ws-slug">/w/<%= item.slug %></td>
-      <td class="col-lang muted"><%= String(item.defaultLang || "en").toUpperCase() %></td>
-      <td class="col-profile muted"><%= profileLabel(item.profile) %></td>
-      <td class="muted ws-domain" title="<%= domainText %>"><%= domainText %></td>
-      <td>
-        <div class="ws-actions">
-          <% if (!current) { %>
-          <a href="/w/<%= item.slug %>"><%= t("workspace.choose") %></a>
-          <% } %>
-          <% if (!selected) { %>
-          <a href="/instellingen/werkruimtes?ws=<%= encodeURIComponent(item.slug) %>"><%= t("workspace.configure") %></a>
-          <% } %>
-          <% if (!current) { %>
-          <details class="menu-dots">
-            <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>"><%- icon("ellipsis") %></summary>
-            <div class="menu-dots-list">
-              <form method="post" action="/instellingen/werkruimtes/<%= item.slug %>/verwijderen" data-confirm="<%= t('workspace.confirmDelete') %>">
-                <button class="danger-text" type="submit"><%= t("common.delete") %></button>
-              </form>
-            </div>
-          </details>
-          <% } %>
-        </div>
-      </td>
-    </tr>
-    <% }) %>
-  </tbody>
-</table>
+      </details>
+      <% } %>
+    </div>
+    <% } %>
+  </article>
+  <% }) %>
+</div>
 <% } %>
 
 <% if (focus && !creating) { %>

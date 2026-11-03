@@ -54,10 +54,6 @@
         <%- icon("building-2") %>
         <%= t('workspace.manage') %>
       </a>
-      <a class="<%= navActive('/instellingen/beheerders') %>" href="/instellingen/beheerders">
-        <%- icon("shield-check") %>
-        <%= t('admins.manage') %>
-      </a>
       <% } %>
       <% if (!isHr) { %>
       <a class="<%= navActive('/werknemers') %>" href="/werknemers" data-tour="employees">

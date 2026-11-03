@@ -1,0 +1,13 @@
+---
+description: Commit and push Casehub changes to GitHub after every update unless the user says otherwise.
+alwaysApply: true
+---
+
+# Push to GitHub
+
+After each product change, commit and push to `origin` (`https://github.com/hiddevanbrussel/casehub.git`) unless the user explicitly says not to.
+
+- Push `main` to `origin` only. Never push the leftover `casesystem` remote.
+- Do not commit secrets, `.env`, or `data/`.
+- Do not force-push `main`.
+- Do not skip git hooks.

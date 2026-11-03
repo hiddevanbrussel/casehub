@@ -21,6 +21,7 @@ const {
   PLATFORM_SESSION,
   needsPlatformSetup,
   platformSetupStep,
+  setPlatformAzureDone,
   platformUser,
   platformUserByEmail,
   platformUserByAzure,
@@ -603,7 +604,7 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
 }
 
 const SETUP_STEPS = ["org", "profile", "admin", "create", "azure"];
-const PLATFORM_SETUP_STEPS = ["admin", "firstWorkspace"];
+const PLATFORM_SETUP_STEPS = ["admin", "firstWorkspace", "azure"];
 
 function allowedSetupStep(requested) {
   const current = store.setupStep();
@@ -615,7 +616,7 @@ function allowedSetupStep(requested) {
 }
 
 function platformSetupSteps() {
-  return PLATFORM_SETUP_STEPS.filter((step) => step === "admin" || !workspaces().length);
+  return PLATFORM_SETUP_STEPS.slice();
 }
 
 function allowedPlatformSetupStep(requested) {
@@ -635,20 +636,26 @@ function finishSetup(req, res) {
   res.redirect("/");
 }
 
-function finishPlatformSetup(req, res, admin, item) {
+function finishPlatformSetup(req, res, admin, item, nextUrl) {
   if (admin) setSessionCookie(res, admin.id, PLATFORM_SESSION);
   if (item) {
     setWorkspaceCookie(res, item.slug);
     setLangCookie(res, item.defaultLang);
   }
-  res.redirect("/instellingen/werkruimtes");
+  res.redirect(nextUrl || "/instellingen/werkruimtes");
+}
+
+function firstWorkspaceTenant() {
+  const item = workspaces()[0];
+  return item ? openTenant(item.slug) : null;
 }
 
 function renderSetup(req, res, step, extra = {}) {
   const kind = extra.kind || "tenant";
   const steps = extra.steps || SETUP_STEPS;
+  const azureStore = kind === "platform" ? firstWorkspaceTenant() : kind === "tenant" && req.store ? store : null;
   const createCfg = kind === "tenant" && req.store ? create.createSettings(store) : {};
-  const azureCfg = kind === "tenant" && req.store ? azure.azureSettings(store) : {};
+  const azureCfg = azureStore ? azure.azureSettings(azureStore) : {};
   const platformAdmin = publicPlatformUser(platformUsers()[0]);
   const tenantAdmin = kind === "tenant" && req.store ? store.werknemers().find((w) => w.rol === "admin") : null;
   const defaults = {
@@ -683,7 +690,7 @@ function renderSetup(req, res, step, extra = {}) {
     stepIndex: Math.max(0, steps.indexOf(step)),
     error: extra.error || "",
     values: extra.values || defaults[step] || {},
-    redirectUri: kind === "tenant" && req.store ? azure.redirectUri(req, store) : "",
+    redirectUri: azureStore ? azure.redirectUri(req, azureStore) : "",
   });
 }
 
@@ -756,10 +763,49 @@ function handlePlatformSetup(req, res) {
         domains: req.body.domains,
         ...workspaceAdminInput(req.body),
       });
-      return finishPlatformSetup(req, res, admin, created);
+      setPlatformAzureDone(false);
+      setWorkspaceCookie(res, created.slug);
+      setLangCookie(res, created.defaultLang);
+      return res.redirect("/setup?step=azure");
     } catch (err) {
       return platformSetupView(req, res, "firstWorkspace", { error: workspaceError(req, err), values });
     }
+  }
+
+  if (step === "azure") {
+    const admin = publicPlatformUser(platformUsers()[0]);
+    const item = workspaces()[0];
+    if (!admin || !item) return res.redirect("/setup");
+    const tenant = openTenant(item.slug);
+    const skip = req.body.skip === "1";
+    const link = req.body.link === "1";
+    return runWithStore(tenant, () => {
+      if (!skip) {
+        const tenantId = String(req.body.tenantId || "").trim();
+        const clientId = String(req.body.clientId || "").trim();
+        const clientSecret = String(req.body.clientSecret || "").trim();
+        const hasAny = tenantId || clientId || clientSecret;
+        if (hasAny && !(tenantId && clientId && (clientSecret || azure.azureSettings(tenant).hasSecret))) {
+          return platformSetupView(req, res, "azure", {
+            error: req.t("azure.clientMissing"),
+            values: req.body,
+          });
+        }
+        if (link && !hasAny && !azure.enabled(azure.azureSettings(tenant))) {
+          return platformSetupView(req, res, "azure", {
+            error: req.t("toast.azureOff"),
+            values: req.body,
+          });
+        }
+        if (hasAny) {
+          azure.saveAzureSettings(tenant, req.body, null);
+          tenant.patchAzure({ active: true }, null);
+        }
+      }
+      tenant.saveMeta({ setupAzureDone: true }, null);
+      setPlatformAzureDone(true);
+      return finishPlatformSetup(req, res, admin, item, link ? "/auth/azure?link=1" : "/instellingen/werkruimtes");
+    });
   }
 
   return res.redirect("/setup");
@@ -771,6 +817,7 @@ function routes() {
   r.use((req, res, next) => {
     if (needsPlatformSetup()) {
       if (req.path === "/setup" || req.path === "/lang" || req.path === "/api/health") return next();
+      if (req.path.startsWith("/auth/azure")) return next();
       return res.redirect("/setup");
     }
     if (workspaceOpen(req)) return next();

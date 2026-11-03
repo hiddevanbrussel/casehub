@@ -18,8 +18,9 @@ On an **empty** data volume the onboarding wizard opens:
 
 1. Create a **superadmin** account.
 2. Create the **first workspace** (name, language, profile, optional login domain, and a workspace administrator).
+3. Optionally connect **Microsoft Entra ID** for that workspace, and link the Microsoft account to the superadmin.
 
-The superadmin then adds extra workspaces and other superadmins. Workspace administrators finish the rest under **Settings**: organisation, staff, OmniDocs Create and Microsoft Entra ID.
+The superadmin then adds extra workspaces and other superadmins. Workspace administrators finish the rest under **Settings**: organisation, staff and OmniDocs Create.
 
 Existing volumes that already have a superadmin skip the wizard.
 

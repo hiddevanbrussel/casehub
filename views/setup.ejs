@@ -19,8 +19,8 @@
     setupLede = t("onboard.createLede");
   } else if (step === "azure") {
     setupTitle = t("onboard.azure");
-    setupLede = t("onboard.azureLede");
-  }
+    setupLede = setupKind === "platform" ? t("onboard.azurePlatformLede") : t("onboard.azureLede");
+  } %}
 %>
 <!DOCTYPE html>
 <html lang="<%= lang %>"<% if (theme === 'dark') { %> data-theme="dark"<% } %>>
@@ -230,7 +230,7 @@
       </label>
       <div class="setup-actions">
         <a class="ghost" href="/setup?step=admin"><%= t("onboard.back") %></a>
-        <button class="btn" type="submit"><%= t("onboard.finish") %></button>
+        <button class="btn" type="submit"><%= t("onboard.next") %></button>
       </div>
     </form>
     <% } %>
@@ -285,8 +285,11 @@
       </label>
       <p class="hint"><%= t('azure.redirectHint') %></p>
       <div class="setup-actions">
-        <a class="ghost" href="/setup?step=create"><%= t('onboard.back') %></a>
+        <a class="ghost" href="/setup?step=<%= setupKind === 'platform' ? 'firstWorkspace' : 'create' %>"><%= t('onboard.back') %></a>
         <button class="ghost" type="submit" name="skip" value="1"><%= t('onboard.skip') %></button>
+        <% if (setupKind === "platform") { %>
+        <button class="ghost" type="submit" name="link" value="1"><%= t("onboard.azureLink") %></button>
+        <% } %>
         <button class="btn" type="submit"><%= t('onboard.finish') %></button>
       </div>
     </form>

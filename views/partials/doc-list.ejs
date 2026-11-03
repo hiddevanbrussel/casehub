@@ -16,7 +16,9 @@
     if (code === "success") return t("cases.docCompleted");
     if (code === "error") return t("cases.docFailed");
     if (code === "generating") return t("cases.docGenerating");
-    return t("cases.docInCreate");
+    if (code === "webhook-empty") return t("cases.docWebhookEmpty");
+    if (code === "webhook") return t("cases.docWebhookReceived");
+    return t("cases.docWaitingWebhook");
   }
   function docKind(row) {
     if (row.isPdf) return "pdf";
@@ -24,8 +26,9 @@
     return "file";
   }
   function docBadge(code) {
-    if (code === "error") return "wacht_op_info";
+    if (code === "error" || code === "webhook-empty") return "wacht_op_info";
     if (code === "uploaded" || code === "success") return "afgerond";
+    if (code === "webhook") return "in_behandeling";
     return "nieuw";
   }
 %>

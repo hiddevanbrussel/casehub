@@ -29,6 +29,16 @@
     <% if (createReady) { %><p class="int-card-meta"><%= createSummary %></p><% } %>
     <% if (create.lastError) { %><p class="int-card-error"><%= create.lastError %></p><% } %>
     <% if (create.lastSyncAt) { %><p class="hint"><%= t("create.lastSync") %> <%= formatDateTime(create.lastSyncAt) %></p><% } %>
+    <% if (create.lastWebhookAt) { %>
+    <p class="hint">
+      <%= t("create.lastWebhook") %>
+      <%= formatDateTime(create.lastWebhookAt) %>
+      · <%= t("create.webhookStatus." + (create.lastWebhookStatus || "ok")) %>
+      <% if (create.lastWebhookDetail) { %> · <%= create.lastWebhookDetail %><% } %>
+    </p>
+    <% } else { %>
+    <p class="hint"><%= t("create.lastWebhookNone") %></p>
+    <% } %>
     <footer class="int-card-foot">
       <% if (createReady) { %>
       <label class="set-toggle is-compact">

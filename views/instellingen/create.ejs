@@ -22,6 +22,18 @@
     <input name="publicBaseUrl" value="<%= create.publicBaseUrl %>" placeholder="https://zaakhub.example.nl">
   </label>
   <p class="hint"><%= t('create.webhookHint') %></p>
+  <% if (webhookExample) { %><p class="hint"><%= t("create.webhookExample", { url: webhookExample }) %></p><% } %>
+  <% if (create.lastWebhookAt) { %>
+  <p class="hint">
+    <%= t("create.lastWebhook") %>
+    <%= formatDateTime(create.lastWebhookAt) %>
+    · <%= t("create.webhookStatus." + (create.lastWebhookStatus || "ok")) %>
+    <% if (create.lastWebhookDetail) { %> · <%= create.lastWebhookDetail %><% } %>
+    <% if (create.lastWebhookPath) { %> · <%= create.lastWebhookPath %><% } %>
+  </p>
+  <% } else { %>
+  <p class="hint"><%= t("create.lastWebhookNone") %></p>
+  <% } %>
   <label><%= t('create.authDomain') %>
     <input name="authDomain" value="<%= create.authDomain %>" placeholder="auth.example.com" autocomplete="off">
   </label>

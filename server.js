@@ -85,14 +85,22 @@ app.use((_req, res) => {
   res.status(404).render("fout", { title: res.locals.t("error.notFound"), message: res.locals.t("error.notFoundPage") });
 });
 
-app.use((err, _req, res, _next) => {
+app.use((err, req, res, _next) => {
   console.error(err);
   if (res.headersSent) return;
-  const t = typeof res.locals.t === "function" ? res.locals.t : (key) => key;
+  if (String(req.path || "").startsWith("/api/create/webhook")) {
+    const status = err.status || err.statusCode || 500;
+    return res.status(status).json({
+      ok: false,
+      error: err.type === "entity.parse.failed" ? "invalid json" : err.message || "error",
+    });
+  }
+  const translate = typeof res.locals.t === "function" ? res.locals.t : (key) => key;
   if (!res.locals.meta) res.locals.meta = { orgName: config.orgName };
   res.status(500).render("fout", {
-    title: t("error.title"),
-    message: t("error.server"),
+    title: translate("error.title"),
+    message: translate("error.server"),
+    t: translate,
   });
 });
 

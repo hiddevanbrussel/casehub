@@ -34,7 +34,7 @@ const {
   isGlobalAdminEmail,
 } = require("../lib/db");
 const { verifyPassword } = require("../lib/crypto");
-const { STATUSSEN, PRIORITEITEN, ROLLEN, OVERVIEW_GROUPS, PERSON_GROUPS, COMPANY_GROUPS, parseView, includesQ, slugFile, firstName, ymdToday } = require("../lib/format");
+const { STATUSSEN, PRIORITEITEN, ROLLEN, OVERVIEW_GROUPS, PERSON_GROUPS, COMPANY_GROUPS, parseView, includesQ, slugFile, firstName, ymdToday, nowIso } = require("../lib/format");
 const { currentUser, requireAuth, requireRole, requireGlobalAdmin, setSessionCookie, clearSessionCookie, canWriteMaster, isAdmin, isGlobalAdmin } = require("../lib/auth");
 const config = require("../config");
 const create = require("../lib/create");
@@ -483,7 +483,9 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
     req.user
   );
   const hook = create.prepareWebhook(req, settings, job);
-  if (hook.returnUrl) store.updateDocumentJob(job.id, { returnUrl: hook.returnUrl });
+  if (hook.returnUrl || hook.webhookUrl) {
+    store.updateDocumentJob(job.id, { returnUrl: hook.returnUrl || "", webhookUrl: hook.webhookUrl || "" });
+  }
   const webhookUrl = hook.webhookUrl;
   const webhookHeaders = hook.webhookHeaders;
   const request = interactive
@@ -947,20 +949,45 @@ function routes() {
     res.json({ ok: true, service: "zaakhub", workspaces: items });
   });
 
-  async function handleCreateWebhook(req, res, tenant, job) {
-    const headerToken = req.get("x-zaakhub-token") || String(req.query.token || "");
-    if (job.token && headerToken !== job.token) return res.status(401).json({ ok: false });
+  function rememberWebhook(tenant, { status, path, detail, jobId }) {
+    tenant.patchCreate({
+      lastWebhookAt: nowIso(),
+      lastWebhookStatus: status,
+      lastWebhookPath: String(path || "").slice(0, 300),
+      lastWebhookDetail: String(detail || "").slice(0, 400),
+    });
+    tenant.log(null, "webhook", "document", jobId || "webhook", `${status}${detail ? ` · ${detail}` : ""}`);
+    console.log(`create webhook ${status} ${path || ""} ${jobId || ""}`.trim());
+  }
 
-    const body = req.body || {};
+  async function handleCreateWebhook(req, res, tenant, job) {
+    const body = create.webhookBody(req);
+    const tokenState = create.webhookTokenState(req, job, body);
+    const path = req.originalUrl || req.path;
+    if (tokenState === "mismatch") {
+      rememberWebhook(tenant, { status: "auth", path, detail: "token rejected", jobId: job.id });
+      tenant.updateDocumentJob(job.id, {
+        webhookAt: nowIso(),
+        webhookStatus: "auth",
+        webhookDetail: "token rejected",
+      });
+      return res.status(401).json({ ok: false });
+    }
+
     const settings = create.createSettings(tenant);
     const fileUrl = create.documentUriFromBody(body);
     const failed = Boolean(body.error) || /error|fail/i.test(String(body.status || ""));
     const patch = {
-      status: failed ? "error" : "success",
+      webhookAt: nowIso(),
+      webhookStatus: failed ? "error" : fileUrl ? "ok" : "empty",
+      webhookDetail: failed
+        ? JSON.stringify(body.error || body.status || "Genereren mislukt").slice(0, 400)
+        : fileUrl || Object.keys(body).slice(0, 8).join(", ") || "empty body",
       documentGenerationId: body.documentGenerationId || body.generationId || body.metadata?.documentGenerationId || "",
       documentUrl: fileUrl,
       error: failed ? JSON.stringify(body.error || body.status || "Genereren mislukt") : "",
     };
+    if (failed) patch.status = "error";
 
     if (!failed && fileUrl) {
       try {
@@ -972,13 +999,27 @@ function routes() {
             null
           );
           patch.bijlageId = bijlage.id;
+          patch.status = "success";
+          patch.webhookStatus = "ok";
+        } else {
+          patch.webhookStatus = "empty";
+          patch.webhookDetail = "download failed";
+          patch.error = "Download failed";
         }
       } catch (err) {
         patch.error = err.message;
+        patch.webhookStatus = "error";
+        patch.webhookDetail = err.message;
       }
     }
 
     tenant.updateDocumentJob(job.id, patch, null);
+    rememberWebhook(tenant, {
+      status: patch.webhookStatus,
+      path,
+      detail: patch.webhookDetail,
+      jobId: job.id,
+    });
     const origin = create.publicOrigin(req, settings);
     res.json({
       ok: true,
@@ -990,7 +1031,19 @@ function routes() {
     try {
       const tenant = workspace(req.params.slug) ? openTenant(req.params.slug) : null;
       const job = tenant?.documentJob(req.params.jobId);
-      if (!tenant || !job) return res.status(404).json({ ok: false });
+      if (!tenant) {
+        console.log(`create webhook unknown workspace ${req.params.slug}`);
+        return res.status(404).json({ ok: false });
+      }
+      if (!job) {
+        rememberWebhook(tenant, {
+          status: "unknown_job",
+          path: req.originalUrl || req.path,
+          detail: req.params.jobId,
+          jobId: req.params.jobId,
+        });
+        return res.status(404).json({ ok: false });
+      }
       await runWithStore(tenant, () => handleCreateWebhook(req, res, tenant, job));
     } catch (err) {
       console.error(err);
@@ -1001,7 +1054,10 @@ function routes() {
   r.post("/api/create/webhook/:jobId", async (req, res) => {
     try {
       const found = findDocumentJob(req.params.jobId);
-      if (!found) return res.status(404).json({ ok: false });
+      if (!found) {
+        console.log(`create webhook unknown job ${req.params.jobId}`);
+        return res.status(404).json({ ok: false });
+      }
       await runWithStore(found.store, () => handleCreateWebhook(req, res, found.store, found.job));
     } catch (err) {
       console.error(err);
@@ -2422,11 +2478,13 @@ function routes() {
 
   r.get("/instellingen/integraties/create", requireRole("admin"), (req, res) => {
     const settings = create.createSettings(store);
+    const origin = create.publicOrigin(req, settings);
     res.render("instellingen/create", {
       title: req.t("create.title"),
       create: settings,
       createReady: create.configured(settings),
       recipeCount: store.recipes().length,
+      webhookExample: origin ? `${origin}/api/create/webhook/${settings.slug || "workspace"}/…` : "",
     });
   });
 

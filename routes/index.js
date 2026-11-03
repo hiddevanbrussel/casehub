@@ -18,6 +18,7 @@ const {
   setWorkspaceDomains,
   workspaceAllowsEmail,
   findDocumentJob,
+  findStufJob,
   PLATFORM_SESSION,
   needsPlatformSetup,
   platformSetupStep,
@@ -38,6 +39,7 @@ const { STATUSSEN, PRIORITEITEN, ROLLEN, OVERVIEW_GROUPS, PERSON_GROUPS, COMPANY
 const { currentUser, requireAuth, requireRole, requireGlobalAdmin, setSessionCookie, clearSessionCookie, canWriteMaster, isAdmin, isGlobalAdmin } = require("../lib/auth");
 const config = require("../config");
 const create = require("../lib/create");
+const stufDcr = require("../lib/stuf-dcr");
 const azure = require("../lib/azure");
 const { setLangCookie } = require("../lib/i18n");
 const { appProfile, isHr, isCases } = require("../lib/profile");
@@ -93,7 +95,8 @@ function workspaceOpen(req) {
     req.path === "/api/health" ||
     req.path.startsWith("/w/") ||
     req.path.startsWith("/auth/azure") ||
-    req.path.startsWith("/api/create/webhook")
+    req.path.startsWith("/api/create/webhook") ||
+    req.path.startsWith("/api/stuf-dcr")
   );
 }
 
@@ -565,6 +568,175 @@ async function saveGeneratedOwnerFile(req, settings, { job, generated, owner, fi
   return true;
 }
 
+function saveStufOwnerFile(tenant, job, file, actor) {
+  if (!file?.buffer?.length) return false;
+  file.naam = documentFileName(job, file.naam, file);
+  const bijlage = tenant.addBijlage(
+    { zaakId: job.zaakId, werknemerId: job.werknemerId },
+    create.saveGeneratedFile(file, tenant.dataDir),
+    actor || null
+  );
+  tenant.updateDocumentJob(
+    job.id,
+    {
+      status: "success",
+      bijlageId: bijlage.id,
+      webhookAt: nowIso(),
+      webhookStatus: "ok",
+      webhookDetail: "stuf-dcr",
+      error: "",
+    },
+    actor || null
+  );
+  return true;
+}
+
+function rememberStuf(tenant, { status, path, detail, jobId }) {
+  const settings = create.createSettings(tenant);
+  tenant.patchCreate({
+    stufDcr: {
+      ...settings.stufDcr,
+      lastResultAt: nowIso(),
+      lastResultStatus: status,
+      lastResultPath: String(path || "").slice(0, 300),
+      lastResultDetail: String(detail || "").slice(0, 400),
+    },
+  });
+  tenant.log(null, "stuf-dcr", "document", jobId || "stuf-dcr", `${status}${detail ? ` · ${detail}` : ""}`);
+  console.log(`stuf-dcr ${status} ${path || ""} ${jobId || ""}`.trim());
+}
+
+function sendSoap(res, xml, status = 200) {
+  res.status(status).type("text/xml; charset=utf-8").send(xml);
+}
+
+function stufXmlBody(req) {
+  if (typeof req.body === "string") return req.body;
+  if (Buffer.isBuffer(req.body)) return req.body.toString("utf8");
+  return "";
+}
+
+function stufConfirm(res, settings, parsed, job) {
+  return sendSoap(
+    res,
+    stufDcr.buildBv03({
+      settings,
+      referentienummer: job?.stufReferentienummer || job?.id || parsed.referentienummer,
+      crossRef: parsed.referentienummer,
+    })
+  );
+}
+
+async function applyStufResult(req, tenant, job, parsed) {
+  const settings = create.createSettings(tenant);
+  const outcome = parsed.outcome || stufDcr.jobOutcome(parsed.status);
+  const patch = {
+    webhookAt: nowIso(),
+    documentGenerationId: parsed.jobidentificatie || job.documentGenerationId || "",
+    finalizeUrl: parsed.presentUrl || job.finalizeUrl || "",
+    documentUrl: parsed.resultUrl || job.documentUrl || "",
+  };
+  if (outcome === "failed") {
+    patch.status = "error";
+    patch.webhookStatus = "error";
+    patch.webhookDetail = parsed.status || "fout";
+    patch.error = parsed.message || parsed.status || "StUF-DCR fout";
+    tenant.updateDocumentJob(job.id, patch);
+    rememberStuf(tenant, { status: "error", path: req.originalUrl, detail: patch.error, jobId: job.id });
+    return;
+  }
+  if (outcome === "ready") {
+    let file = parsed.file;
+    if (!file && parsed.resultUrl) {
+      const downloaded = await create.fetchGeneratedFile(settings, parsed.resultUrl);
+      if (downloaded) file = downloaded;
+    }
+    if (file) {
+      saveStufOwnerFile(tenant, job, file, null);
+      rememberStuf(tenant, { status: "ok", path: req.originalUrl, detail: file.naam, jobId: job.id });
+      return;
+    }
+    tenant.updateDocumentJob(job.id, { ...patch, webhookStatus: "empty", webhookDetail: "geen documentinhoud" });
+    rememberStuf(tenant, { status: "empty", path: req.originalUrl, detail: "geen documentinhoud", jobId: job.id });
+    return;
+  }
+  tenant.updateDocumentJob(job.id, {
+    ...patch,
+    status: "prepared",
+    webhookStatus: "pending",
+    webhookDetail: parsed.status || "bezig",
+  });
+  rememberStuf(tenant, { status: "pending", path: req.originalUrl, detail: parsed.status, jobId: job.id });
+}
+
+async function startStufOwnerDocument(req, res, { owner, recipe, settings, job, payload, target, docsUrl }) {
+  const zaak = owner.zaakId ? store.zaak(owner.zaakId) : null;
+  const werknemer = owner.werknemerId ? store.werknemer(owner.werknemerId) : null;
+  const party = stufDcr.partyFromTarget(target, werknemer);
+  const referentienummer = job.id;
+  const callbackUrl = stufDcr.publicCallbackUrl(create.publicOrigin(req, settings), settings.slug);
+  store.updateDocumentJob(
+    job.id,
+    {
+      channel: "stuf-dcr",
+      stufReferentienummer: referentienummer,
+      webhookUrl: callbackUrl,
+    },
+    req.user
+  );
+  const xml = stufDcr.buildStartRequest({
+    settings,
+    job,
+    recipe,
+    zaak,
+    party,
+    data: payload,
+    actor: req.user,
+    referentienummer,
+  });
+  store.log(
+    req.user,
+    "voorbereid",
+    "document",
+    job.id,
+    `${recipe.name} · StUF-DCR verzoekStartenDocumentcreatieDi02`,
+    { method: "POST", path: settings.stufDcr.dcaUrl, body: stufDcr.clipXml(xml) }
+  );
+  const headers = {};
+  try {
+    headers.Authorization = `Bearer ${await create.getToken(settings)}`;
+  } catch {
+    /* SOAP uses its own contract; REST token is optional. */
+  }
+  const result = await stufDcr.startDocumentcreatie(settings, xml, headers);
+  const presentUrl = result.presentUrl || result.resultUrl;
+  store.updateDocumentJob(
+    job.id,
+    {
+      documentGenerationId: result.jobidentificatie || "",
+      finalizeUrl: presentUrl || "",
+      documentUrl: result.resultUrl || "",
+      status: result.outcome === "ready" ? "generating" : "prepared",
+    },
+    req.user
+  );
+  if (result.outcome === "ready" && result.file) {
+    saveStufOwnerFile(store, job, result.file, req.user);
+    return generateReply(req, res, { next: docsUrl, message: req.t("toast.documentGenerated") });
+  }
+  if (result.outcome === "failed") {
+    store.updateDocumentJob(job.id, { status: "error", error: result.status || "StUF-DCR fout" }, req.user);
+    return generateReply(req, res, { next: docsUrl, message: `StUF-DCR: ${result.status || "fout"}` });
+  }
+  if (presentUrl) {
+    return generateReply(req, res, {
+      open: create.withAuthDomain(presentUrl, settings),
+      next: docsUrl,
+    });
+  }
+  return generateReply(req, res, { next: docsUrl, message: req.t("toast.noFinalize") });
+}
+
 async function generateBatchOwnerDocuments(req, res, { owner, recipe, settings, targets, docsUrl }) {
   try {
     await create.getToken(settings);
@@ -702,6 +874,15 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
   const payload = target?.data || data;
   const outName = target?.fileName || fileName;
   const { job, hook } = addOwnerJob(req, settings, { owner, recipe, interactive, target });
+  if (interactive && stufDcr.enabled(settings)) {
+    try {
+      return await startStufOwnerDocument(req, res, { owner, recipe, settings, job, payload, target, docsUrl });
+    } catch (err) {
+      store.updateDocumentJob(job.id, { status: "error", error: err.message }, req.user);
+      store.patchCreate({ lastError: err.message });
+      return generateReply(req, res, { next: docsUrl, message: `StUF-DCR: ${err.message}` });
+    }
+  }
   const webhookUrl = hook.webhookUrl;
   const webhookHeaders = hook.webhookHeaders;
   const request = interactive
@@ -1026,6 +1207,7 @@ function routes() {
     if (needsPlatformSetup()) {
       if (req.path === "/setup" || req.path === "/lang" || req.path === "/api/health") return next();
       if (req.path.startsWith("/auth/azure")) return next();
+      if (req.path.startsWith("/api/stuf-dcr")) return next();
       return res.redirect("/setup");
     }
     if (workspaceOpen(req)) return next();
@@ -1033,6 +1215,7 @@ function routes() {
     if (!store.needsOnboarding()) return next();
     if (req.path === "/setup" || req.path === "/lang" || req.path === "/api/health") return next();
     if (req.path.startsWith("/auth/azure")) return next();
+    if (req.path.startsWith("/api/stuf-dcr")) return next();
     return res.redirect("/setup");
   });
 
@@ -1269,6 +1452,75 @@ function routes() {
     } catch (err) {
       console.error(err);
       res.status(500).json({ ok: false });
+    }
+  });
+
+  function stufEndpointInfo(req, res, slug) {
+    const origin = `${req.protocol}://${req.get("host") || "localhost"}`;
+    res.type("text/plain").send(
+      `StUF-DCR DCV endpoint for workspace ${slug || ""}\nPOST verstrekDocumentcreatieResultaatDi01 to ${origin}${req.path}`
+    );
+  }
+
+  async function handleStufInbound(req, res, tenantHint) {
+    const xml = stufXmlBody(req);
+    if (!xml.trim()) {
+      return sendSoap(res, stufDcr.buildFault("Leeg SOAP-bericht"), 400);
+    }
+    const parsed = stufDcr.parseResult(xml);
+    if (parsed.kind === "fault") {
+      return sendSoap(res, stufDcr.buildFault(parsed.message), 400);
+    }
+    if (parsed.kind !== "di01" && parsed.kind !== "du02") {
+      return sendSoap(res, stufDcr.buildFault("Verwacht verstrekDocumentcreatieResultaatDi01"), 400);
+    }
+    const refs = [parsed.jobidentificatie, parsed.referentienummer].map((value) => String(value || "").trim()).filter(Boolean);
+    let found = null;
+    for (const ref of refs) {
+      const local = tenantHint?.documentJob(ref);
+      if (local) {
+        found = { store: tenantHint, job: local };
+        break;
+      }
+      found = findStufJob(ref);
+      if (found) break;
+    }
+    if (!found?.job) {
+      if (tenantHint) {
+        rememberStuf(tenantHint, {
+          status: "unknown_job",
+          path: req.originalUrl || req.path,
+          detail: parsed.jobidentificatie || parsed.referentienummer,
+          jobId: parsed.jobidentificatie,
+        });
+      }
+      return sendSoap(res, stufDcr.buildFault("Onbekende creatiejob"), 404);
+    }
+    const settings = create.createSettings(found.store);
+    await runWithStore(found.store, () => applyStufResult(req, found.store, found.job, parsed));
+    return stufConfirm(res, settings, parsed, found.job);
+  }
+
+  r.get("/api/stuf-dcr/:slug", (req, res) => stufEndpointInfo(req, res, req.params.slug));
+  r.get("/api/stuf-dcr", (req, res) => stufEndpointInfo(req, res, req.store?.slug || ""));
+
+  r.post("/api/stuf-dcr/:slug", async (req, res) => {
+    try {
+      const tenant = workspace(req.params.slug) ? openTenant(req.params.slug) : null;
+      if (!tenant) return sendSoap(res, stufDcr.buildFault("Onbekende werkruimte"), 404);
+      await handleStufInbound(req, res, tenant);
+    } catch (err) {
+      console.error(err);
+      sendSoap(res, stufDcr.buildFault(err.message || "StUF-DCR fout"), 500);
+    }
+  });
+
+  r.post("/api/stuf-dcr", async (req, res) => {
+    try {
+      await handleStufInbound(req, res, req.store);
+    } catch (err) {
+      console.error(err);
+      sendSoap(res, stufDcr.buildFault(err.message || "StUF-DCR fout"), 500);
     }
   });
 
@@ -2677,6 +2929,7 @@ function routes() {
       createReady: create.configured(settings),
       recipeCount: store.recipes().length,
       webhookExample: origin ? `${origin}/api/create/webhook/${settings.slug || "workspace"}/…` : "",
+      stufCallback: stufDcr.publicCallbackUrl(origin, settings.slug),
     });
   });
 

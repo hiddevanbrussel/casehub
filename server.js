@@ -33,6 +33,10 @@ app.set("trust proxy", 1);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.text({
+  type: (req) => /xml|soap/i.test(String(req.headers["content-type"] || "")),
+  limit: "25mb",
+}));
 app.use(cookieParser());
 app.use(i18nMiddleware);
 app.use(themeMiddleware);
@@ -88,6 +92,12 @@ app.use((_req, res) => {
 app.use((err, req, res, _next) => {
   console.error(err);
   if (res.headersSent) return;
+  if (String(req.path || "").startsWith("/api/stuf-dcr")) {
+    const status = err.status || err.statusCode || 500;
+    return res.status(status).type("text/xml; charset=utf-8").send(
+      `<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault><faultcode>soap:Server</faultcode><faultstring>${String(err.message || "StUF-DCR fout").replace(/[<>&]/g, "")}</faultstring></soapenv:Fault></soapenv:Body></soapenv:Envelope>`
+    );
+  }
   if (String(req.path || "").startsWith("/api/create/webhook")) {
     const status = err.status || err.statusCode || 500;
     return res.status(status).json({

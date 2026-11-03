@@ -2282,6 +2282,19 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
 .prio-hoog { color: #b45309; }
 .form-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
 .form-row-2 { grid-template-columns: 1fr 1fr; }
+.form-section {
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.form-section h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.form-section .mono { word-break: break-all; }
 .check-set { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
 .check-set legend { font-weight: 600; color: var(--text); margin-bottom: 4px; }
 .tpl-picker {

@@ -16,6 +16,8 @@ const {
   deleteWorkspace,
   slugify,
   setWorkspaceDomains,
+  workspacesByHost,
+  workspacesForRequest,
   workspaceAllowsEmail,
   findDocumentJob,
   findStufJob,
@@ -105,10 +107,17 @@ function workspaceOpen(req) {
   );
 }
 
+function pickWorkspaces(req) {
+  const list = workspacesForRequest(req);
+  if (!req.user || isGlobalAdmin(req.user)) return list;
+  const allowed = list.filter((item) => workspaceAllowsEmail(item, req.user.email));
+  return allowed.length ? allowed : list;
+}
+
 function tenantForLogin(req) {
-  const list = workspaces();
+  const list = pickWorkspaces(req);
   const wanted = slugify(req.body?.workspace || req.query?.workspace || req.store?.slug || "");
-  const item = workspace(wanted) || list[0] || null;
+  const item = list.find((row) => row.slug === wanted) || list[0] || null;
   if (!item) return { list, item: null, tenant: null };
   return { list, item, tenant: openTenant(item.slug) };
 }
@@ -1223,7 +1232,10 @@ function routes() {
       return res.redirect("/setup");
     }
     if (workspaceOpen(req)) return next();
-    if (!req.store) return res.redirect("/login");
+    if (!req.store) {
+      const visible = pickWorkspaces(req);
+      return res.redirect(visible.length > 1 ? "/werkruimtes" : "/login");
+    }
     if (!store.needsOnboarding()) return next();
     if (req.path === "/setup" || req.path === "/lang" || req.path === "/api/health") return next();
     if (req.path.startsWith("/auth/azure")) return next();
@@ -1233,17 +1245,18 @@ function routes() {
 
   r.get("/werkruimtes", (req, res) => {
     if (req.user && isGlobalAdmin(req.user)) return res.redirect("/instellingen/werkruimtes");
-    const list = workspaces();
-    if (!req.user) {
-      if (!list.length) {
-        return res.render("workspaces/index", {
-          layout: false,
-          title: req.t("workspace.title"),
-          items: list,
-          error: req.query.error || "",
-          canCreate: true,
-        });
-      }
+    const list = pickWorkspaces(req);
+    if (!req.user && !list.length) {
+      return res.render("workspaces/index", {
+        layout: false,
+        title: req.t("workspace.title"),
+        items: list,
+        error: req.query.error || "",
+        canCreate: true,
+      });
+    }
+    if (!req.user && list.length === 1) {
+      setWorkspaceCookie(res, list[0].slug);
       return res.redirect("/login");
     }
     res.render("workspaces/index", {
@@ -1283,6 +1296,10 @@ function routes() {
   r.get("/w/:slug", (req, res) => {
     const item = workspace(req.params.slug);
     if (!item) return res.redirect("/login");
+    const hostMatches = workspacesByHost(req.get("host"));
+    if (hostMatches.length && !hostMatches.some((row) => row.slug === item.slug) && !isGlobalAdmin(req.user)) {
+      return res.redirect("/werkruimtes");
+    }
     setWorkspaceCookie(res, item.slug);
     setLangCookie(res, item.defaultLang);
     if (isGlobalAdmin(req.user)) {

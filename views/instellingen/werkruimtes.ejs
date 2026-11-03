@@ -1,37 +1,68 @@
+<%
+  function profileLabel(profile) {
+    if (profile === "hr") return t("onboard.profileHr");
+    if (profile === "both") return t("onboard.profileBoth");
+    return t("onboard.profileCases");
+  }
+%>
+<div class="workspace-page">
 <p class="back-link"><a href="/instellingen"><%= t("settings.back") %></a></p>
 <div class="page-head">
   <div>
     <h1><%= t("workspace.manage") %></h1>
     <p class="lede"><%= t("workspace.lede") %></p>
   </div>
+  <div class="actions">
+    <% if (creating && items.length) { %>
+    <a class="ghost" href="/instellingen/werkruimtes"><%= t("common.cancel") %></a>
+    <% } else if (!creating) { %>
+    <a class="btn" href="/instellingen/werkruimtes?nieuw=1"><%= t("workspace.new") %></a>
+    <% } %>
+  </div>
 </div>
 
-<div class="settings-stack">
-  <section class="form-card workspace-admin-card">
-    <% if (!items.length) { %>
-    <p class="muted workspace-admin-empty"><%= t("workspace.empty") %></p>
-    <% } else { %>
-    <ul class="workspace-admin">
-      <% items.forEach(function (item) { %>
-      <% const current = workspace && workspace.slug === item.slug; %>
-      <% const domains = item.domains || []; %>
-      <li>
-        <div class="workspace-admin-id">
-          <%- icon("building-2", { class: "set-ico" }) %>
-          <div>
-            <strong><%= item.orgName || item.name %></strong>
-            <small>
-              /w/<%= item.slug %>
-              · <%= String(item.defaultLang || "en").toUpperCase() %>
-              · <%= t(item.profile === "hr" ? "onboard.profileHr" : item.profile === "both" ? "onboard.profileBoth" : "onboard.profileCases") %>
-              · <%= domains.length ? domains.join(", ") : t("workspace.domainNone") %>
-            </small>
-          </div>
-        </div>
-        <div class="workspace-admin-actions">
+<% if (!items.length) { %>
+<p class="empty"><%= t("workspace.empty") %></p>
+<% } else { %>
+<table class="int-table workspace-table">
+  <thead>
+    <tr>
+      <th><%= t("workspace.name") %></th>
+      <th class="col-slug"><%= t("workspace.slug") %></th>
+      <th class="col-lang"><%= t("workspace.langCol") %></th>
+      <th class="col-profile"><%= t("workspace.profile") %></th>
+      <th><%= t("workspace.domain") %></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% items.forEach(function (item) { %>
+    <% const current = workspace && workspace.slug === item.slug; %>
+    <% const selected = focus && focus.slug === item.slug; %>
+    <% const domains = item.domains || []; %>
+    <% const domainText = domains.length ? domains.join(", ") : t("workspace.domainNone"); %>
+    <tr class="<%= selected ? "is-selected" : "" %><%= current ? " is-current" : "" %>"<% if (selected) { %> aria-current="true"<% } %>>
+      <td>
+        <div class="ws-name">
+          <a href="<%= selected ? "/instellingen/werkruimtes" : "/instellingen/werkruimtes?ws=" + encodeURIComponent(item.slug) %>" title="<%= t("workspace.configure") %>">
+            <%= item.orgName || item.name %>
+          </a>
           <% if (current) { %><span class="badge badge-afgerond"><%= t("workspace.current") %></span><% } %>
+        </div>
+      </td>
+      <td class="col-slug muted ws-slug">/w/<%= item.slug %></td>
+      <td class="col-lang muted"><%= String(item.defaultLang || "en").toUpperCase() %></td>
+      <td class="col-profile muted"><%= profileLabel(item.profile) %></td>
+      <td class="muted ws-domain" title="<%= domainText %>"><%= domainText %></td>
+      <td>
+        <div class="ws-actions">
           <% if (!current) { %>
-          <a class="ghost" href="/w/<%= item.slug %>"><%= t("workspace.choose") %></a>
+          <a href="/w/<%= item.slug %>"><%= t("workspace.choose") %></a>
+          <% } %>
+          <% if (!selected) { %>
+          <a href="/instellingen/werkruimtes?ws=<%= encodeURIComponent(item.slug) %>"><%= t("workspace.configure") %></a>
+          <% } %>
+          <% if (!current) { %>
           <details class="menu-dots">
             <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>"><%- icon("ellipsis") %></summary>
             <div class="menu-dots-list">
@@ -42,121 +73,134 @@
           </details>
           <% } %>
         </div>
-        <form class="workspace-admin-domain" method="post" action="/instellingen/werkruimtes/<%= item.slug %>">
-          <label><%= t("workspace.domain") %>
-            <span class="workspace-admin-domain-row">
-              <input name="domains" value="<%= domains.join(", ") %>" placeholder="<%= t("workspace.domainPlaceholder") %>" autocomplete="off">
-              <button class="ghost" type="submit"><%= t("common.save") %></button>
-            </span>
-            <span class="hint"><%= t("workspace.domainHint") %></span>
-          </label>
-        </form>
-        <details class="workspace-admin-staff">
-          <summary><%= t("workspace.addAdmin") %></summary>
-          <form class="admin-edit" method="post" action="/instellingen/werkruimtes/<%= item.slug %>/beheerder">
-            <div class="admin-edit-grid">
-              <label><%= t("employees.firstName") %>
-                <input name="adminVoornaam" required autocomplete="off">
-              </label>
-              <label><%= t("employees.lastName") %>
-                <input name="adminAchternaam" required autocomplete="off">
-              </label>
-              <label><%= t("employees.email") %>
-                <input type="email" name="adminEmail" required autocomplete="off">
-              </label>
-              <label><%= t("employees.password") %>
-                <input type="password" name="adminWachtwoord" required minlength="8" autocomplete="new-password">
-              </label>
-            </div>
-            <div class="form-actions">
-              <button class="ghost" type="submit"><%= t("workspace.addAdmin") %></button>
-            </div>
-          </form>
-        </details>
-      </li>
-      <% }) %>
-    </ul>
-    <% } %>
-  </section>
+      </td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
 
-  <form class="form settings-form" method="post" action="/instellingen/werkruimtes">
-    <section class="form-card">
-      <h2><%= t("workspace.new") %></h2>
-      <div class="form-grid form-grid-2">
-        <label class="span-all"><%= t("workspace.name") %>
-          <input name="name" required placeholder="CaseFlow Deutschland" autocomplete="off">
+<% if (focus && !creating) { %>
+<% const focusDomains = focus.domains || []; %>
+<section class="form-card workspace-panel" aria-labelledby="workspace-panel-title">
+  <div class="workspace-panel-head">
+    <h2 id="workspace-panel-title"><%= focus.orgName || focus.name %></h2>
+    <a class="ghost" href="/instellingen/werkruimtes"><%= t("common.close") %></a>
+  </div>
+  <form class="workspace-admin-domain" method="post" action="/instellingen/werkruimtes/<%= focus.slug %>">
+    <label><%= t("workspace.domain") %>
+      <span class="workspace-admin-domain-row">
+        <input name="domains" value="<%= focusDomains.join(", ") %>" placeholder="<%= t("workspace.domainPlaceholder") %>" autocomplete="off">
+        <button class="ghost" type="submit"><%= t("common.save") %></button>
+      </span>
+      <span class="hint"><%= t("workspace.domainHint") %></span>
+    </label>
+  </form>
+  <div class="workspace-panel-block">
+    <span class="field-caption"><%= t("workspace.addAdmin") %></span>
+    <form class="admin-edit" method="post" action="/instellingen/werkruimtes/<%= focus.slug %>/beheerder">
+      <div class="admin-edit-grid">
+        <label><%= t("employees.firstName") %>
+          <input name="adminVoornaam" required autocomplete="off">
         </label>
-        <label><%= t("workspace.slug") %>
-          <input name="slug" placeholder="de" autocomplete="off">
-          <span class="hint"><%= t("workspace.slugHint") %></span>
+        <label><%= t("employees.lastName") %>
+          <input name="adminAchternaam" required autocomplete="off">
         </label>
-        <label><%= t("workspace.lang") %>
-          <select name="defaultLang">
-            <% langs.forEach(function (item) { %>
-            <option value="<%= item.id %>" <%= item.id === lang ? "selected" : "" %>><%= item.label %></option>
-            <% }) %>
-          </select>
+        <label><%= t("employees.email") %>
+          <input type="email" name="adminEmail" required autocomplete="off">
         </label>
-        <label class="span-all"><%= t("workspace.domain") %>
-          <input name="domains" placeholder="<%= t("workspace.domainPlaceholder") %>" autocomplete="off">
-          <span class="hint"><%= t("workspace.domainHint") %></span>
+        <label><%= t("employees.password") %>
+          <input type="password" name="adminWachtwoord" required minlength="8" autocomplete="new-password">
         </label>
-        <div class="span-all">
-          <span class="field-caption"><%= t("workspace.profile") %></span>
-          <div class="profile-picks">
-            <label class="profile-pick">
-              <input type="radio" name="appProfile" value="cases" checked>
-              <span>
-                <strong><%= t("onboard.profileCases") %></strong>
-                <small><%= t("onboard.profileCasesHint") %></small>
-              </span>
-            </label>
-            <label class="profile-pick">
-              <input type="radio" name="appProfile" value="hr">
-              <span>
-                <strong><%= t("onboard.profileHr") %></strong>
-                <small><%= t("onboard.profileHrHint") %></small>
-              </span>
-            </label>
-            <label class="profile-pick">
-              <input type="radio" name="appProfile" value="both">
-              <span>
-                <strong><%= t("onboard.profileBoth") %></strong>
-                <small><%= t("onboard.profileBothHint") %></small>
-              </span>
-            </label>
-          </div>
-        </div>
-        <label class="span-all set-toggle">
-          <span>
-            <strong><%= t("workspace.seedDemo") %></strong>
-            <small><%= t("workspace.seedHint") %></small>
-          </span>
-          <input type="hidden" name="seedDemo" value="0">
-          <input type="checkbox" name="seedDemo" value="1" checked>
-        </label>
-        <div class="span-all workspace-admin-create">
-          <span class="field-caption"><%= t("workspace.admin") %></span>
-          <p class="hint"><%= t("workspace.adminLede") %></p>
-          <div class="form-grid form-grid-2">
-            <label><%= t("employees.firstName") %>
-              <input name="adminVoornaam" required autocomplete="off">
-            </label>
-            <label><%= t("employees.lastName") %>
-              <input name="adminAchternaam" required autocomplete="off">
-            </label>
-            <label><%= t("employees.email") %>
-              <input type="email" name="adminEmail" required autocomplete="off">
-            </label>
-            <label><%= t("employees.password") %>
-              <input type="password" name="adminWachtwoord" required minlength="8" autocomplete="new-password">
-            </label>
-          </div>
-        </div>
       </div>
       <div class="form-actions">
-        <button class="btn" type="submit"><%= t("workspace.create") %></button>
+        <button class="ghost" type="submit"><%= t("workspace.addAdmin") %></button>
       </div>
-    </section>
-  </form>
+    </form>
+  </div>
+</section>
+<% } %>
+
+<% if (creating) { %>
+<form class="form settings-form" method="post" action="/instellingen/werkruimtes">
+  <section class="form-card">
+    <h2><%= t("workspace.new") %></h2>
+    <div class="form-grid form-grid-2">
+      <label class="span-all"><%= t("workspace.name") %>
+        <input name="name" required placeholder="CaseFlow Deutschland" autocomplete="off">
+      </label>
+      <label><%= t("workspace.slug") %>
+        <input name="slug" placeholder="de" autocomplete="off">
+        <span class="hint"><%= t("workspace.slugHint") %></span>
+      </label>
+      <label><%= t("workspace.lang") %>
+        <select name="defaultLang">
+          <% langs.forEach(function (item) { %>
+          <option value="<%= item.id %>" <%= item.id === lang ? "selected" : "" %>><%= item.label %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label class="span-all"><%= t("workspace.domain") %>
+        <input name="domains" placeholder="<%= t("workspace.domainPlaceholder") %>" autocomplete="off">
+        <span class="hint"><%= t("workspace.domainHint") %></span>
+      </label>
+      <div class="span-all">
+        <span class="field-caption"><%= t("workspace.profile") %></span>
+        <div class="profile-picks">
+          <label class="profile-pick">
+            <input type="radio" name="appProfile" value="cases" checked>
+            <span>
+              <strong><%= t("onboard.profileCases") %></strong>
+              <small><%= t("onboard.profileCasesHint") %></small>
+            </span>
+          </label>
+          <label class="profile-pick">
+            <input type="radio" name="appProfile" value="hr">
+            <span>
+              <strong><%= t("onboard.profileHr") %></strong>
+              <small><%= t("onboard.profileHrHint") %></small>
+            </span>
+          </label>
+          <label class="profile-pick">
+            <input type="radio" name="appProfile" value="both">
+            <span>
+              <strong><%= t("onboard.profileBoth") %></strong>
+              <small><%= t("onboard.profileBothHint") %></small>
+            </span>
+          </label>
+        </div>
+      </div>
+      <label class="span-all set-toggle">
+        <span>
+          <strong><%= t("workspace.seedDemo") %></strong>
+          <small><%= t("workspace.seedHint") %></small>
+        </span>
+        <input type="hidden" name="seedDemo" value="0">
+        <input type="checkbox" name="seedDemo" value="1" checked>
+      </label>
+      <div class="span-all workspace-admin-create">
+        <span class="field-caption"><%= t("workspace.admin") %></span>
+        <p class="hint"><%= t("workspace.adminLede") %></p>
+        <div class="form-grid form-grid-2">
+          <label><%= t("employees.firstName") %>
+            <input name="adminVoornaam" required autocomplete="off">
+          </label>
+          <label><%= t("employees.lastName") %>
+            <input name="adminAchternaam" required autocomplete="off">
+          </label>
+          <label><%= t("employees.email") %>
+            <input type="email" name="adminEmail" required autocomplete="off">
+          </label>
+          <label><%= t("employees.password") %>
+            <input type="password" name="adminWachtwoord" required minlength="8" autocomplete="new-password">
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit"><%= t("workspace.create") %></button>
+    </div>
+  </section>
+</form>
+<% } %>
 </div>

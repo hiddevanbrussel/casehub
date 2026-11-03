@@ -2711,12 +2711,16 @@ function routes() {
   });
 
   r.get("/instellingen/werkruimtes", requireGlobalAdmin, (req, res) => {
+    const items = workspaces().map((item) => {
+      const tenant = openTenant(item.slug);
+      return { ...item, profile: appProfile(tenant.meta()), orgName: tenant.meta().orgName };
+    });
+    const focusSlug = String(req.query.ws || "");
     res.render("instellingen/werkruimtes", {
       title: req.t("workspace.manage"),
-      items: workspaces().map((item) => {
-        const tenant = openTenant(item.slug);
-        return { ...item, profile: appProfile(tenant.meta()), orgName: tenant.meta().orgName };
-      }),
+      items,
+      focus: items.find((item) => item.slug === focusSlug) || null,
+      creating: req.query.nieuw === "1" || !items.length,
       langs: req.app.locals.langs || res.locals.langs,
     });
   });
@@ -2734,25 +2738,27 @@ function routes() {
       });
       toastT(req, res, "/instellingen/werkruimtes", "workspace.created");
     } catch (err) {
-      toast(res, "/instellingen/werkruimtes", workspaceError(req, err));
+      toast(res, "/instellingen/werkruimtes?nieuw=1", workspaceError(req, err));
     }
   });
 
   r.post("/instellingen/werkruimtes/:slug", requireGlobalAdmin, (req, res) => {
+    const next = `/instellingen/werkruimtes?ws=${encodeURIComponent(req.params.slug)}`;
     try {
       setWorkspaceDomains(req.params.slug, req.body.domains);
-      toastT(req, res, "/instellingen/werkruimtes", "workspace.saved");
+      toastT(req, res, next, "workspace.saved");
     } catch (err) {
-      toast(res, "/instellingen/werkruimtes", workspaceError(req, err));
+      toast(res, next, workspaceError(req, err));
     }
   });
 
   r.post("/instellingen/werkruimtes/:slug/beheerder", requireGlobalAdmin, (req, res) => {
+    const next = `/instellingen/werkruimtes?ws=${encodeURIComponent(req.params.slug)}`;
     try {
       addWorkspaceAdmin(req.params.slug, workspaceAdminInput(req.body));
-      toastT(req, res, "/instellingen/werkruimtes", "workspace.adminCreated");
+      toastT(req, res, next, "workspace.adminCreated");
     } catch (err) {
-      toast(res, "/instellingen/werkruimtes", workspaceError(req, err));
+      toast(res, next, workspaceError(req, err));
     }
   });
 

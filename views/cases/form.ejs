@@ -1,7 +1,7 @@
 <%
   const z = zaak || {};
   const today = new Date().toISOString().slice(0, 10);
-  const leadStart = (z.createdAt || "").slice(0, 10) || today;
+  const leadStart = (z.startdatum || z.createdAt || "").slice(0, 10) || today;
   const selectedPersonen = z.personen || [];
   const selectedBedrijven = z.bedrijven || [];
   const personOptions = (typeof personen !== "undefined" ? personen : []).map(function (p) {
@@ -29,10 +29,7 @@
   <div class="form-cols">
     <section class="form-card">
       <h2>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-          <rect width="20" height="14" x="2" y="6" rx="2"/>
-        </svg>
+        <%- icon("clipboard-list") %>
         <%= t('cases.tabDetails') %>
       </h2>
       <div class="form-grid">
@@ -77,21 +74,21 @@
         </div>
         <div class="form-grid form-grid-2 span-all">
           <label>
-            <%= t('cases.leadStart') %>
-            <input type="date" value="<%= leadStart %>" data-lead-start>
-            <span class="hint"><%= t('cases.leadHint') %></span>
+            <%= t('cases.startDate') %>
+            <input type="date" name="startdatum" value="<%= leadStart %>" data-lead-start>
           </label>
-          <p class="planned-end"><%= t('cases.plannedEnd') %>: <span data-planned-end><%= z.deadline ? formatDate(z.deadline) : '—' %></span></p>
+          <label>
+            <%= t('cases.endDate') %>
+            <input type="date" class="is-readonly" value="<%= (z.deadline || '').slice(0, 10) %>" data-planned-end readonly tabindex="-1">
+          </label>
+          <p class="hint span-all"><%= t('cases.leadHint') %></p>
         </div>
       </div>
     </section>
 
     <section class="form-card" data-stakeholder-picker>
       <h2>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
-          <circle cx="12" cy="7" r="4"/>
-        </svg>
+        <%- icon("user") %>
         <%= t('cases.stakeholders') %>
       </h2>
       <p class="hint"><%= t('cases.stakeholderHint') %></p>
@@ -99,7 +96,7 @@
         <% selectedPersonen.forEach(function (p) { %>
           <details class="holder" data-kind="person" data-id="<%= p.id %>">
             <summary>
-              <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+              <%- icon("chevron-down") %>
               <%= p.naam %>
             </summary>
             <div class="holder-body">
@@ -112,7 +109,7 @@
         <% selectedBedrijven.forEach(function (b) { %>
           <details class="holder" data-kind="company" data-id="<%= b.id %>">
             <summary>
-              <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+              <%- icon("chevron-down") %>
               <%= b.handelsnaam %>
             </summary>
             <div class="holder-body">
@@ -124,20 +121,12 @@
         <% }) %>
       </div>
       <div class="stake-add">
-        <div class="stake-add-row">
-          <select data-stake-kind>
-            <option value="person"><%= t('cases.stakeholderPerson') %></option>
-            <option value="company"><%= t('cases.stakeholderCompany') %></option>
-          </select>
-          <input type="search" data-stake-q placeholder="<%= t('cases.searchStakeholder') %>" autocomplete="off">
-        </div>
-        <select data-stake-pick>
-          <option value=""><%= t('common.none') %></option>
-        </select>
-        <button class="btn" type="button" data-stake-add>
-          <span aria-hidden="true">+</span>
-          <%= t('cases.add') %>
-        </button>
+        <label class="stake-search">
+          <span class="visually-hidden"><%= t('cases.searchStakeholder') %></span>
+          <%- icon("search") %>
+          <input type="search" data-stake-q placeholder="<%= t('cases.searchStakeholder') %>" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list">
+        </label>
+        <div class="stake-results" data-stake-results hidden role="listbox"></div>
       </div>
       <script type="application/json" data-stake-json><%- JSON.stringify({ persons: personOptions, companies: companyOptions }).replace(/</g, "\\u003c") %></script>
     </section>

@@ -9,13 +9,13 @@
     <% } %>
     <div class="view-switch">
       <a class="<%= view === 'overview' ? 'is-active' : '' %>" href="<%= base %>" title="<%= t('common.grouped') %>">
-        <svg viewBox="0 0 24 24"><path d="M4 6h16v3H4zm0 5h16v3H4zm0 5h16v3H4z"/></svg>
+        <%- icon("list") %>
       </a>
       <a class="<%= view === 'table' ? 'is-active' : '' %>" href="<%= base %>?view=table" title="<%= t('common.tableView') %>">
-        <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zm2 2v2h12V7zm0 4v2h12v-2zm0 4v2h12v-2z"/></svg>
+        <%- icon("table-2") %>
       </a>
       <a class="<%= view === 'board' ? 'is-active' : '' %>" href="<%= base %>?view=board" title="<%= t('common.boardView') %>">
-        <svg viewBox="0 0 24 24"><path d="M4 5h6v14H4zm8 0h8v8h-8zm0 10h8v4h-8z"/></svg>
+        <%- icon("square-kanban") %>
       </a>
     </div>
   </div>

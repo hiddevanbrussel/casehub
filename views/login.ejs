@@ -1,15 +1,20 @@
 <!DOCTYPE html>
-<html lang="<%= lang %>">
+<html lang="<%= lang %>"<% if (theme === 'dark') { %> data-theme="dark"<% } %>>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= t('login.title') %> · <%= meta.orgName %></title>
+  <link rel="icon" href="/public/brand/mark.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/public/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/css/app.css?v=login-hero-8">
 </head>
-<body class="login-body">
+<body class="login-body has-hero">
+  <div class="login-hero-wrap" aria-hidden="true">
+    <img class="login-hero is-light" src="/public/illustrations/login-hero.jpg?v=8" width="2048" height="1152" alt="" decoding="async" fetchpriority="high">
+    <img class="login-hero is-dark" src="/public/illustrations/login-hero-dark.jpg?v=8" width="2048" height="1152" alt="" decoding="async">
+  </div>
   <main class="login-card">
     <div class="brand brand-lg">
       <%- include("partials/brand-mark") %>
@@ -17,12 +22,24 @@
     </div>
     <h1><%= t('login.title') %></h1>
     <% if (error) { %><p class="alert"><%= error %></p><% } %>
-    <% if (typeof azureReady !== "undefined" && azureReady) { %>
-      <a class="ghost btn-block ms-btn" href="/auth/azure"><%= t('login.microsoft') %></a>
-      <p class="hint login-or"><%= t('login.orEmail') %></p>
-    <% } %>
-    <form method="post" action="/login">
+    <% const loginNext = next && next !== "/" ? "/login?next=" + encodeURIComponent(next) : "/login"; %>
+    <form id="login-form" method="post" action="/login">
       <input type="hidden" name="next" value="<%= next %>">
+      <% if (typeof workspaces !== "undefined" && workspaces.length > 1) { %>
+      <label><%= t("login.workspace") %>
+        <select name="workspace" required data-workspace-jump data-next="<%= loginNext %>">
+          <% workspaces.forEach(function (item) { %>
+          <option value="<%= item.slug %>" <%= workspaceSlug === item.slug ? "selected" : "" %>><%= item.name %></option>
+          <% }) %>
+        </select>
+      </label>
+      <% } else if (workspaceSlug) { %>
+      <input type="hidden" name="workspace" value="<%= workspaceSlug %>">
+      <% } %>
+      <% if (typeof azureReady !== "undefined" && azureReady) { %>
+        <a class="ghost btn-block ms-btn" href="/auth/azure?workspace=<%= encodeURIComponent(workspaceSlug || "") %>"><%= t('login.microsoft') %></a>
+        <p class="hint login-or"><%= t('login.orEmail') %></p>
+      <% } %>
       <label><%= t('login.email') %>
         <input type="email" name="email" required autofocus value="<%= typeof showDemo !== 'undefined' && showDemo ? 'admin@zaakhub.local' : '' %>">
       </label>
@@ -35,8 +52,16 @@
     <p class="hint"><%= t('login.demo') %>: <code>admin@zaakhub.local</code> / <code>ChangeMe!Admin</code></p>
     <% } %>
     <div class="login-lang">
+      <%- include("partials/theme-toggle") %>
       <%- include("partials/lang-switcher") %>
     </div>
   </main>
+  <%- include("partials/boot") %>
+  <script src="/public/js/theme.js?v=boot"></script>
+  <script>
+    document.querySelector("[data-workspace-jump]")?.addEventListener("change", function () {
+      location.href = "/w/" + encodeURIComponent(this.value) + "?next=" + encodeURIComponent(this.getAttribute("data-next") || "/login");
+    });
+  </script>
 </body>
 </html>

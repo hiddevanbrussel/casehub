@@ -5,7 +5,7 @@
     <h1><%= heading %></h1>
   </div>
   <% if (isModal) { %>
-    <button type="button" class="icon-btn" data-modal-close aria-label="<%= t('common.close') %>">×</button>
+    <button type="button" class="icon-btn" data-modal-close aria-label="<%= t('common.close') %>"><%- icon("x") %></button>
   <% } else { %>
     <a class="ghost" href="<%= cancelHref %>"><%= t('common.cancel') %></a>
   <% } %>

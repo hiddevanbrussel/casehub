@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>"<% if (theme === 'dark') { %> data-theme="dark"<% } %>>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= t("workspace.title") %> · <%= meta.orgName %></title>
+  <link rel="icon" href="/public/brand/mark.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/css/app.css?v=ws-domain">
+</head>
+<body class="login-body">
+  <main class="login-card setup-card">
+    <div class="brand brand-lg">
+      <%- include("../partials/brand-mark") %>
+      <strong><%= t("workspace.title") %></strong>
+    </div>
+    <p class="lede"><%= t("workspace.lede") %></p>
+    <% if (error) { %><p class="alert"><%= error %></p><% } %>
+    <% if (items.length) { %>
+    <ul class="workspace-pick">
+      <% items.forEach(function (item) { %>
+      <li>
+        <a href="/w/<%= item.slug %>">
+          <strong><%= item.name %></strong>
+          <small>/w/<%= item.slug %> · <%= String(item.defaultLang || "en").toUpperCase() %></small>
+        </a>
+      </li>
+      <% }) %>
+    </ul>
+    <% } else { %>
+    <p class="muted"><%= t("workspace.empty") %></p>
+    <% } %>
+    <% if (canCreate) { %>
+    <form method="post" action="/werkruimtes">
+      <label><%= t("workspace.name") %>
+        <input name="name" required autofocus>
+      </label>
+      <label><%= t("workspace.slug") %>
+        <input name="slug" placeholder="nl">
+        <span class="hint"><%= t("workspace.slugHint") %></span>
+      </label>
+      <label><%= t("workspace.domain") %>
+        <input name="domains" placeholder="<%= t("workspace.domainPlaceholder") %>" autocomplete="off">
+        <span class="hint"><%= t("workspace.domainHint") %></span>
+      </label>
+      <label><%= t("workspace.lang") %>
+        <select name="defaultLang">
+          <% langs.forEach(function (item) { %>
+          <option value="<%= item.id %>" <%= item.id === lang ? "selected" : "" %>><%= item.label %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label><%= t("workspace.profile") %>
+        <select name="appProfile">
+          <option value="cases"><%= t("onboard.profileCases") %></option>
+          <option value="hr"><%= t("onboard.profileHr") %></option>
+          <option value="both"><%= t("onboard.profileBoth") %></option>
+        </select>
+      </label>
+      <label class="set-toggle">
+        <span>
+          <strong><%= t("workspace.seedDemo") %></strong>
+          <small><%= t("workspace.seedHint") %></small>
+        </span>
+        <input type="checkbox" name="seedDemo" value="1" checked>
+      </label>
+      <button class="btn btn-block" type="submit"><%= t("workspace.create") %></button>
+    </form>
+    <% } %>
+    <div class="login-lang">
+      <%- include("../partials/theme-toggle") %>
+      <%- include("../partials/lang-switcher") %>
+    </div>
+  </main>
+  <%- include("../partials/boot") %>
+  <script src="/public/js/theme.js?v=boot"></script>
+</body>
+</html>

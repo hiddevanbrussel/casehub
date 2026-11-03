@@ -1,7 +1,8 @@
 node_modules/
 data/db.json
-data/uploads/**
-!data/uploads/.gitkeep
+data/platform.json
+data/tenants/
+data/uploads/
 .env
 *.log
 .DS_Store

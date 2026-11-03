@@ -1,15 +1,17 @@
 <!DOCTYPE html>
-<html lang="<%= lang %>">
+<html lang="<%= lang %>"<% if (theme === 'dark') { %> data-theme="dark"<% } %>>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= t('onboard.title') %> · <%= meta.orgName %></title>
+  <link rel="icon" href="/public/brand/mark.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/public/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/css/app.css?v=ws-onboard">
 </head>
 <body class="login-body">
+  <% const setupKind = typeof kind !== "undefined" ? kind : "tenant"; %>
   <main class="login-card setup-card">
     <div class="setup-top">
       <div class="brand brand-lg">
@@ -17,13 +19,14 @@
         <strong><%= meta.orgName %></strong>
       </div>
       <div class="login-lang">
+        <%- include("partials/theme-toggle") %>
         <%- include("partials/lang-switcher") %>
       </div>
     </div>
     <h1><%= t('onboard.title') %></h1>
-    <p class="lede"><%= t('onboard.lede') %></p>
+    <p class="lede"><%= setupKind === "platform" ? t("onboard.platformLede") : t("onboard.lede") %></p>
     <p class="hint"><%= t('onboard.stepOf', { n: stepIndex + 1, total: steps.length }) %></p>
-    <ol class="setup-steps">
+    <ol class="setup-steps" style="grid-template-columns: repeat(<%= steps.length %>, 1fr)">
       <% steps.forEach(function (item, i) { %>
         <li class="<%= i < stepIndex ? 'is-done' : (i === stepIndex ? 'is-active' : '') %>"><%= t('onboard.' + item) %></li>
       <% }) %>
@@ -95,7 +98,7 @@
     <% if (step === "admin") { %>
     <form method="post" action="/setup">
       <input type="hidden" name="step" value="admin">
-      <p class="hint"><%= t('onboard.adminLede') %></p>
+      <p class="hint"><%= setupKind === "platform" ? t("onboard.adminPlatformLede") : t("onboard.adminLede") %></p>
       <div class="form-row form-row-2">
         <label><%= t('employees.firstName') %>
           <input name="voornaam" required autofocus value="<%= values.voornaam || '' %>">
@@ -108,14 +111,80 @@
         <input type="email" name="email" required value="<%= values.email || '' %>">
       </label>
       <label><%= t('employees.password') %>
-        <input type="password" name="wachtwoord" required minlength="8" autocomplete="new-password">
+        <input type="password" name="wachtwoord" <%= values.id ? "" : "required" %> minlength="8" autocomplete="new-password" placeholder="<%= values.id ? t('employees.keepPassword') : '' %>">
       </label>
       <label><%= t('onboard.passwordConfirm') %>
-        <input type="password" name="wachtwoord2" required minlength="8" autocomplete="new-password">
+        <input type="password" name="wachtwoord2" <%= values.id ? "" : "required" %> minlength="8" autocomplete="new-password">
       </label>
       <div class="setup-actions">
+        <% if (setupKind !== "platform") { %>
         <a class="ghost" href="/setup?step=profile"><%= t('onboard.back') %></a>
         <button class="btn" type="submit"><%= t('onboard.next') %></button>
+        <% } else { %>
+        <button class="btn" type="submit"><%= t('onboard.next') %></button>
+        <% } %>
+      </div>
+    </form>
+    <% } %>
+
+    <% if (step === "firstWorkspace") { %>
+    <form method="post" action="/setup">
+      <input type="hidden" name="step" value="firstWorkspace">
+      <p class="hint"><%= t("onboard.firstWorkspaceLede") %></p>
+      <label><%= t("workspace.name") %>
+        <input name="name" required autofocus value="<%= values.name || '' %>" placeholder="CaseFlow" autocomplete="off">
+      </label>
+      <div class="form-row form-row-2">
+        <label><%= t("workspace.slug") %>
+          <input name="slug" value="<%= values.slug || '' %>" placeholder="nl" autocomplete="off">
+          <span class="hint"><%= t("workspace.slugHint") %></span>
+        </label>
+        <label><%= t("workspace.lang") %>
+          <select name="defaultLang">
+            <% langs.forEach(function (item) { %>
+            <option value="<%= item.id %>" <%= (values.defaultLang || lang) === item.id ? "selected" : "" %>><%= item.label %></option>
+            <% }) %>
+          </select>
+        </label>
+      </div>
+      <label><%= t("workspace.domain") %>
+        <input name="domains" value="<%= values.domains || '' %>" placeholder="<%= t("workspace.domainPlaceholder") %>" autocomplete="off">
+        <span class="hint"><%= t("workspace.domainHint") %></span>
+      </label>
+      <div class="profile-picks">
+        <label class="profile-pick">
+          <input type="radio" name="appProfile" value="cases" <%= (values.appProfile || "cases") === "cases" ? "checked" : "" %>>
+          <span>
+            <strong><%= t("onboard.profileCases") %></strong>
+            <small><%= t("onboard.profileCasesHint") %></small>
+          </span>
+        </label>
+        <label class="profile-pick">
+          <input type="radio" name="appProfile" value="hr" <%= values.appProfile === "hr" ? "checked" : "" %>>
+          <span>
+            <strong><%= t("onboard.profileHr") %></strong>
+            <small><%= t("onboard.profileHrHint") %></small>
+          </span>
+        </label>
+        <label class="profile-pick">
+          <input type="radio" name="appProfile" value="both" <%= values.appProfile === "both" ? "checked" : "" %>>
+          <span>
+            <strong><%= t("onboard.profileBoth") %></strong>
+            <small><%= t("onboard.profileBothHint") %></small>
+          </span>
+        </label>
+      </div>
+      <label class="set-toggle">
+        <span>
+          <strong><%= t("workspace.seedDemo") %></strong>
+          <small><%= t("workspace.seedHint") %></small>
+        </span>
+        <input type="hidden" name="seedDemo" value="0">
+        <input type="checkbox" name="seedDemo" value="1" <%= values.seedDemo ? "checked" : "" %>>
+      </label>
+      <div class="setup-actions">
+        <a class="ghost" href="/setup?step=admin"><%= t("onboard.back") %></a>
+        <button class="btn" type="submit"><%= t("onboard.finish") %></button>
       </div>
     </form>
     <% } %>
@@ -179,5 +248,7 @@
     </form>
     <% } %>
   </main>
+  <%- include("partials/boot") %>
+  <script src="/public/js/theme.js?v=boot"></script>
 </body>
 </html>

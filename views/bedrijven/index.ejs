@@ -1,98 +1,292 @@
-<%- include("../partials/overview-head", { heading: t("companies.overview"), newHref: "/bedrijven/nieuw", newLabel: t("companies.new"), showNew: canWrite, base: "/bedrijven", view: view }) %>
-
-<form class="filters overview-filters <%= q || group ? 'is-open' : '' %>" method="get" action="/bedrijven">
-  <% if (view !== 'overview') { %><input type="hidden" name="view" value="<%= view %>"><% } %>
-  <input type="search" name="q" value="<%= q %>" placeholder="<%= t('companies.search') %>">
-  <select name="group">
-    <option value=""><%= t('companies.all') %></option>
-    <% groups.forEach(function (g) { %>
-      <option value="<%= g.id %>" <%= group === g.id ? 'selected' : '' %>><%= t('companyGroup.' + g.id) %></option>
-    <% }) %>
-  </select>
-  <button class="ghost" type="submit"><%= t('common.apply') %></button>
-</form>
-
-<% if (view === 'board') { %>
-  <div class="board">
-    <% groups.forEach(function (g) { %>
-      <% const items = bedrijven.filter(function (b) { return b.group === g.id; }); %>
-      <section class="board-col">
-        <h3 class="status-<%= g.id %>"><%= t('companyGroup.' + g.id) %> · <%= items.length %></h3>
-        <% items.forEach(function (b) { %>
-          <a class="board-card" href="/bedrijven/<%= b.id %>">
-            <strong><%= b.handelsnaam %></strong>
-            <small class="mono"><%= b.nummer || b.kvk || '—' %></small>
-          </a>
-        <% }) %>
-      </section>
-    <% }) %>
-  </div>
-<% } else if (view === 'table') { %>
-  <% if (!bedrijven.length) { %>
-    <div class="empty"><%= t('companies.noFound') %></div>
-  <% } else { %>
-  <table class="table">
-    <thead><tr><th><%= t('companies.name') %></th><th><%= t('companies.companyId') %></th><th><%= t('companies.kvk') %></th><th><%= t('companies.place') %></th><th><%= t('companies.cases') %></th></tr></thead>
-    <tbody>
-      <% bedrijven.forEach(function (b) { %>
-      <tr>
-        <td><a href="/bedrijven/<%= b.id %>"><%= b.handelsnaam %></a></td>
-        <td class="mono"><%= b.nummer %></td>
-        <td class="mono"><%= b.kvk || '—' %></td>
-        <td><%= b.plaats || '—' %></td>
-        <td><%= b.caseCount %></td>
-      </tr>
-      <% }) %>
-    </tbody>
-  </table>
-  <% } %>
-<% } else { %>
-  <% groups.forEach(function (g) { %>
-    <% const items = bedrijven.filter(function (b) { return b.group === g.id; }); %>
-    <section class="case-group">
-      <header class="case-group-head">
-        <h2 class="status-<%= g.id %>"><%= t('companyGroup.' + g.id) %></h2>
-        <span class="count-pill"><%= items.length %></span>
-      </header>
-      <% if (!items.length) { %>
-        <div class="empty-status"><%= t('companies.noInStatus') %></div>
-      <% } else { %>
-      <table class="overview-table">
-        <thead>
-          <tr>
-            <th><%= t('companies.name') %></th>
-            <th><%= t('companies.companyId') %></th>
-            <th><%= t('companies.kvk') %></th>
-            <th><%= t('companies.place') %></th>
-            <th><%= t('companies.email') %></th>
-            <th><%= t('companies.phone') %></th>
-            <th><%= t('companies.cases') %></th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% items.forEach(function (b) { %>
-          <tr class="overview-row" data-expand>
-            <td><a href="/bedrijven/<%= b.id %>"><%= b.handelsnaam %></a></td>
-            <td class="mono muted"><%= b.nummer %></td>
-            <td class="mono muted"><%= b.kvk || '—' %></td>
-            <td><%= b.plaats || '—' %></td>
-            <td class="muted"><%= b.email || '—' %></td>
-            <td class="muted"><%= b.telefoon || '—' %></td>
-            <td class="muted"><%= b.caseCount %></td>
-            <td class="chevron">▾</td>
-          </tr>
-          <tr class="overview-detail">
-            <td colspan="8">
-              <p class="muted"><%= [b.adres, b.postcode, b.plaats].filter(Boolean).join(', ') || t('companies.noAddress') %></p>
-              <a href="/bedrijven/<%= b.id %>"><%= t('companies.open') %></a>
-              · <a href="/bedrijven/<%= b.id %>/bewerken"><%= t('common.edit') %></a>
-            </td>
-          </tr>
-          <% }) %>
-        </tbody>
-      </table>
+<%
+  function listQs(overrides) {
+    const src = Object.assign({
+      q: q,
+      group: group,
+      focus: typeof focus !== "undefined" ? focus : "",
+    }, overrides || {});
+    const params = [];
+    Object.keys(src).forEach(function (key) {
+      const value = src[key];
+      if (!value) return;
+      params.push(encodeURIComponent(key) + "=" + encodeURIComponent(value));
+    });
+    return params.length ? "?" + params.join("&") : "";
+  }
+  const peekCompany = typeof peek !== "undefined" ? peek : null;
+  const focusId = typeof focus !== "undefined" ? focus : "";
+  const composing = Boolean(typeof compose !== "undefined" && compose);
+  const peekCaseRows = typeof peekCases !== "undefined" ? peekCases : [];
+  const peekPersonRows = typeof peekPersons !== "undefined" ? peekPersons : [];
+  const initials = function (name) {
+    return String(name || "?").split(/\s+/).map(function (part) { return part[0]; }).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  };
+  const canEditPeek = Boolean(canWrite && peekCompany);
+  const canDelete = Boolean(canWrite);
+  const pending = Boolean(typeof lazyPending !== "undefined" && lazyPending);
+%>
+<section class="list-work" data-list-lazy<% if (pending) { %> data-list-pending<% } %>>
+  <div class="list-pane" id="naw-queue">
+    <div class="mail-folder">
+      <h1><%= t("nav.companies") %></h1>
+      <% if (canWrite) { %>
+      <a class="btn dash-cta mail-new" href="<%= listQs({ nieuw: 1, focus: '' }) %>">
+        <%- icon("plus") %>
+        <%= t("companies.new") %>
+      </a>
       <% } %>
-    </section>
-  <% }) %>
-<% } %>
+    </div>
+    <form class="list-toolbar" method="get" action="/bedrijven">
+      <label class="list-search">
+        <%- icon("search") %>
+        <input type="search" name="q" value="<%= q %>" placeholder="<%= t('companies.search') %>">
+      </label>
+      <div class="list-filters">
+        <select name="group" class="list-filter" data-auto-submit>
+          <option value=""><%= t("companies.all") %></option>
+          <% groups.forEach(function (g) { %>
+            <option value="<%= g.id %>" <%= group === g.id ? "selected" : "" %>><%= t("companyGroup." + g.id) %></option>
+          <% }) %>
+        </select>
+      </div>
+      <% if (focusId) { %><input type="hidden" name="focus" value="<%= focusId %>"><% } %>
+    </form>
+
+    <div class="list-fill" data-list-slot="queue">
+    <% if (pending) { %>
+      <%- include("../partials/list-skeleton", { simple: true, checks: canDelete, count: 8 }) %>
+      <noscript>
+        <p class="empty list-empty"><a href="<%= listQs({ full: 1 }) %>"><%= t("common.showList") %></a></p>
+      </noscript>
+    <% } else if (!bedrijven.length && !composing) { %>
+      <div class="empty list-empty"><%= t("companies.noFound") %></div>
+    <% } else { %>
+    <% if (canDelete) { %><form class="list-bulk-form" method="post" action="/bedrijven/bulk" data-confirm-delete="<%= t('companies.confirmDeleteMany') %>"><% } %>
+    <% if (canDelete) { %>
+      <% if (q) { %><input type="hidden" name="filterQ" value="<%= q %>"><% } %>
+      <% if (group) { %><input type="hidden" name="filterGroup" value="<%= group %>"><% } %>
+    <% } %>
+    <div class="queue<%= canDelete ? " has-checks" : "" %>" data-queue>
+      <% if (canDelete) { %>
+      <div class="queue-head">
+        <label class="list-check">
+          <input type="checkbox" data-check-all aria-label="<%= t('caseTypes.selectAll') %>">
+        </label>
+      </div>
+      <% } %>
+      <% if (composing) { %>
+      <div class="queue-row is-focused is-draft is-simple">
+        <% if (canDelete) { %><span class="list-check" aria-hidden="true"></span><% } %>
+        <div class="queue-hit">
+          <span class="queue-top">
+            <span class="queue-from"><%= t("companies.companyId") %></span>
+            <span class="queue-when"></span>
+          </span>
+          <strong class="queue-title" data-draft-title data-empty="<%= t('companies.new') %>"><%= t("companies.new") %></strong>
+          <span class="queue-snippet"><%= t("cases.newDraft") %></span>
+        </div>
+      </div>
+      <% } %>
+      <% bedrijven.forEach(function (b) { %>
+      <div class="queue-row is-simple <%= b.id === focusId ? 'is-focused' : '' %>" data-open="/bedrijven/<%= b.id %>">
+        <% if (canDelete) { %>
+        <label class="list-check">
+          <input type="checkbox" name="ids" value="<%= b.id %>" data-check-row aria-label="<%= b.handelsnaam %>">
+        </label>
+        <% } %>
+        <a class="queue-hit" href="<%= listQs({ focus: b.id }) %>" <%= b.id === focusId ? 'aria-current="true"' : '' %>>
+          <span class="queue-top">
+            <span class="queue-from"><%= b.kvk || b.nummer || t("companies.companyId") %></span>
+            <span class="queue-when"><%= b.updatedAt ? formatDate(b.updatedAt) : "" %></span>
+          </span>
+          <strong class="queue-title" title="<%= b.handelsnaam %>"><%= b.handelsnaam %></strong>
+          <span class="queue-snippet"><%= b.plaats || b.nummer %> · <%= t("companies.cases") %> <%= b.caseCount || 0 %></span>
+        </a>
+      </div>
+      <% }) %>
+    </div>
+    <% if (canDelete) { %>
+      <%- include("../partials/list-bulk-delete") %>
+    </form>
+    <% } %>
+    <% } %>
+    </div>
+  </div>
+
+  <div
+    class="list-split"
+    role="separator"
+    aria-orientation="vertical"
+    aria-controls="naw-queue"
+    aria-valuemin="220"
+    aria-valuemax="560"
+    aria-valuenow="280"
+    aria-label="<%= t('cases.resizeList') %>"
+    title="<%= t('cases.resizeList') %>"
+    tabindex="0"
+    data-split
+  ><span class="visually-hidden"><%= t("cases.resizeList") %></span></div>
+
+  <div class="list-peek-slot" data-list-slot="peek">
+  <% if (pending) { %>
+    <%- include("../partials/peek-skeleton") %>
+  <% } else { %>
+  <aside class="list-peek<%= composing ? ' is-editing' : '' %>" data-peek<% if (composing) { %> data-peek-compose<% } %> aria-live="polite">
+    <% if (!peekCompany) { %>
+      <div class="list-peek-empty">
+        <% if (!bedrijven.length) { %>
+        <img class="peek-empty-art peek-empty-art-light" src="/public/illustrations/companies-empty.png" alt="" width="768" height="512">
+        <img class="peek-empty-art peek-empty-art-dark" src="/public/illustrations/companies-empty-dark.png" alt="" width="768" height="512">
+        <p><%= t("companies.noFound") %></p>
+        <% } else { %>
+        <p><%= t("companies.peekEmpty") %></p>
+        <% } %>
+      </div>
+    <% } else { %>
+      <% if (canEditPeek && !composing) { %>
+      <div class="peek-bar peek-view">
+        <div class="peek-actions">
+          <button type="button" class="peek-edit-toggle" data-peek-edit>
+            <%- icon("pencil") %>
+            <%= t("common.edit") %>
+          </button>
+          <details class="menu-dots">
+            <summary class="icon-more" aria-label="<%= t('cases.more') %>"><%- icon("ellipsis") %></summary>
+            <div class="menu-dots-list">
+              <form method="post" action="/bedrijven/<%= peekCompany.id %>/verwijderen" data-confirm="<%= t('companies.confirmDelete') %>">
+                <input type="hidden" name="from" value="list">
+                <% if (q) { %><input type="hidden" name="filterQ" value="<%= q %>"><% } %>
+                <% if (group) { %><input type="hidden" name="filterGroup" value="<%= group %>"><% } %>
+                <button class="danger-text" type="submit"><%= t("common.delete") %></button>
+              </form>
+            </div>
+          </details>
+        </div>
+      </div>
+      <% } %>
+      <% if (canEditPeek || composing) { %>
+      <div class="peek-bar peek-edit">
+        <% if (composing) { %>
+        <a href="/bedrijven<%= listQs({ focus: '' }) %>" data-peek-cancel><%= t("common.cancel") %></a>
+        <% } else { %>
+        <button type="button" data-peek-cancel><%= t("common.cancel") %></button>
+        <% } %>
+        <button class="btn" type="submit" form="peek-inline"><%= t("common.save") %></button>
+      </div>
+      <% } %>
+      <form id="peek-inline" class="peek-inline" method="post" action="<%= composing ? '/bedrijven' : '/bedrijven/' + peekCompany.id %>">
+        <input type="hidden" name="from" value="list">
+        <% if (q) { %><input type="hidden" name="filterQ" value="<%= q %>"><% } %>
+        <% if (group) { %><input type="hidden" name="filterGroup" value="<%= group %>"><% } %>
+        <% if (!composing) { %><input type="hidden" name="filterFocus" value="<%= peekCompany.id %>"><% } %>
+        <p class="peek-id"><%= composing ? t("cases.caseIdSoon") : peekCompany.nummer %></p>
+        <h2 class="peek-subject peek-view"><%= peekCompany.handelsnaam %></h2>
+        <label class="visually-hidden" for="peek-title"><%= t("companies.name") %></label>
+        <input id="peek-title" class="peek-subject-input peek-edit" name="handelsnaam" required value="<%= peekCompany.handelsnaam || "" %>" placeholder="<%= t('companies.name') %>" autocomplete="off">
+        <div class="peek-fields peek-edit">
+          <label><%= t("companies.companyId") %>
+            <input class="is-readonly" value="<%= composing ? t('cases.caseIdSoon') : peekCompany.nummer %>" readonly>
+          </label>
+          <label><%= t("companies.kvk") %>
+            <input name="kvk" value="<%= peekCompany.kvk || "" %>">
+          </label>
+          <label><%= t("companies.email") %>
+            <input type="email" name="email" value="<%= peekCompany.email || "" %>">
+          </label>
+          <label><%= t("companies.phone") %>
+            <input name="telefoon" value="<%= peekCompany.telefoon || "" %>">
+          </label>
+          <label class="peek-span"><%= t("companies.address") %>
+            <input name="adres" value="<%= peekCompany.adres || "" %>">
+          </label>
+          <label><%= t("companies.postcode") %>
+            <input name="postcode" value="<%= peekCompany.postcode || "" %>">
+          </label>
+          <label><%= t("companies.place") %>
+            <input name="plaats" value="<%= peekCompany.plaats || "" %>">
+          </label>
+        </div>
+        <dl class="peek-props peek-view">
+          <div class="peek-props-row">
+            <div>
+              <dt><%= t("companies.kvk") %></dt>
+              <dd class="<%= peekCompany.kvk ? '' : 'is-empty' %>"><%= peekCompany.kvk || "—" %></dd>
+            </div>
+            <div>
+              <dt><%= t("companies.email") %></dt>
+              <dd class="<%= peekCompany.email ? '' : 'is-empty' %>"><%= peekCompany.email || "—" %></dd>
+            </div>
+            <div>
+              <dt><%= t("companies.phone") %></dt>
+              <dd class="<%= peekCompany.telefoon ? '' : 'is-empty' %>"><%= peekCompany.telefoon || "—" %></dd>
+            </div>
+          </div>
+          <div class="peek-props-row">
+            <div class="peek-span-all">
+              <dt><%= t("companies.address") %></dt>
+              <dd class="<%= peekCompany.adres ? 'is-wrap' : 'is-empty' %>"><%= peekCompany.adres || "—" %></dd>
+            </div>
+          </div>
+          <div class="peek-props-row">
+            <div>
+              <dt><%= t("companies.postcode") %></dt>
+              <dd class="<%= peekCompany.postcode ? '' : 'is-empty' %>"><%= peekCompany.postcode || "—" %></dd>
+            </div>
+            <div>
+              <dt><%= t("companies.place") %></dt>
+              <dd class="<%= peekCompany.plaats ? '' : 'is-empty' %>"><%= peekCompany.plaats || "—" %></dd>
+            </div>
+          </div>
+        </dl>
+        <% if (peekCompany.notities) { %><p class="peek-copy peek-view"><%= peekCompany.notities %></p><% } %>
+        <label class="peek-edit peek-desc-label" for="peek-body"><%= t("companies.notes") %>
+          <textarea id="peek-body" class="peek-copy-input" name="notities" rows="5"><%= peekCompany.notities || "" %></textarea>
+        </label>
+      </form>
+      <% if (!composing) { %>
+      <div class="peek-tabs peek-view" role="tablist" aria-label="<%= peekCompany.handelsnaam %>">
+        <button type="button" class="is-active" role="tab" id="peek-tab-contacts" aria-controls="peek-panel-contacts" aria-selected="true" tabindex="0" data-peek-tab="contacts">
+          <%= t("companies.contacts") %><% if (peekPersonRows.length) { %> (<%= peekPersonRows.length %>)<% } %>
+        </button>
+        <button type="button" role="tab" id="peek-tab-cases" aria-controls="peek-panel-cases" aria-selected="false" tabindex="-1" data-peek-tab="cases">
+          <%= t("companies.linkedCases") %><% if (peekCaseRows.length) { %> (<%= peekCaseRows.length %>)<% } %>
+        </button>
+      </div>
+      <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-contacts" aria-labelledby="peek-tab-contacts" data-peek-panel="contacts">
+        <% if (!peekPersonRows.length) { %>
+          <p class="muted"><%= t("companies.noContacts") %></p>
+        <% } else { %>
+          <ul class="peek-stake-list peek-contact-list">
+            <% peekPersonRows.forEach(function (p) { %>
+              <li>
+                <span class="who-avatar assignee-av tone-<%= (p.id || "A").charCodeAt(0) % 4 %>" aria-hidden="true"><%= initials(p.naam) %></span>
+                <div>
+                  <a href="/personen?focus=<%= p.id %>"><%= p.naam || t("persons.anonymised") %></a>
+                  <% if (p.email || p.telefoon) { %>
+                    <small><%= [p.email, p.telefoon].filter(Boolean).join(" · ") %></small>
+                  <% } %>
+                </div>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </section>
+      <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-cases" aria-labelledby="peek-tab-cases" data-peek-panel="cases" hidden>
+        <% if (!peekCaseRows.length) { %>
+          <p class="muted"><%= t("companies.noCases") %></p>
+        <% } else { %>
+          <ul class="peek-stake-list">
+            <% peekCaseRows.forEach(function (z) { %>
+              <li>
+                <a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </section>
+      <% } %>
+    <% } %>
+  </aside>
+  <% } %>
+  </div>
+</section>

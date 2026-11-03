@@ -1,202 +1,307 @@
 <%
   const canGenerate = Boolean(createReady && recipes.length);
-  const detailsTab = tab !== "documents";
-  const holders = []
-    .concat((zaak.personen || []).map(function (p) { return { kind: "person", href: "/personen/" + p.id, name: p.naam, meta: [p.email, p.telefoon].filter(Boolean).join(" · "), extra: p.bedrijf ? p.bedrijf.handelsnaam : "" }; }))
-    .concat((zaak.bedrijven || []).map(function (b) { return { kind: "company", href: "/bedrijven/" + b.id, name: b.handelsnaam, meta: [b.kvk, b.plaats].filter(Boolean).join(" · "), extra: b.email || "" }; }));
+  const persons = zaak.personen || [];
+  const companies = zaak.bedrijven || [];
+  const events = typeof activity !== "undefined" ? activity : [];
+  const recentEvents = events.slice(0, 3);
+  const linkedBijlageIds = {};
+  (zaak.documentJobs || []).forEach(function (job) {
+    if (job.bijlageId) linkedBijlageIds[job.bijlageId] = true;
+  });
+  const docRows = [];
+  (zaak.documentJobs || []).forEach(function (job) {
+    const file = job.bijlageId ? zaak.bijlagen.find(function (b) { return b.id === job.bijlageId; }) : null;
+    const done = Boolean(file) || job.status === "success";
+    docRows.push({
+      name: file ? file.naam : job.recipeName,
+      size: file ? file.size : 0,
+      at: file ? file.at : job.updatedAt || job.createdAt,
+      fileHref: file ? "/zaken/" + zaak.id + "/bijlagen/" + file.id : "",
+      isPdf: file ? /pdf/i.test(file.mime || "") || /\.pdf$/i.test(file.naam || "") : /\.pdf$/i.test(job.recipeName || ""),
+      isImage: file ? /^image\//i.test(file.mime || "") || /\.(jpe?g|png|gif|webp)$/i.test(file.naam || "") : false,
+      createUrl: done ? "" : (job.finalizeUrl || ""),
+      status: done ? "success" : job.status,
+      error: job.error || "",
+      deleteHref: file
+        ? "/zaken/" + zaak.id + "/bijlagen/" + file.id + "/verwijderen"
+        : "/zaken/" + zaak.id + "/documenten/" + job.id + "/verwijderen",
+    });
+  });
+  zaak.bijlagen.forEach(function (b) {
+    if (linkedBijlageIds[b.id]) return;
+    docRows.push({
+      name: b.naam,
+      size: b.size,
+      at: b.at,
+      fileHref: "/zaken/" + zaak.id + "/bijlagen/" + b.id,
+      isPdf: /pdf/i.test(b.mime || "") || /\.pdf$/i.test(b.naam || ""),
+      isImage: /^image\//i.test(b.mime || "") || /\.(jpe?g|png|gif|webp)$/i.test(b.naam || ""),
+      createUrl: "",
+      status: "uploaded",
+      error: "",
+      deleteHref: "/zaken/" + zaak.id + "/bijlagen/" + b.id + "/verwijderen",
+    });
+  });
+  function formatSize(n) {
+    const bytes = Number(n) || 0;
+    if (!bytes) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(bytes < 10240 ? 1 : 0).replace(".0", "") + " kB";
+    return (bytes / 1048576).toFixed(1).replace(".0", "") + " MB";
+  }
+  function whenLabel(iso) {
+    if (!iso) return "";
+    const bucket = dayBucket(iso);
+    if (bucket === "today") return t("dash.todayAt", { time: formatTime(iso) });
+    if (bucket === "yesterday") return t("dash.yesterdayAt", { time: formatTime(iso) });
+    return formatDateTimeShort(iso);
+  }
+  function activityTitle(ev) {
+    if (ev.entity === "document" || ev.action === "bijlage") return t("cases.activityDoc", { name: ev.detail || "" });
+    if (ev.action === "aangemaakt") return t("cases.activityCreated");
+    if (ev.action === "gewijzigd") return t("cases.activityUpdated");
+    if (ev.detail) return ev.detail;
+    return t("cases.activityUpdated");
+  }
+  function docStatusLabel(code) {
+    if (code === "uploaded") return t("cases.docUploaded");
+    if (code === "success") return t("cases.docCompleted");
+    if (code === "error") return t("cases.docFailed");
+    if (code === "generating") return t("cases.docGenerating");
+    return t("cases.docInCreate");
+  }
+  function docKind(row) {
+    if (row.isPdf) return "pdf";
+    if (row.isImage) return "image";
+    return "file";
+  }
+  const tabId = tab || "overview";
+  const tabs = [
+    { id: "overview", href: "/zaken/" + zaak.id, label: t("cases.tabOverview") },
+    { id: "activity", href: "/zaken/" + zaak.id + "?tab=activity", label: t("cases.tabActivity") },
+    { id: "documents", href: "/zaken/" + zaak.id + "?tab=documents", label: t("cases.docsCount", { n: docRows.length }) },
+    { id: "relations", href: "/zaken/" + zaak.id + "?tab=relations", label: t("cases.tabRelations") },
+  ];
 %>
 <div class="case-page">
+  <a class="case-back-text" href="/zaken">
+    <%- icon("chevron-left") %>
+    <%= t("common.back") %>
+  </a>
+
   <div class="case-top">
     <div class="case-title">
-      <a class="case-back" href="/zaken" aria-label="<%= t('common.back') %>">
-        <svg viewBox="0 0 24 24"><path d="M15.4 4.6 14 3.2 6.2 11 14 18.8l1.4-1.4L9 11z"/></svg>
-      </a>
-      <h1><%= zaak.titel %></h1>
+      <p class="case-id"><%= zaak.zaaknummer %></p>
+      <div class="case-heading">
+        <h1><%= zaak.titel %></h1>
+        <% if (quickStatusChange) { %>
+        <form method="post" action="/zaken/<%= zaak.id %>/status" class="status-menu">
+          <details>
+            <summary class="case-status badge-<%= zaak.status %>" aria-label="<%= t('cases.changeStatus') %>">
+              <%= t("status." + zaak.status) %>
+              <%- icon("chevron-down") %>
+            </summary>
+            <div class="menu-dots-list">
+              <% statussen.forEach(function (s) { %>
+                <button type="submit" name="status" value="<%= s.id %>" class="<%= zaak.status === s.id ? 'is-current' : '' %>"><%= t("status." + s.id) %></button>
+              <% }) %>
+            </div>
+          </details>
+        </form>
+        <% } else { %>
+        <span class="case-status badge-<%= zaak.status %>"><%= t("status." + zaak.status) %></span>
+        <% } %>
+      </div>
     </div>
     <div class="actions">
-      <%- include("../partials/generate-doc", { action: "/zaken/" + zaak.id + "/documenten", recipes: recipes, canGenerate: canGenerate }) %>
-      <a class="ghost" href="/zaken/<%= zaak.id %>/bewerken">
-        <svg viewBox="0 0 24 24"><path d="M4 17.3V20h2.7l8-8-2.7-2.7zM17.8 7.2a.8.8 0 0 0 0-1.1l-1.9-1.9a.8.8 0 0 0-1.1 0l-1.5 1.5 3 3z"/></svg>
-        <%= t('common.edit') %>
-      </a>
+      <a class="ghost" href="/zaken/<%= zaak.id %>/bewerken"><%- icon("pencil") %> <%= t("common.edit") %></a>
       <details class="menu-dots">
-        <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>">⋯</summary>
+        <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>">
+          <%- icon("ellipsis") %>
+        </summary>
         <div class="menu-dots-list">
+          <button type="button" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>><%= t("cases.generateDoc") %></button>
+          <button type="button" data-generate-open="interactive" <%= canGenerate ? "" : "disabled" %>><%= t("cases.generateInteractive") %></button>
           <form method="post" action="/zaken/<%= zaak.id %>/verwijderen" data-confirm="<%= t('cases.confirmDelete') %>">
-            <button class="danger-text" type="submit"><%= t('common.delete') %></button>
+            <button class="danger-text" type="submit"><%= t("common.delete") %></button>
           </form>
         </div>
       </details>
     </div>
   </div>
 
-  <nav class="case-tabs">
-    <a class="<%= detailsTab ? 'is-active' : '' %>" href="/zaken/<%= zaak.id %>">
-      <svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2z"/></svg>
-      <%= t('cases.tabDetails') %>
-    </a>
-    <a class="<%= detailsTab ? '' : 'is-active' %>" href="/zaken/<%= zaak.id %>?tab=documents">
-      <svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm8 1.5V9h4.5z"/></svg>
-      <%= t('cases.tabDocuments') %>
-    </a>
+  <dl class="case-meta">
+    <div class="case-meta-item">
+      <dt><%= t("cases.reference") %></dt>
+      <dd><%= zaak.referentie || "—" %></dd>
+    </div>
+    <% if (zaak.zaaktype) { %>
+    <div class="case-meta-item">
+      <dt><%= t("cases.type") %></dt>
+      <dd><%= zaak.zaaktype %></dd>
+    </div>
+    <% } %>
+    <div class="case-meta-item">
+      <dt><%= t("cases.assignee") %></dt>
+      <dd><%= zaak.behandelaarNaam || "—" %></dd>
+    </div>
+    <div class="case-meta-item">
+      <dt><%= t("cases.startDate") %></dt>
+      <dd><%= formatDateLong(zaak.startdatum || zaak.createdAt) %></dd>
+    </div>
+    <div class="case-meta-item">
+      <dt><%= t("cases.endDate") %></dt>
+      <dd class="<%= zaak.overdue ? 'is-overdue' : '' %>"><%= zaak.deadline ? formatDateLong(zaak.deadline) : "—" %></dd>
+    </div>
+  </dl>
+
+  <nav class="case-tabs" aria-label="<%= zaak.titel %>">
+    <% tabs.forEach(function (item) { %>
+      <a class="<%= tabId === item.id ? 'is-active' : '' %>" href="<%= item.href %>"><%= item.label %></a>
+    <% }) %>
   </nav>
 
-  <section class="meta-bar">
-    <div>
-      <span><%= t('cases.caseId') %></span>
-      <strong class="mono"><%= zaak.zaaknummer %></strong>
+  <% if (tabId === "overview") { %>
+  <div class="case-split">
+    <div class="case-main">
+      <section class="case-body">
+        <h2><%= t("cases.descriptionTitle") %></h2>
+        <p class="case-copy"><%= zaak.omschrijving || t("cases.noDescription") %></p>
+      </section>
+      <section class="case-panel">
+        <header class="case-panel-head">
+          <h2><%= t("cases.recentActivity") %></h2>
+          <% if (events.length) { %>
+            <a href="/zaken/<%= zaak.id %>?tab=activity"><%= t("dash.viewAllShort") %></a>
+          <% } %>
+        </header>
+        <% if (!recentEvents.length) { %>
+          <p class="muted"><%= t("dash.noActivity") %></p>
+        <% } else { %>
+          <ol class="case-activity">
+            <% recentEvents.forEach(function (ev) { %>
+            <li>
+              <span class="dash-activity-ico ico-<%= ev.entity || 'zaak' %>" aria-hidden="true">
+                <% if (ev.entity === "document" || ev.action === "bijlage") { %>
+                <%- icon("file-text") %>
+                <% } else { %>
+                <%- icon("bookmark") %>
+                <% } %>
+              </span>
+              <div>
+                <p><%= activityTitle(ev) %></p>
+                <small><%= t("cases.activityBy", { name: ev.actor || "—" }) %> · <%= whenLabel(ev.at) %></small>
+              </div>
+            </li>
+            <% }) %>
+          </ol>
+        <% } %>
+      </section>
     </div>
-    <div>
-      <span><%= t('cases.status') %></span>
-      <strong><span class="badge badge-<%= zaak.status %>"><%= t('status.' + zaak.status) %></span></strong>
-    </div>
-    <div>
-      <span><%= t('cases.created') %></span>
-      <strong><%= formatDateTime(zaak.createdAt) %></strong>
-    </div>
-    <div>
-      <span><%= t('cases.updated') %></span>
-      <strong><%= formatDateTime(zaak.updatedAt) %></strong>
-    </div>
-  </section>
-
-  <% if (detailsTab) { %>
-  <section class="case-card">
-    <h2>
-      <svg viewBox="0 0 24 24"><path d="M7 4h10v2H7zm0 4h14v2H7zm0 4h10v2H7zm0 4h14v2H7z"/></svg>
-      <%= t('cases.leadTime') %>
-    </h2>
-    <div class="lead-grid">
-      <div>
-        <span><%= t('cases.leadStart') %></span>
-        <strong><%= formatDate(zaak.createdAt) %></strong>
-      </div>
-      <div>
-        <span><%= t('cases.plannedEnd') %></span>
-        <strong><%= formatDate(zaak.deadline) %></strong>
-      </div>
-    </div>
-    <div class="lead-prog">
-      <div class="prog">
-        <span class="prog-track"><span class="prog-fill" style="width: <%= zaak.voortgang %>%"></span></span>
-        <span><%= zaak.voortgang %>%</span>
-      </div>
-    </div>
-  </section>
-
-  <div class="case-cols">
-    <section class="case-card">
-      <h2>
-        <svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm8 1.5V9h4.5z"/></svg>
-        <%= t('cases.tabDetails') %>
-      </h2>
-      <div class="detail-grid">
-        <div>
-          <span><%= t('cases.reference') %></span>
-          <strong><%= zaak.referentie || "—" %></strong>
-        </div>
-        <div>
-          <span><%= t('cases.type') %></span>
-          <strong><%= zaak.zaaktype || "—" %></strong>
-        </div>
-        <div>
-          <span><%= t('cases.caseManager') %></span>
-          <strong><%= zaak.behandelaarNaam %></strong>
-        </div>
-      </div>
-      <div class="detail-copy">
-        <span><%= t('cases.description') %></span>
-        <p><%= zaak.omschrijving || t('cases.noDescription') %></p>
-      </div>
-    </section>
-
-    <section class="case-card">
-      <h2>
-        <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z"/></svg>
-        <%= t('cases.stakeholders') %>
-      </h2>
-      <% if (!holders.length) { %>
-        <p class="muted"><%= t('cases.noStakeholders') %></p>
-      <% } else { %>
-        <div class="holders">
-          <% holders.forEach(function (h) { %>
-          <details class="holder">
-            <summary>
-              <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
-              <%= h.name %>
-            </summary>
-            <div class="holder-body">
-              <% if (h.meta) { %><p><%= h.meta %></p><% } %>
-              <% if (h.extra) { %><p><%= h.extra %></p><% } %>
-              <a href="<%= h.href %>"><%= h.kind === "company" ? t("companies.open") : t("persons.open") %></a>
-            </div>
-          </details>
-          <% }) %>
-        </div>
-      <% } %>
-    </section>
+    <aside class="case-side">
+      <section class="case-panel">
+        <header class="case-panel-head">
+          <h2><%= t("cases.linkedDocs") %><% if (docRows.length) { %> (<%= docRows.length %>)<% } %></h2>
+          <% if (docRows.length) { %>
+          <a href="/zaken/<%= zaak.id %>?tab=documents"><%= t("dash.viewAllShort") %></a>
+          <% } %>
+        </header>
+        <% if (!docRows.length) { %>
+          <p class="muted"><%= t("dash.noDocs") %></p>
+        <% } else { %>
+          <ul class="case-files">
+            <% docRows.slice(0, 4).forEach(function (row) { %>
+            <li>
+              <span class="file-ico file-<%= docKind(row) %>" aria-hidden="true">
+                <%- icon("file-text") %>
+              </span>
+              <div>
+                <% if (row.fileHref) { %>
+                  <a href="<%= row.fileHref %>"<% if (row.isPdf) { %> data-pdf-preview data-pdf-name="<%= row.name %>"<% } %>><%= row.name %></a>
+                <% } else { %>
+                  <strong><%= row.name %></strong>
+                <% } %>
+                <small><%= [formatSize(row.size), row.at ? formatDateLong(row.at) : ""].filter(Boolean).join(" · ") || docStatusLabel(row.status) %></small>
+              </div>
+            </li>
+            <% }) %>
+          </ul>
+        <% } %>
+        <button type="button" class="case-add" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>>
+          <%- icon("plus") %>
+          <%= t("cases.addDocument") %>
+        </button>
+      </section>
+      <section class="case-panel">
+        <header class="case-panel-head">
+          <h2><%= t("cases.stakeholders") %></h2>
+          <% if (persons.length || companies.length) { %>
+            <a href="/zaken/<%= zaak.id %>?tab=relations"><%= t("dash.viewAllShort") %></a>
+          <% } %>
+        </header>
+        <% if (!persons.length && !companies.length) { %>
+          <p class="muted"><%= t("cases.noStakeholders") %></p>
+        <% } else { %>
+          <ul class="case-people">
+            <% persons.forEach(function (p) { %>
+            <li>
+              <span class="who-avatar assignee-av tone-<%= p.id.charCodeAt(0) % 4 %>" aria-hidden="true"><%= String(p.naam || "?").split(/\s+/).map(function (part) { return part[0]; }).slice(0, 2).join("").toUpperCase() %></span>
+              <a href="/personen/<%= p.id %>"><%= p.naam %></a>
+            </li>
+            <% }) %>
+            <% companies.forEach(function (b) { %>
+            <li>
+              <span class="who-avatar assignee-av tone-1" aria-hidden="true">
+                <%- icon("building-2") %>
+              </span>
+              <a href="/bedrijven/<%= b.id %>"><%= b.handelsnaam %></a>
+            </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </section>
+    </aside>
   </div>
-  <% } else { %>
-  <section class="case-card">
-    <h2>
-      <svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm8 1.5V9h4.5z"/></svg>
-      <%= t('cases.tabDocuments') %>
-    </h2>
-    <%
-      const linkedBijlageIds = {};
-      (zaak.documentJobs || []).forEach(function (job) {
-        if (job.bijlageId) linkedBijlageIds[job.bijlageId] = true;
-      });
-      const docRows = [];
-      (zaak.documentJobs || []).forEach(function (job) {
-        const file = job.bijlageId ? zaak.bijlagen.find(function (b) { return b.id === job.bijlageId; }) : null;
-        const done = Boolean(file) || job.status === "success";
-        docRows.push({
-          name: file ? file.naam : job.recipeName,
-          fileHref: file ? "/zaken/" + zaak.id + "/bijlagen/" + file.id : "",
-          isPdf: file ? /pdf/i.test(file.mime || "") || /\.pdf$/i.test(file.naam || "") : false,
-          createUrl: done ? "" : (job.finalizeUrl || ""),
-          status: done ? "success" : job.status,
-          error: job.error || "",
-          deleteHref: file
-            ? "/zaken/" + zaak.id + "/bijlagen/" + file.id + "/verwijderen"
-            : "/zaken/" + zaak.id + "/documenten/" + job.id + "/verwijderen",
-        });
-      });
-      zaak.bijlagen.forEach(function (b) {
-        if (linkedBijlageIds[b.id]) return;
-        docRows.push({
-          name: b.naam,
-          fileHref: "/zaken/" + zaak.id + "/bijlagen/" + b.id,
-          isPdf: /pdf/i.test(b.mime || "") || /\.pdf$/i.test(b.naam || ""),
-          createUrl: "",
-          status: "uploaded",
-          error: "",
-          deleteHref: "/zaken/" + zaak.id + "/bijlagen/" + b.id + "/verwijderen",
-        });
-      });
-      function docStatusLabel(code) {
-        if (code === "uploaded") return t("cases.docUploaded");
-        if (code === "success") return t("cases.docCompleted");
-        if (code === "error") return t("cases.docFailed");
-        if (code === "generating") return t("cases.docGenerating");
-        return t("cases.docInCreate");
-      }
-      function docStatusBadge(code) {
-        if (code === "uploaded" || code === "success") return "afgerond";
-        if (code === "error") return "wacht_op_info";
-        return "nieuw";
-      }
-    %>
+  <% } else if (tabId === "activity") { %>
+  <section class="case-panel">
+    <h2><%= t("cases.tabActivity") %></h2>
+    <% if (!events.length) { %>
+      <p class="muted"><%= t("dash.noActivity") %></p>
+    <% } else { %>
+      <ol class="case-activity">
+        <% events.forEach(function (ev) { %>
+        <li>
+          <span class="dash-activity-ico ico-<%= ev.entity || 'zaak' %>" aria-hidden="true">
+            <% if (ev.entity === "document" || ev.action === "bijlage") { %>
+            <%- icon("file-text") %>
+            <% } else { %>
+            <%- icon("bookmark") %>
+            <% } %>
+          </span>
+          <div>
+            <p><%= activityTitle(ev) %></p>
+            <small><%= t("cases.activityBy", { name: ev.actor || "—" }) %> · <%= whenLabel(ev.at) %></small>
+          </div>
+        </li>
+        <% }) %>
+      </ol>
+    <% } %>
+  </section>
+  <% } else if (tabId === "documents") { %>
+  <section class="case-panel">
+    <header class="case-panel-head">
+      <h2><%= t("cases.tabDocuments") %></h2>
+      <button type="button" class="linkish" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>><%= t("cases.addDocument") %></button>
+    </header>
     <% if (!docRows.length) { %>
-      <p class="muted"><%= t('cases.noAttachments') %></p>
+      <p class="muted"><%= t("dash.noDocs") %></p>
     <% } else { %>
     <table class="doc-table">
       <thead>
         <tr>
-          <th><%= t('cases.name') %></th>
-          <th><%= t('cases.openCreate') %></th>
-          <th><%= t('cases.status') %></th>
+          <th><%= t("cases.name") %></th>
+          <th><%= t("cases.openCreate") %></th>
+          <th><%= t("cases.status") %></th>
           <th></th>
         </tr>
       </thead>
@@ -212,18 +317,18 @@
           </td>
           <td>
             <% if (row.createUrl) { %>
-              <a href="<%= row.createUrl %>" rel="noopener"><%= t('cases.openCreate') %></a>
+              <a href="<%= row.createUrl %>" rel="noopener"><%= t("cases.openCreate") %></a>
             <% } else { %>
               <span class="muted">—</span>
             <% } %>
           </td>
           <td>
-            <span class="badge badge-<%= docStatusBadge(row.status) %>"><%= docStatusLabel(row.status) %></span>
+            <span class="badge badge-<%= row.status === 'error' ? 'wacht_op_info' : (row.status === 'uploaded' || row.status === 'success' ? 'afgerond' : 'nieuw') %>"><%= docStatusLabel(row.status) %></span>
             <% if (row.error) { %><small class="muted"> <%= row.error %></small><% } %>
           </td>
           <td>
             <form method="post" action="<%= row.deleteHref %>" data-confirm="<%= t('cases.confirmDeleteDoc') %>">
-              <button class="linkish danger-text" type="submit"><%= t('common.delete') %></button>
+              <button class="linkish danger-text" type="submit"><%= t("common.delete") %></button>
             </form>
           </td>
         </tr>
@@ -232,5 +337,45 @@
     </table>
     <% } %>
   </section>
+  <% } else { %>
+  <section class="case-panel">
+    <h2><%= t("cases.stakeholders") %></h2>
+    <% if (!persons.length && !companies.length) { %>
+      <p class="muted"><%= t("cases.noStakeholders") %></p>
+    <% } else { %>
+      <% if (persons.length) { %>
+        <h3 class="case-sub"><%= t("cases.persons") %></h3>
+        <ul class="case-people">
+          <% persons.forEach(function (p) { %>
+          <li>
+            <span class="who-avatar assignee-av tone-<%= p.id.charCodeAt(0) % 4 %>" aria-hidden="true"><%= String(p.naam || "?").split(/\s+/).map(function (part) { return part[0]; }).slice(0, 2).join("").toUpperCase() %></span>
+            <div>
+              <a href="/personen/<%= p.id %>"><%= p.naam %></a>
+              <% if (p.email) { %><small><%= p.email %></small><% } %>
+            </div>
+          </li>
+          <% }) %>
+        </ul>
+      <% } %>
+      <% if (companies.length) { %>
+        <h3 class="case-sub"><%= t("cases.companies") %></h3>
+        <ul class="case-people">
+          <% companies.forEach(function (b) { %>
+          <li>
+            <span class="who-avatar assignee-av tone-1" aria-hidden="true">
+              <%- icon("building-2") %>
+            </span>
+            <div>
+              <a href="/bedrijven/<%= b.id %>"><%= b.handelsnaam %></a>
+              <% if (b.plaats) { %><small><%= b.plaats %></small><% } %>
+            </div>
+          </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    <% } %>
+  </section>
   <% } %>
+
+  <%- include("../partials/generate-doc", { action: "/zaken/" + zaak.id + "/documenten", recipes: recipes, canGenerate: canGenerate, hideButtons: true }) %>
 </div>

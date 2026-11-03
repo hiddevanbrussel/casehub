@@ -56,6 +56,16 @@
     <h2 class="form-section"><%= t('hr.account') %></h2>
     <% } %>
     <label><%= t('employees.email') %> <input type="email" name="email" <%= isHr ? '' : 'required' %> value="<%= w.email || '' %>"></label>
+    <% if (typeof isGlobalAdmin !== "undefined" && isGlobalAdmin && typeof workspaces !== "undefined" && workspaces.length) { %>
+    <label><%= t("employees.workspace") %>
+      <select name="workspace">
+        <% workspaces.forEach(function (item) { %>
+        <option value="<%= item.slug %>" <%= (typeof workspaceSlug !== "undefined" ? workspaceSlug : "") === item.slug ? "selected" : "" %>><%= item.name %></option>
+        <% }) %>
+      </select>
+      <span class="hint"><%= t("employees.workspaceHint") %></span>
+    </label>
+    <% } %>
     <div class="form-row form-row-2">
       <label><%= t('employees.role') %>
         <select name="rol">

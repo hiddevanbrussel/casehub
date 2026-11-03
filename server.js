@@ -3,10 +3,19 @@ const express = require("express");
 const layouts = require("express-ejs-layouts");
 const cookieParser = require("cookie-parser");
 const config = require("./config");
-const { store, seedIfEmpty } = require("./lib/db");
-const { formatDate, formatDateTime, fullName } = require("./lib/format");
-const { currentUser, canWriteMaster } = require("./lib/auth");
+const {
+  seedIfEmpty,
+  resolveSlug,
+  openTenant,
+  runWithStore,
+  workspace,
+  workspaces,
+} = require("./lib/db");
+const { formatDate, formatDateLong, formatDateTime, formatDateTimeShort, formatTime, dayBucket, fullName } = require("./lib/format");
+const { currentUser, canWriteMaster, isAdmin, isGlobalAdmin } = require("./lib/auth");
 const { i18nMiddleware } = require("./lib/i18n");
+const { icon } = require("./lib/icon");
+const { themeMiddleware } = require("./lib/theme");
 const { isHr, isCases, appProfile } = require("./lib/profile");
 const { routes } = require("./routes");
 
@@ -24,25 +33,45 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(i18nMiddleware);
+app.use(themeMiddleware);
 app.use(layouts);
 app.use("/public", express.static(path.join(__dirname, "public")));
 
 app.use((req, res, next) => {
-  const user = currentUser(req);
-  req.user = user;
-  res.locals.user = user;
-  res.locals.meta = store.meta();
-  res.locals.isHr = isHr(store.meta());
-  res.locals.isCases = isCases(store.meta());
-  res.locals.appProfile = appProfile(store.meta());
-  res.locals.canWriteEmployees = isHr(store.meta()) ? canWriteMaster(user) : user?.rol === "admin";
-  res.locals.toast = req.query.toast || "";
-  res.locals.path = req.path;
-  res.locals.formatDate = (value) => formatDate(value, req.lang);
-  res.locals.formatDateTime = (value) => formatDateTime(value, req.lang);
-  res.locals.fullName = fullName;
-  res.locals.navActive = (prefix) => (req.path === prefix || req.path.startsWith(`${prefix}/`) ? "is-active" : "");
-  next();
+  const slug = resolveSlug(req);
+  req.workspaceSlug = slug;
+  req.workspace = slug ? workspace(slug) : null;
+  req.store = slug ? openTenant(slug) : null;
+  res.locals.workspace = req.workspace;
+  res.locals.workspaces = workspaces();
+  const continueRequest = () => {
+    const meta = req.store ? req.store.meta() : { orgName: config.orgName };
+    const user = currentUser(req);
+    req.user = user;
+    res.locals.user = user;
+    res.locals.meta = meta;
+    res.locals.isHr = isHr(meta);
+    res.locals.isCases = isCases(meta);
+    res.locals.appProfile = appProfile(meta);
+    res.locals.isAdmin = isAdmin(user);
+    res.locals.isGlobalAdmin = isGlobalAdmin(user);
+    res.locals.canWriteEmployees = isHr(meta) ? canWriteMaster(user) : isAdmin(user);
+    res.locals.quickStatusChange = meta.quickStatusChange !== false;
+    res.locals.toast = req.query.toast || "";
+    res.locals.path = req.path;
+    res.locals.formatDate = (value) => formatDate(value, req.lang);
+    res.locals.formatDateLong = (value) => formatDateLong(value, req.lang);
+    res.locals.formatDateTime = (value) => formatDateTime(value, req.lang);
+    res.locals.formatDateTimeShort = (value) => formatDateTimeShort(value, req.lang);
+    res.locals.formatTime = (value) => formatTime(value, req.lang);
+    res.locals.dayBucket = dayBucket;
+    res.locals.fullName = fullName;
+    res.locals.navActive = (prefix) => (req.path === prefix || req.path.startsWith(`${prefix}/`) ? "is-active" : "");
+    res.locals.icon = icon;
+    next();
+  };
+  if (req.store) return runWithStore(req.store, continueRequest);
+  continueRequest();
 });
 
 app.use(routes());

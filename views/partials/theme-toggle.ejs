@@ -1,0 +1,12 @@
+<button
+  class="theme-toggle"
+  type="button"
+  data-theme-toggle
+  data-label-dark="<%= t('common.themeDark') %>"
+  data-label-light="<%= t('common.themeLight') %>"
+  title="<%= theme === 'dark' ? t('common.themeLight') : t('common.themeDark') %>"
+  aria-label="<%= theme === 'dark' ? t('common.themeLight') : t('common.themeDark') %>"
+>
+  <%- icon("moon", { class: "icon-moon" }) %>
+  <%- icon("sun", { class: "icon-sun" }) %>
+</button>

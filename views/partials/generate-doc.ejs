@@ -1,14 +1,26 @@
+<% if (!locals.hideButtons) { %>
 <button class="btn<%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="generate" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateDoc') %></button>
 <button class="ghost<%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="interactive" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateInteractive') %></button>
+<% } %>
 <% if (canGenerate) { %>
 <dialog class="edit-modal generate-modal" id="generate-modal">
   <form class="form modal-form" method="post" action="<%= action %>">
     <div class="modal-head">
       <h1 data-generate-title><%= t('cases.pickTemplate') %></h1>
-      <button type="button" class="icon-btn" data-modal-close aria-label="<%= t('common.close') %>">×</button>
+      <button type="button" class="icon-btn" data-modal-close aria-label="<%= t('common.close') %>"><%- icon("x") %></button>
     </div>
     <div class="modal-body">
       <input type="hidden" name="mode" value="generate" data-generate-mode>
+      <% if (locals.fromList) { %>
+      <input type="hidden" name="from" value="list">
+      <% if (typeof q !== "undefined" && q) { %><input type="hidden" name="filterQ" value="<%= q %>"><% } %>
+      <% if (typeof status !== "undefined" && status) { %><input type="hidden" name="filterStatus" value="<%= status %>"><% } %>
+      <% if (typeof zaaktypeId !== "undefined" && zaaktypeId) { %><input type="hidden" name="filterZaaktypeId" value="<%= zaaktypeId %>"><% } %>
+      <% if (typeof prioriteit !== "undefined" && prioriteit) { %><input type="hidden" name="filterPrioriteit" value="<%= prioriteit %>"><% } %>
+      <% if (typeof page !== "undefined" && Number(page) !== 1) { %><input type="hidden" name="filterPage" value="<%= page %>"><% } %>
+      <% if (typeof pageSize !== "undefined" && Number(pageSize) !== 10) { %><input type="hidden" name="filterPageSize" value="<%= pageSize %>"><% } %>
+      <input type="hidden" name="filterPeekTab" value="docs">
+      <% } %>
       <p class="hint"><%= t('cases.pickTemplate') %></p>
       <div class="tpl-picker" data-generate-picker>
         <% if (recipes.length > 6) { %>

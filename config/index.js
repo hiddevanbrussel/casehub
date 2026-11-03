@@ -8,5 +8,6 @@ module.exports = {
   dataDir: process.env.DATA_DIR || path.join(root, "data"),
   orgName: process.env.ORG_NAME || "Zaakhub",
   cookieName: "zaakhub",
+  workspaceCookie: "zaakhub-ws",
   sessionDays: 7,
 };

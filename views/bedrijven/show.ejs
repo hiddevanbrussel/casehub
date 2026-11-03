@@ -1,3 +1,9 @@
+<%
+  const activeTab = typeof tab !== "undefined" ? tab : "details";
+  const initials = function (name) {
+    return String(name || "?").split(/\s+/).map(function (part) { return part[0]; }).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  };
+%>
 <div class="page-head">
   <div>
     <p class="eyebrow"><%= t('companies.eyebrow') %></p>
@@ -12,15 +18,37 @@
   </div>
   <% } %>
 </div>
+<nav class="case-tabs" aria-label="<%= bedrijf.handelsnaam %>">
+  <a class="<%= activeTab === 'details' ? 'is-active' : '' %>" href="/bedrijven/<%= bedrijf.id %>">
+    <%- icon("building-2") %>
+    <%= t('companies.eyebrow') %>
+  </a>
+  <a class="<%= activeTab === 'contacts' ? 'is-active' : '' %>" href="/bedrijven/<%= bedrijf.id %>?tab=contacts">
+    <%- icon("user") %>
+    <%= t('companies.contacts') %>
+  </a>
+  <a class="<%= activeTab === 'cases' ? 'is-active' : '' %>" href="/bedrijven/<%= bedrijf.id %>?tab=cases">
+    <%- icon("bookmark") %>
+    <%= t('companies.linkedCases') %>
+  </a>
+</nav>
+<% if (activeTab === "contacts") { %>
 <section class="panel">
-  <dl class="kv">
-    <div><dt><%= t('companies.kvk') %></dt><dd class="mono"><%= bedrijf.kvk || '—' %></dd></div>
-    <div><dt><%= t('companies.address') %></dt><dd><%= [bedrijf.adres, bedrijf.postcode, bedrijf.plaats].filter(Boolean).join(', ') || '—' %></dd></div>
-    <div><dt><%= t('companies.email') %></dt><dd><%= bedrijf.email || '—' %></dd></div>
-    <div><dt><%= t('companies.phone') %></dt><dd><%= bedrijf.telefoon || '—' %></dd></div>
-  </dl>
-  <% if (bedrijf.notities) { %><p class="body-copy"><%= bedrijf.notities %></p><% } %>
+  <header><h2><%= t('companies.contacts') %></h2></header>
+  <% if (!personen.length) { %><p class="muted"><%= t('companies.noContacts') %></p><% } %>
+  <ul class="rows">
+    <% personen.forEach(function (p) { %>
+      <li>
+        <a href="/personen?focus=<%= p.id %>">
+          <span class="who-avatar assignee-av tone-<%= (p.id || "A").charCodeAt(0) % 4 %>" aria-hidden="true"><%= initials(p.naam) %></span>
+          <%= p.naam || t('persons.anonymised') %>
+          <% if (p.email || p.telefoon) { %><span class="muted"> · <%= [p.email, p.telefoon].filter(Boolean).join(" · ") %></span><% } %>
+        </a>
+      </li>
+    <% }) %>
+  </ul>
 </section>
+<% } else if (activeTab === "cases") { %>
 <section class="panel">
   <header><h2><%= t('companies.linkedCases') %></h2></header>
   <% if (!zaken.length) { %><p class="muted"><%= t('companies.noCases') %></p><% } %>
@@ -30,3 +58,16 @@
     <% }) %>
   </ul>
 </section>
+<% } else { %>
+<section class="panel">
+  <dl class="kv">
+    <div><dt><%= t('companies.kvk') %></dt><dd class="mono"><%= bedrijf.kvk || '—' %></dd></div>
+    <div><dt><%= t('companies.email') %></dt><dd><%= bedrijf.email || '—' %></dd></div>
+    <div><dt><%= t('companies.phone') %></dt><dd><%= bedrijf.telefoon || '—' %></dd></div>
+    <div><dt><%= t('companies.address') %></dt><dd><%= bedrijf.adres || '—' %></dd></div>
+    <div><dt><%= t('companies.postcode') %></dt><dd><%= bedrijf.postcode || '—' %></dd></div>
+    <div><dt><%= t('companies.place') %></dt><dd><%= bedrijf.plaats || '—' %></dd></div>
+  </dl>
+  <% if (bedrijf.notities) { %><p class="body-copy"><%= bedrijf.notities %></p><% } %>
+</section>
+<% } %>

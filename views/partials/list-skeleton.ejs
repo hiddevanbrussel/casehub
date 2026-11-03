@@ -1,0 +1,25 @@
+<%
+  const isSimple = Boolean(typeof simple !== "undefined" && simple);
+  const showCheck = !isSimple || Boolean(typeof checks !== "undefined" && checks);
+  const rowCount = typeof count === "number" ? count : 8;
+%>
+<div class="queue is-skel<%= showCheck ? " has-checks" : "" %>" data-queue-skel aria-hidden="true">
+  <% if (showCheck) { %>
+  <div class="queue-head">
+    <span class="list-check"><span class="skel skel-check"></span></span>
+  </div>
+  <% } %>
+  <% for (var i = 0; i < rowCount; i += 1) { %>
+  <div class="queue-row<%= isSimple ? " is-simple" : "" %> is-skel">
+    <% if (showCheck) { %><span class="list-check"><span class="skel skel-check"></span></span><% } %>
+    <div class="queue-hit">
+      <span class="queue-top">
+        <span class="skel skel-from"></span>
+        <span class="skel skel-when"></span>
+      </span>
+      <span class="skel skel-title"></span>
+      <span class="skel skel-snip"></span>
+    </div>
+  </div>
+  <% } %>
+</div>

@@ -1,57 +1,77 @@
-<p class="back-link"><a href="/instellingen"><%= t('settings.back') %></a></p>
+<%
+  function statusBadge(ready, active) {
+    if (!ready) return { cls: "badge-wacht_op_info", label: t("common.notConfigured") };
+    if (active === false) return { cls: "badge-in_behandeling", label: t("common.paused") };
+    return { cls: "badge-afgerond", label: t("common.connected") };
+  }
+  const createBadge = statusBadge(createReady, create.active);
+  const azureBadge = statusBadge(azureReady, azure.active);
+%>
+<p class="back-link"><a href="/instellingen"><%= t("settings.back") %></a></p>
 <div class="page-head">
   <div>
-    <h1><%= t('integrations.title') %></h1>
-    <p class="lede"><%= t('integrations.lede') %></p>
+    <h1><%= t("integrations.title") %></h1>
+    <p class="lede"><%= t("integrations.lede") %></p>
   </div>
 </div>
 
-<form method="post" action="/instellingen/integraties/active">
-  <button class="ghost" type="submit"><%= t('integrations.saveActive') %></button>
-  <table class="int-table">
-    <thead>
-      <tr>
-        <th><%= t('integrations.integration') %></th>
-        <th><%= t('integrations.summary') %></th>
-        <th><%= t('integrations.active') %></th>
-        <th><%= t('integrations.actions') %></th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Create</strong></td>
-        <td class="muted"><%= createSummary %></td>
-        <td>
-          <input type="checkbox" name="createActive" value="1" <%= create.active ? "checked" : "" %> aria-label="Create <%= t('integrations.active') %>">
-        </td>
-        <td>
-          <details class="menu-dots">
-            <summary aria-label="<%= t('integrations.actions') %>">⋯</summary>
-            <div class="menu-dots-list">
-              <a href="/instellingen/integraties/create"><%= t('integrations.edit') %></a>
-              <button type="submit" form="create-test"><%= t('integrations.test') %></button>
-              <button type="submit" form="create-sync"><%= t('integrations.sync') %></button>
-            </div>
-          </details>
-        </td>
-      </tr>
-      <tr>
-        <td><strong>Microsoft Entra ID</strong></td>
-        <td class="muted"><%= azureSummary %></td>
-        <td>
-          <input type="checkbox" name="azureActive" value="1" <%= azure.active ? "checked" : "" %> aria-label="Azure <%= t('integrations.active') %>">
-        </td>
-        <td>
-          <details class="menu-dots">
-            <summary aria-label="<%= t('integrations.actions') %>">⋯</summary>
-            <div class="menu-dots-list">
-              <a href="/instellingen/integraties/azure"><%= t('integrations.edit') %></a>
-            </div>
-          </details>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</form>
+<div class="int-stack">
+  <form method="post" action="/instellingen/integraties/active" class="form-card int-card">
+    <input type="hidden" name="azureActive" value="<%= azure.active !== false ? "1" : "0" %>">
+    <header class="int-card-head">
+      <%- icon("file-plus", { class: "set-ico" }) %>
+      <div>
+        <h2><%= t("integrations.createName") %></h2>
+        <p><%= t("integrations.createAbout") %></p>
+      </div>
+      <span class="badge <%= createBadge.cls %>"><%= createBadge.label %></span>
+    </header>
+    <% if (createReady) { %><p class="int-card-meta"><%= createSummary %></p><% } %>
+    <% if (create.lastError) { %><p class="int-card-error"><%= create.lastError %></p><% } %>
+    <% if (create.lastSyncAt) { %><p class="hint"><%= t("create.lastSync") %> <%= formatDateTime(create.lastSyncAt) %></p><% } %>
+    <footer class="int-card-foot">
+      <% if (createReady) { %>
+      <label class="set-toggle is-compact">
+        <span><strong><%= t("integrations.active") %></strong></span>
+        <input type="hidden" name="createActive" value="0">
+        <input type="checkbox" name="createActive" value="1" data-auto-submit <%= create.active !== false ? "checked" : "" %> aria-label="Create <%= t('integrations.active') %>">
+      </label>
+      <% } else { %>
+      <input type="hidden" name="createActive" value="<%= create.active !== false ? "1" : "0" %>">
+      <% } %>
+      <a class="<%= createReady ? "ghost" : "btn" %>" href="/instellingen/integraties/create"><%= t("integrations.configure") %></a>
+      <% if (createReady) { %>
+      <button class="ghost" type="submit" form="create-test"><%= t("integrations.test") %></button>
+      <button class="ghost" type="submit" form="create-sync"><%= t("integrations.sync") %></button>
+      <% } %>
+    </footer>
+  </form>
+
+  <form method="post" action="/instellingen/integraties/active" class="form-card int-card">
+    <input type="hidden" name="createActive" value="<%= create.active !== false ? "1" : "0" %>">
+    <header class="int-card-head">
+      <%- icon("key-round", { class: "set-ico" }) %>
+      <div>
+        <h2><%= t("integrations.azureName") %></h2>
+        <p><%= t("integrations.azureAbout") %></p>
+      </div>
+      <span class="badge <%= azureBadge.cls %>"><%= azureBadge.label %></span>
+    </header>
+    <% if (azureReady) { %><p class="int-card-meta"><%= azureSummary %></p><% } %>
+    <% if (azure.lastError) { %><p class="int-card-error"><%= azure.lastError %></p><% } %>
+    <footer class="int-card-foot">
+      <% if (azureReady) { %>
+      <label class="set-toggle is-compact">
+        <span><strong><%= t("integrations.active") %></strong></span>
+        <input type="hidden" name="azureActive" value="0">
+        <input type="checkbox" name="azureActive" value="1" data-auto-submit <%= azure.active !== false ? "checked" : "" %> aria-label="Microsoft Entra ID <%= t('integrations.active') %>">
+      </label>
+      <% } else { %>
+      <input type="hidden" name="azureActive" value="<%= azure.active !== false ? "1" : "0" %>">
+      <% } %>
+      <a class="<%= azureReady ? "ghost" : "btn" %>" href="/instellingen/integraties/azure"><%= t("integrations.configure") %></a>
+    </footer>
+  </form>
+</div>
 <form id="create-test" method="post" action="/instellingen/create/test" hidden></form>
 <form id="create-sync" method="post" action="/templates/sync" hidden></form>

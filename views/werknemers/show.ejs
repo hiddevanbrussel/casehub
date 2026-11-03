@@ -8,7 +8,7 @@
   <div class="case-top">
     <div class="case-title">
       <a class="case-back" href="/werknemers" aria-label="<%= t('common.back') %>">
-        <svg viewBox="0 0 24 24"><path d="M15.4 4.6 14 3.2 6.2 11 14 18.8l1.4-1.4L9 11z"/></svg>
+        <%- icon("chevron-left") %>
       </a>
       <div>
         <h1><%= werknemer.naam %></h1>
@@ -19,11 +19,11 @@
       <% if (canWrite) { %>
       <%- include("../partials/generate-doc", { action: "/werknemers/" + werknemer.id + "/documenten", recipes: recipes, canGenerate: canGenerate }) %>
       <a class="ghost" href="/werknemers/<%= werknemer.id %>/bewerken">
-        <svg viewBox="0 0 24 24"><path d="M4 17.3V20h2.7l8-8-2.7-2.7zM17.8 7.2a.8.8 0 0 0 0-1.1l-1.9-1.9a.8.8 0 0 0-1.1 0l-1.5 1.5 3 3z"/></svg>
+        <%- icon("pencil") %>
         <%= t('common.edit') %>
       </a>
       <details class="menu-dots">
-        <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>">⋯</summary>
+        <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>"><%- icon("ellipsis") %></summary>
         <div class="menu-dots-list">
           <form method="post" action="/werknemers/<%= werknemer.id %>/verwijderen" data-confirm="<%= t('employees.confirmDelete') %>">
             <button class="danger-text" type="submit"><%= t('common.delete') %></button>
@@ -36,11 +36,11 @@
 
   <nav class="case-tabs">
     <a class="<%= detailsTab ? 'is-active' : '' %>" href="/werknemers/<%= werknemer.id %>">
-      <svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2z"/></svg>
+      <%- icon("user") %>
       <%= t('hr.tabContact') %>
     </a>
     <a class="<%= detailsTab ? '' : 'is-active' %>" href="/werknemers/<%= werknemer.id %>?tab=documents">
-      <svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm8 1.5V9h4.5z"/></svg>
+      <%- icon("file-text") %>
       <%= t('cases.tabDocuments') %>
     </a>
   </nav>
@@ -84,7 +84,7 @@
     <div>
       <section class="case-card">
         <h2>
-          <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z"/></svg>
+          <%- icon("user") %>
           <%= t('hr.contact') %>
         </h2>
         <div class="detail-grid">
@@ -119,7 +119,7 @@
       <% if (isHr) { %>
       <section class="case-card">
         <h2>
-          <svg viewBox="0 0 24 24"><path d="M4 7h16v2H4zm0 4h10v2H4zm0 4h16v2H4z"/></svg>
+          <%- icon("briefcase") %>
           <%= t('hr.employment') %>
         </h2>
         <div class="detail-grid">
@@ -156,7 +156,7 @@
       <% if (isHr) { %>
       <section class="case-card">
         <h2>
-          <svg viewBox="0 0 24 24"><path d="M12 3 4 9v12h6v-6h4v6h6V9z"/></svg>
+          <%- icon("house") %>
           <%= t('hr.address') %>
         </h2>
         <div class="detail-grid">
@@ -183,7 +183,7 @@
       <% if (isCases) { %>
       <section class="case-card">
         <h2>
-          <svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2z"/></svg>
+          <%- icon("bookmark") %>
           <%= t('employees.assignedCases') %>
         </h2>
         <% if (!zaken.length) { %><p class="muted"><%= t('employees.noCases') %></p><% } %>
@@ -199,7 +199,7 @@
   <% } else { %>
   <section class="case-card">
     <h2>
-      <svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm8 1.5V9h4.5z"/></svg>
+      <%- icon("file-text") %>
       <%= t('cases.tabDocuments') %>
     </h2>
     <%

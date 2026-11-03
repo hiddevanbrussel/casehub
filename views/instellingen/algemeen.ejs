@@ -5,27 +5,74 @@
     <p class="lede"><%= t('settings.generalLede') %></p>
   </div>
 </div>
-<form class="form" method="post" action="/instellingen/algemeen">
-  <label><%= t('settings.orgName') %> <input name="orgName" required value="<%= meta.orgName %>"></label>
-  <label><%= t('onboard.profile') %>
-    <select name="appProfile">
-      <option value="cases" <%= appProfile === 'cases' ? 'selected' : '' %>><%= t('onboard.profileCases') %></option>
-      <option value="hr" <%= appProfile === 'hr' ? 'selected' : '' %>><%= t('onboard.profileHr') %></option>
-      <option value="both" <%= appProfile === 'both' ? 'selected' : '' %>><%= t('onboard.profileBoth') %></option>
-    </select>
-  </label>
-  <label><%= t('settings.prefix') %> <input name="zaakPrefix" required maxlength="6" value="<%= meta.zaakPrefix %>"></label>
-  <p class="hint"><%= t('settings.nextNumber') %> <%= meta.zaakPrefix %>-<%= new Date().getFullYear() %>-<%= String(meta.nextZaakSeq).padStart(4,'0') %></p>
-  <label><%= t('onboard.personeelPrefix') %> <input name="personeelPrefix" required maxlength="6" value="<%= meta.personeelPrefix || 'P' %>"></label>
-  <p class="hint"><%= t('settings.nextStaff') %> <%= meta.personeelPrefix || 'P' %>-<%= String(meta.nextPersoneelSeq || 1).padStart(5,'0') %></p>
-  <button class="btn" type="submit"><%= t('settings.save') %></button>
+
+<form class="form settings-form" method="post" action="/instellingen/algemeen">
+  <section class="form-card">
+    <h2><%= t("settings.orgSection") %></h2>
+    <div class="form-grid">
+      <label class="span-all"><%= t("settings.orgName") %>
+        <input name="orgName" required value="<%= meta.orgName %>">
+      </label>
+      <label class="span-all"><%= t("settings.profile") %>
+        <select name="appProfile">
+          <option value="cases" <%= appProfile === "cases" ? "selected" : "" %>><%= t("onboard.profileCases") %></option>
+          <option value="hr" <%= appProfile === "hr" ? "selected" : "" %>><%= t("onboard.profileHr") %></option>
+          <option value="both" <%= appProfile === "both" ? "selected" : "" %>><%= t("onboard.profileBoth") %></option>
+        </select>
+        <span class="hint"><%= t("settings.profileHint") %></span>
+      </label>
+    </div>
+  </section>
+
+  <section class="form-card">
+    <h2><%= t("settings.numberingSection") %></h2>
+    <div class="form-grid<%= isCases && isHr ? " form-grid-2" : "" %>">
+      <% if (isCases) { %>
+      <label><%= t("settings.prefix") %>
+        <input name="zaakPrefix" required maxlength="6" value="<%= meta.zaakPrefix %>">
+        <span class="hint"><%= t("settings.nextNumber") %> <span class="mono"><%= meta.zaakPrefix %>-<%= new Date().getFullYear() %>-<%= String(meta.nextZaakSeq).padStart(4, "0") %></span></span>
+      </label>
+      <% } else { %>
+      <input type="hidden" name="zaakPrefix" value="<%= meta.zaakPrefix %>">
+      <% } %>
+      <% if (isHr) { %>
+      <label><%= t("onboard.personeelPrefix") %>
+        <input name="personeelPrefix" required maxlength="6" value="<%= meta.personeelPrefix || "P" %>">
+        <span class="hint"><%= t("settings.nextStaff") %> <span class="mono"><%= meta.personeelPrefix || "P" %>-<%= String(meta.nextPersoneelSeq || 1).padStart(5, "0") %></span></span>
+      </label>
+      <% } else { %>
+      <input type="hidden" name="personeelPrefix" value="<%= meta.personeelPrefix || "P" %>">
+      <% } %>
+    </div>
+  </section>
+
+  <% if (isCases) { %>
+  <section class="form-card">
+    <h2><%= t("settings.workflowSection") %></h2>
+    <label class="set-toggle">
+      <span>
+        <strong><%= t("settings.quickStatus") %></strong>
+        <small><%= t("settings.quickStatusHint") %></small>
+      </span>
+      <input type="hidden" name="quickStatusChange" value="0">
+      <input type="checkbox" name="quickStatusChange" value="1" <%= meta.quickStatusChange !== false ? "checked" : "" %>>
+    </label>
+  </section>
+  <% } %>
+
+  <div class="form-actions">
+    <button class="btn" type="submit"><%= t("settings.save") %></button>
+  </div>
 </form>
+
 <% if (isCases) { %>
-<section class="form demo-import">
-  <h2 class="form-section"><%= t('settings.demoTitle') %></h2>
-  <p class="lede"><%= t('settings.demoLede', { lang: langMeta.label }) %></p>
+<section class="set-demo">
+  <div>
+    <h2><%= t("settings.demoTitle") %></h2>
+    <p><%= t("settings.demoLede") %></p>
+  </div>
   <form method="post" action="/instellingen/algemeen/demo" data-confirm="<%= t('settings.demoConfirm') %>">
-    <button class="btn" type="submit"><%= t('settings.demoImport') %></button>
+    <button class="ghost" type="submit"><%= t("settings.demoImport") %></button>
   </form>
 </section>
 <% } %>

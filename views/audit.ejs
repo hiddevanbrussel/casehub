@@ -1,90 +1,128 @@
-<%- include("partials/overview-head", { heading: t("audit.overview"), newHref: "/audit", newLabel: t("audit.refresh"), showNew: true, base: "/audit", view: view }) %>
-
-<form class="filters overview-filters <%= q || group ? 'is-open' : '' %>" method="get" action="/audit">
-  <% if (view !== 'overview') { %><input type="hidden" name="view" value="<%= view %>"><% } %>
-  <input type="search" name="q" value="<%= q %>" placeholder="<%= t('audit.search') %>">
-  <select name="group">
-    <option value=""><%= t('audit.all') %></option>
-    <% groups.forEach(function (g) { %>
-      <option value="<%= g.id %>" <%= group === g.id ? 'selected' : '' %>><%= t('entity.' + g.id) %></option>
-    <% }) %>
-  </select>
-  <button class="ghost" type="submit"><%= t('common.apply') %></button>
-</form>
-
-<% if (view === 'board') { %>
-  <div class="board">
-    <% groups.forEach(function (g) { %>
-      <% const rows = items.filter(function (item) { return item.entity === g.id; }); %>
-      <section class="board-col">
-        <h3><%= t('entity.' + g.id) %> · <%= rows.length %></h3>
-        <% rows.forEach(function (item) { %>
-          <div class="board-card">
-            <strong><%= item.action %></strong>
-            <small><%= item.actor %> · <%= formatDateTime(item.at) %></small>
-          </div>
-        <% }) %>
-      </section>
-    <% }) %>
-  </div>
-<% } else if (view === 'table') { %>
-  <table class="table">
-    <thead><tr><th><%= t('audit.time') %></th><th><%= t('audit.user') %></th><th><%= t('audit.action') %></th><th><%= t('audit.entity') %></th><th><%= t('audit.detail') %></th></tr></thead>
-    <tbody>
-      <% items.forEach(function (item) { %>
-      <tr>
-        <td><%= formatDateTime(item.at) %></td>
-        <td><%= item.actor %></td>
-        <td><%= item.action %></td>
-        <td><%= t('entity.' + item.entity) %></td>
-        <td>
-          <%= item.detail %>
-          <%- include("partials/create-payload", { request: item.payload }) %>
-        </td>
-      </tr>
-      <% }) %>
-    </tbody>
-  </table>
-<% } else { %>
-  <% groups.forEach(function (g) { %>
-    <% const rows = items.filter(function (item) { return item.entity === g.id; }); %>
-    <section class="case-group">
-      <header class="case-group-head">
-        <h2 class="status-active"><%= t('entity.' + g.id) %></h2>
-        <span class="count-pill"><%= rows.length %></span>
-      </header>
-      <% if (!rows.length) { %>
-        <div class="empty-status"><%= t('audit.noEvents') %></div>
-      <% } else { %>
-      <table class="overview-table">
-        <thead>
-          <tr>
-            <th><%= t('audit.time') %></th>
-            <th><%= t('audit.user') %></th>
-            <th><%= t('audit.action') %></th>
-            <th><%= t('audit.detail') %></th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% rows.forEach(function (item) { %>
-          <tr class="overview-row" data-expand>
-            <td class="muted"><%= formatDateTime(item.at) %></td>
-            <td><%= item.actor %></td>
-            <td><%= item.action %></td>
-            <td class="muted"><%= item.detail %></td>
-            <td class="chevron">▾</td>
-          </tr>
-          <tr class="overview-detail">
-            <td colspan="5">
-              <p class="muted"><%= t('entity.' + item.entity) %> · <%= item.entityId %></p>
-              <%- include("partials/create-payload", { request: item.payload }) %>
-            </td>
-          </tr>
+<%
+  function listQs(overrides) {
+    const src = Object.assign({
+      q: q,
+      group: group,
+      sort: typeof sort !== "undefined" ? sort : "",
+      focus: typeof focus !== "undefined" ? focus : "",
+    }, overrides || {});
+    const params = [];
+    Object.keys(src).forEach(function (key) {
+      const value = src[key];
+      if (!value) return;
+      params.push(encodeURIComponent(key) + "=" + encodeURIComponent(value));
+    });
+    return params.length ? "?" + params.join("&") : "";
+  }
+  const peekItem = typeof peek !== "undefined" ? peek : null;
+  const focusId = typeof focus !== "undefined" ? focus : "";
+  const sortBy = typeof sort !== "undefined" ? sort : "";
+  const pending = Boolean(typeof lazyPending !== "undefined" && lazyPending);
+  const recordHref = typeof peekHref !== "undefined" ? peekHref : "";
+%>
+<section class="list-work" data-list-lazy<% if (pending) { %> data-list-pending<% } %>>
+  <div class="list-pane" id="audit-queue">
+    <div class="mail-folder">
+      <h1><%= t("nav.audit") %></h1>
+    </div>
+    <form class="list-toolbar" method="get" action="/audit">
+      <label class="list-search">
+        <%- icon("search") %>
+        <input type="search" name="q" value="<%= q %>" placeholder="<%= t('audit.search') %>">
+      </label>
+      <div class="list-filters">
+        <select name="group" class="list-filter" data-auto-submit>
+          <option value=""><%= t("audit.all") %></option>
+          <% groups.forEach(function (g) { %>
+            <option value="<%= g.id %>" <%= group === g.id ? "selected" : "" %>><%= t("entity." + g.id) %></option>
           <% }) %>
-        </tbody>
-      </table>
+        </select>
+        <select name="sort" class="list-filter" data-auto-submit>
+          <option value=""><%= t("audit.sortNewest") %></option>
+          <option value="entity" <%= sortBy === "entity" ? "selected" : "" %>><%= t("audit.sortEntity") %></option>
+        </select>
+      </div>
+      <% if (focusId) { %><input type="hidden" name="focus" value="<%= focusId %>"><% } %>
+    </form>
+
+    <div class="list-fill" data-list-slot="queue">
+    <% if (pending) { %>
+      <%- include("partials/list-skeleton", { simple: true, count: 8 }) %>
+      <noscript>
+        <p class="empty list-empty"><a href="<%= listQs({ full: 1 }) %>"><%= t("common.showList") %></a></p>
+      </noscript>
+    <% } else if (!items.length) { %>
+      <div class="empty list-empty"><%= t("audit.noEvents") %></div>
+    <% } else { %>
+    <div class="queue" data-queue>
+      <% items.forEach(function (item) { %>
+      <div class="queue-row is-simple <%= item.id === focusId ? 'is-focused' : '' %>"<% if (item.href) { %> data-open="<%= item.href %>"<% } %>>
+        <a class="queue-hit" href="<%= listQs({ focus: item.id }) %>" <%= item.id === focusId ? 'aria-current="true"' : '' %>>
+          <span class="queue-top">
+            <span class="queue-from"><%= t("entity." + item.entity) %></span>
+            <span class="queue-when"><%= item.at ? formatDateTimeShort(item.at) : "" %></span>
+          </span>
+          <strong class="queue-title" title="<%= item.action %>"><%= item.action %></strong>
+          <span class="queue-snippet"><%= item.actor %><% if (item.detail) { %> · <%= item.detail %><% } %></span>
+        </a>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+    </div>
+  </div>
+
+  <div
+    class="list-split"
+    role="separator"
+    aria-orientation="vertical"
+    aria-controls="audit-queue"
+    aria-valuemin="220"
+    aria-valuemax="560"
+    aria-valuenow="280"
+    aria-label="<%= t('cases.resizeList') %>"
+    title="<%= t('cases.resizeList') %>"
+    tabindex="0"
+    data-split
+  ><span class="visually-hidden"><%= t("cases.resizeList") %></span></div>
+
+  <div class="list-peek-slot" data-list-slot="peek">
+  <% if (pending) { %>
+    <%- include("partials/peek-skeleton") %>
+  <% } else { %>
+  <aside class="list-peek" data-peek aria-live="polite">
+    <% if (!peekItem) { %>
+      <div class="list-peek-empty">
+        <p><%= t("audit.peekEmpty") %></p>
+      </div>
+    <% } else { %>
+      <p class="peek-id"><%= t("entity." + peekItem.entity) %><% if (peekItem.entityId) { %> · <%= peekItem.entityId %><% } %></p>
+      <h2 class="peek-subject"><%= peekItem.action %></h2>
+      <dl class="peek-props">
+        <div class="peek-props-row">
+          <div>
+            <dt><%= t("audit.time") %></dt>
+            <dd><%= peekItem.at ? formatDateTime(peekItem.at) : "—" %></dd>
+          </div>
+          <div>
+            <dt><%= t("audit.user") %></dt>
+            <dd class="<%= peekItem.actor ? '' : 'is-empty' %>"><%= peekItem.actor || "—" %></dd>
+          </div>
+          <div>
+            <dt><%= t("audit.entity") %></dt>
+            <dd><%= t("entity." + peekItem.entity) %></dd>
+          </div>
+        </div>
+      </dl>
+      <p class="peek-copy"><%= peekItem.detail || "" %></p>
+      <%- include("partials/create-payload", { request: peekItem.payload }) %>
+      <% if (recordHref) { %>
+      <section class="peek-related">
+        <a href="<%= recordHref %>"><%= t("audit.openRecord") %></a>
+      </section>
       <% } %>
-    </section>
-  <% }) %>
-<% } %>
+    <% } %>
+  </aside>
+  <% } %>
+  </div>
+</section>

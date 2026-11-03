@@ -1,180 +1,223 @@
 <%
-  const segments = [
-    { key: "nieuw", cls: "open", n: counts.byStatus.nieuw },
-    { key: "wacht_op_info", cls: "wait", n: counts.byStatus.wacht_op_info },
-    { key: "in_behandeling", cls: "progress", n: counts.byStatus.in_behandeling },
-    { key: "afgerond", cls: "closed", n: counts.byStatus.afgerond },
-  ];
   const recentEmployees = typeof werknemers !== "undefined" ? werknemers : [];
+  const kpis = insights || {};
+  const lead = kpis.leadTime || { series: [], ticks: [], line: "", area: "", width: 520, height: 176 };
+  function deltaClass(n) {
+    if (n == null) return "";
+    return n < 0 ? "is-down" : "is-up";
+  }
+  function deltaLabel(n) {
+    if (n == null) return "";
+    const sign = n > 0 ? "+" : "";
+    return t("dash.vsPrev", { n: sign + n });
+  }
+  function whenLabel(iso) {
+    const bucket = dayBucket(iso);
+    if (bucket === "today") return t("dash.todayAt", { time: formatTime(iso) });
+    if (bucket === "yesterday") return t("dash.yesterdayAt", { time: formatTime(iso) });
+    return formatDateTimeShort(iso);
+  }
 %>
-<div class="page-head">
-  <div>
-    <h1><%= t('dash.title') %></h1>
-    <p class="lede"><%= isHr && !isCases ? t('dash.hrLede') : t('dash.lede') %></p>
-  </div>
-  <div class="actions">
-    <% if (isCases) { %>
-    <a class="btn" href="/zaken/nieuw"><%= t('nav.newCase') %></a>
-    <a class="seg" href="/zaken">
-      <svg viewBox="0 0 24 24"><path d="M5 6h14v2H5zm0 5h14v2H5zm0 5h14v2H5z"/></svg>
-      <%= t('nav.cases') %>
-    </a>
-    <a class="seg" href="/zaken?view=board">
-      <svg viewBox="0 0 24 24"><path d="M4 5h6v14H4zm8 0h8v8h-8zm0 10h8v4h-8z"/></svg>
-      <%= t('dash.board') %>
-    </a>
-    <% } else if (canWriteEmployees) { %>
-    <a class="btn" href="/werknemers/nieuw"><%= t('nav.newEmployee') %></a>
-    <a class="seg" href="/werknemers">
-      <svg viewBox="0 0 24 24"><path d="M5 6h14v2H5zm0 5h14v2H5zm0 5h14v2H5z"/></svg>
-      <%= t('nav.employees') %>
-    </a>
-    <% } %>
-  </div>
-</div>
-
-<% if (isCases) { %>
-<section class="stats">
-  <article class="stat">
-    <span class="stat-ico ico-total"><svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2z"/></svg></span>
-    <div><strong><%= counts.zaken %></strong><span><%= t('dash.total') %></span></div>
-  </article>
-  <article class="stat">
-    <span class="stat-ico ico-open"><svg viewBox="0 0 24 24"><path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/></svg></span>
-    <div><strong><%= counts.open %></strong><span><%= t('dash.open') %></span></div>
-  </article>
-  <article class="stat">
-    <span class="stat-ico ico-progress"><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-8 8h2a6 6 0 1 0 6-6V4z"/></svg></span>
-    <div><strong><%= counts.inProgress %></strong><span><%= t('dash.progress') %></span></div>
-  </article>
-  <article class="stat">
-    <span class="stat-ico ico-closed"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 1-9 9 9 9 0 0 1 9-9zm-1.2 12.4 6-6-1.4-1.4-4.6 4.6-2.2-2.2-1.4 1.4z"/></svg></span>
-    <div><strong><%= counts.closed %></strong><span><%= t('dash.closed') %></span></div>
-  </article>
-</section>
-<% } %>
-
-<section class="registry">
-  <% if (isHr) { %>
-  <article>
-    <span class="stat-ico ico-people"><svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zM8 12a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm8 2c-2.7 0-5.2 1.3-6 3.2A7.5 7.5 0 0 1 22 19c0-2.8-2.7-5-6-5zM8 14c-3.3 0-6 2-6 4.5V21h7.2A6.7 6.7 0 0 1 8 14z"/></svg></span>
-    <div><strong><%= counts.werknemers %></strong><span><%= t('nav.employees') %></span></div>
-  </article>
-  <% } %>
-  <% if (isCases) { %>
-  <article>
-    <span class="stat-ico ico-people"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z"/></svg></span>
-    <div><strong><%= counts.personen %></strong><span><%= t('nav.persons') %></span></div>
-  </article>
-  <article>
-    <span class="stat-ico ico-co"><svg viewBox="0 0 24 24"><path d="M3 21V8l6-4 6 4v13H3zm14 0V10h4v11z"/></svg></span>
-    <div><strong><%= counts.bedrijven %></strong><span><%= t('nav.companies') %></span></div>
-  </article>
-  <% } %>
-</section>
-
-<% if (isCases) { %>
-<div class="grid-2 dash-mid">
-  <section class="panel">
-    <h2><%= t('dash.split') %></h2>
-    <div class="status-bar" aria-hidden="true">
-      <% segments.forEach(function (s) { if (s.n) { %>
-        <span class="seg-<%= s.cls %>" style="flex: <%= s.n %>"></span>
-      <% } }) %>
+<div class="dash">
+  <div class="page-head dash-head">
+    <div>
+      <h1><%= firstName ? t("dash.welcome", { name: firstName }) : t("dash.title") %></h1>
+      <p class="lede"><%= isHr && !isCases ? t("dash.welcomeHrLede") : t("dash.welcomeLede") %></p>
     </div>
-    <ul class="legend">
-      <li><i class="dot open"></i> <%= t('dash.open') %> <b><%= counts.byStatus.nieuw %></b></li>
-      <li><i class="dot wait"></i> <%= t('dash.waiting') %> <b><%= counts.byStatus.wacht_op_info %></b></li>
-      <li><i class="dot progress"></i> <%= t('dash.progress') %> <b><%= counts.byStatus.in_behandeling %></b></li>
-      <li><i class="dot closed"></i> <%= t('dash.closed') %> <b><%= counts.byStatus.afgerond %></b></li>
-    </ul>
-  </section>
+    <div class="actions">
+      <% if (isCases) { %>
+      <a class="btn dash-cta" href="/zaken?nieuw=1">
+        <%- icon("plus") %>
+        <%= t("dash.newCase") %>
+      </a>
+      <% } else if (canWriteEmployees) { %>
+      <a class="btn dash-cta" href="/werknemers?nieuw=1"><%= t("nav.newEmployee") %></a>
+      <% } %>
+    </div>
+  </div>
 
-  <section class="panel overdue">
-    <h2>
-      <svg viewBox="0 0 24 24"><path d="M12 3 2 21h20zm1 14h-2v2h2zm0-8h-2v6h2z"/></svg>
-      <%= t('dash.overdue') %>
-    </h2>
-    <% if (!overdue.length) { %>
-      <p class="muted"><%= t('dash.noOverdue') %></p>
-    <% } else { %>
-      <ul class="overdue-list">
-        <% overdue.forEach(function (z) { %>
-        <li>
-          <a href="/zaken/<%= z.id %>">
-            <strong><%= z.titel %></strong>
-            <span class="mono"><%= z.zaaknummer %></span>
-          </a>
-          <span class="badge-overdue"><%= t('dash.overdueBadge') %></span>
-        </li>
-        <% }) %>
-      </ul>
-    <% } %>
-    <a class="ghost" href="/zaken"><%= t('dash.viewAll') %></a>
+  <% if (isCases) { %>
+  <section class="kpis" aria-label="<%= t('dash.title') %>">
+    <article class="kpi kpi-hero">
+      <div class="kpi-copy">
+        <span><%= t("dash.openCases") %></span>
+        <strong><%= counts.open %></strong>
+        <% if (kpis.openDelta != null) { %><small class="kpi-delta <%= deltaClass(kpis.openDelta) %>"><%= deltaLabel(kpis.openDelta) %></small><% } %>
+      </div>
+      <span class="kpi-ico" aria-hidden="true"><%- icon("folder") %></span>
+    </article>
+    <article class="kpi">
+      <div class="kpi-copy">
+        <span><%= t("dash.closedMonth") %></span>
+        <strong><%= kpis.closedThis || 0 %></strong>
+        <% if (kpis.closedDelta != null) { %><small class="kpi-delta <%= deltaClass(kpis.closedDelta) %>"><%= deltaLabel(kpis.closedDelta) %></small><% } %>
+      </div>
+      <span class="kpi-ico" aria-hidden="true"><%- icon("circle-check") %></span>
+    </article>
+    <article class="kpi">
+      <div class="kpi-copy">
+        <span><%= t("dash.newMonth") %></span>
+        <strong><%= kpis.newThis || 0 %></strong>
+        <% if (kpis.newDelta != null) { %><small class="kpi-delta <%= deltaClass(kpis.newDelta) %>"><%= deltaLabel(kpis.newDelta) %></small><% } %>
+      </div>
+      <span class="kpi-ico" aria-hidden="true"><%- icon("plus") %></span>
+    </article>
+    <article class="kpi">
+      <div class="kpi-copy">
+        <span><%= t("dash.overdue") %></span>
+        <strong><%= kpis.overdue || 0 %></strong>
+      </div>
+      <span class="kpi-ico" aria-hidden="true"><%- icon("clock-alert") %></span>
+    </article>
   </section>
-</div>
-<% } %>
-
-<div class="grid-2">
-  <% if (isHr) { %>
-  <section class="panel">
-    <header>
-      <h2><%= t('dash.recentEmployees') %></h2>
-      <a href="/werknemers"><%= t('dash.viewEmployees') %></a>
-    </header>
-    <% if (!recentEmployees.length) { %>
-      <p class="muted"><%= t('dash.noEmployees') %></p>
-    <% } else { %>
-      <ul class="case-feed">
-        <% recentEmployees.forEach(function (w) { %>
-        <li>
-          <a href="/werknemers/<%= w.id %>"><%= w.naam %></a>
-          <span class="mono"><%= w.personeelsnummer || '' %></span>
-          <small><%= w.functiebenaming || t('role.' + w.rol) %></small>
-        </li>
-        <% }) %>
-      </ul>
-    <% } %>
+  <% } else { %>
+  <section class="kpis kpis-hr" aria-label="<%= t('dash.title') %>">
+    <article class="kpi kpi-hero">
+      <div class="kpi-copy">
+        <span><%= t("nav.employees") %></span>
+        <strong><%= counts.werknemers %></strong>
+      </div>
+      <span class="kpi-ico" aria-hidden="true"><%- icon("users") %></span>
+    </article>
+    <article class="kpi">
+      <div class="kpi-copy">
+        <span><%= t("dash.recentDocs") %></span>
+        <strong><%= documenten.length %></strong>
+      </div>
+      <span class="kpi-ico" aria-hidden="true"><%- icon("file-text") %></span>
+    </article>
   </section>
   <% } %>
+
+  <div class="grid-2 dash-mid<%= isCases ? "" : " is-single" %>">
+    <% if (isCases) { %>
+    <section class="panel dash-chart">
+      <header>
+        <h2><%= t("dash.leadTime") %></h2>
+        <span class="muted"><%= t("dash.last6m") %></span>
+      </header>
+      <% if (!lead.line) { %><p class="muted"><%= t("dash.noLeadTime") %></p><% } %>
+      <div class="lead-chart<%= lead.line ? "" : " is-empty" %>">
+        <% if (lead.current != null) { %>
+        <div class="lead-now" style="left: <%= ((lead.series.find(function (p) { return p.last; }) || {}).x / lead.width * 100).toFixed(1) %>%">
+          <strong><%= t("dash.daysLong", { n: lead.current }) %></strong>
+          <% if (lead.delta != null) { %><small class="kpi-delta <%= deltaClass(lead.delta) %>"><%= deltaLabel(lead.delta) %></small><% } %>
+        </div>
+        <% } %>
+        <svg viewBox="0 0 <%= lead.width %> <%= lead.height %>" role="img" aria-label="<%= t('dash.leadTime') %>">
+          <% (lead.ticks || []).forEach(function (tick) { %>
+            <line class="lead-gridline" x1="<%= lead.padLeft || 36 %>" x2="<%= lead.width - (lead.padRight || 14) %>" y1="<%= tick.y %>" y2="<%= tick.y %>"></line>
+            <text class="lead-tick" x="0" y="<%= tick.y + 4 %>"><%= tick.days %> d</text>
+          <% }) %>
+          <% if (lead.area) { %><path class="lead-area" d="<%= lead.area %>"></path><% } %>
+          <% if (lead.line) { %><path class="lead-line" d="<%= lead.line %>"></path><% } %>
+          <% lead.series.forEach(function (p) { if (p.last) { %>
+            <circle class="lead-dot" cx="<%= p.x.toFixed(1) %>" cy="<%= p.y.toFixed(1) %>" r="5"></circle>
+          <% } }) %>
+        </svg>
+        <ol class="lead-months">
+          <% lead.series.forEach(function (p) { %>
+            <li><%= p.label %></li>
+          <% }) %>
+        </ol>
+      </div>
+    </section>
+    <% } %>
+
+    <section class="panel dash-feed">
+      <header>
+        <h2><%= t("dash.activity") %></h2>
+        <span class="muted"><%= t("dash.thisWeek") %></span>
+      </header>
+      <% if (!activity.length) { %>
+        <p class="muted"><%= t("dash.noActivity") %></p>
+      <% } else { %>
+        <ol class="dash-activity">
+          <% activity.forEach(function (ev) { %>
+          <li>
+            <span class="dash-activity-ico ico-<%= ev.entity || 'zaak' %>" aria-hidden="true">
+              <% if (ev.entity === "document") { %>
+              <%- icon("file-text") %>
+              <% } else if (ev.entity === "werknemer") { %>
+              <%- icon("user") %>
+              <% } else { %>
+              <%- icon("bookmark") %>
+              <% } %>
+            </span>
+            <div>
+              <p><%= ev.detail || t("entity." + ev.entity) %></p>
+              <small><%= whenLabel(ev.at) %></small>
+            </div>
+          </li>
+          <% }) %>
+        </ol>
+      <% } %>
+    </section>
+  </div>
+
   <% if (isCases) { %>
-  <section class="panel">
+  <section class="panel dash-recent">
     <header>
-      <h2><%= t('dash.recentCases') %></h2>
-      <a href="/zaken"><%= t('dash.viewAll') %></a>
+      <h2><%= t("dash.recentCases") %></h2>
+      <a href="/zaken"><%= t("dash.viewAllShort") %></a>
     </header>
     <% if (!zaken.length) { %>
-      <p class="muted"><%= t('dash.noCases') %></p>
+      <p class="muted"><%= t("dash.noCases") %></p>
     <% } else { %>
-      <ul class="case-feed">
-        <% zaken.forEach(function (z) { %>
-        <li>
-          <a href="/zaken/<%= z.id %>"><%= z.titel %></a>
-          <span class="badge badge-<%= z.status %>"><%= t('status.' + z.status) %></span>
-          <small><%= formatDate(z.createdAt) %></small>
-        </li>
-        <% }) %>
-      </ul>
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th><%= t("cases.caseId") %></th>
+            <th><%= t("dash.subject") %></th>
+            <th><%= t("cases.type") %></th>
+            <th><%= t("cases.status") %></th>
+            <th><%= t("dash.lastUpdated") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% zaken.forEach(function (z) { %>
+          <tr>
+            <td><a href="/zaken/<%= z.id %>"><%= z.zaaknummer %></a></td>
+            <td><a href="/zaken/<%= z.id %>"><%= z.titel %></a></td>
+            <td class="muted"><%= z.zaaktype || "—" %></td>
+            <td><span class="dash-status dash-status-<%= z.status %>"><%= t("status." + z.status) %></span></td>
+            <td class="muted"><%= whenLabel(z.updatedAt) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
     <% } %>
   </section>
   <% } %>
-  <section class="panel">
+
+  <% if (isHr) { %>
+  <section class="panel dash-recent">
     <header>
-      <h2><%= t('dash.recentDocs') %></h2>
+      <h2><%= t("dash.recentEmployees") %></h2>
+      <a href="/werknemers"><%= t("dash.viewEmployees") %></a>
     </header>
-    <% if (!documenten.length) { %>
-      <p class="muted"><%= t('dash.noDocs') %></p>
+    <% if (!recentEmployees.length) { %>
+      <p class="muted"><%= t("dash.noEmployees") %></p>
     <% } else { %>
-      <ul class="doc-feed">
-        <% documenten.forEach(function (d) { %>
-        <li>
-          <% const docHref = d.werknemerId ? "/werknemers/" + d.werknemerId + "/bijlagen/" + d.id : "/zaken/" + d.zaakId + "/bijlagen/" + d.id; %>
-          <a href="<%= docHref %>"<% if (/pdf/i.test(d.mime || "") || /\.pdf$/i.test(d.naam || "")) { %> data-pdf-preview data-pdf-name="<%= d.naam %>"<% } %>><%= d.naam %></a>
-          <p><%= d.zaaknummer %> · <%= d.zaakTitel %></p>
-          <small><%= formatDateTime(d.at) %></small>
-        </li>
-        <% }) %>
-      </ul>
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th><%= t("employees.name") %></th>
+            <th><%= t("hr.staffNo") %></th>
+            <th><%= t("hr.job") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% recentEmployees.forEach(function (w) { %>
+          <tr>
+            <td><a href="/werknemers/<%= w.id %>"><%= w.naam %></a></td>
+            <td><%= w.personeelsnummer || "—" %></td>
+            <td class="muted"><%= w.functiebenaming || t("role." + w.rol) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
     <% } %>
   </section>
+  <% } %>
 </div>

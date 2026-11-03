@@ -1,0 +1,86 @@
+<p class="back-link"><a href="/instellingen"><%= t("settings.back") %></a></p>
+<div class="page-head">
+  <div>
+    <h1><%= t("admins.manage") %></h1>
+    <p class="lede"><%= t("admins.lede") %></p>
+  </div>
+</div>
+
+<div class="settings-stack">
+  <section class="form-card workspace-admin-card">
+    <% if (!items.length) { %>
+    <p class="muted workspace-admin-empty"><%= t("admins.empty") %></p>
+    <% } else { %>
+    <ul class="workspace-admin">
+      <% items.forEach(function (item) { %>
+      <% const self = user && user.id === item.id; %>
+      <li>
+        <div class="workspace-admin-id">
+          <%- icon("shield-check", { class: "set-ico" }) %>
+          <div>
+            <strong><%= item.naam %></strong>
+            <small><%= item.email %></small>
+          </div>
+        </div>
+        <div class="workspace-admin-actions">
+          <% if (self) { %><span class="badge badge-afgerond"><%= t("admins.you") %></span><% } %>
+          <% if (!self && items.length > 1) { %>
+          <details class="menu-dots">
+            <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>"><%- icon("ellipsis") %></summary>
+            <div class="menu-dots-list">
+              <form method="post" action="/instellingen/beheerders/<%= item.id %>/verwijderen" data-confirm="<%= t('admins.confirmDelete') %>">
+                <button class="danger-text" type="submit"><%= t("common.delete") %></button>
+              </form>
+            </div>
+          </details>
+          <% } %>
+        </div>
+        <form class="admin-edit" method="post" action="/instellingen/beheerders/<%= item.id %>">
+          <div class="admin-edit-grid">
+            <label><%= t("employees.firstName") %>
+              <input name="voornaam" required value="<%= item.voornaam || "" %>" autocomplete="off">
+            </label>
+            <label><%= t("employees.lastName") %>
+              <input name="achternaam" required value="<%= item.achternaam || "" %>" autocomplete="off">
+            </label>
+            <label><%= t("employees.email") %>
+              <input type="email" name="email" required value="<%= item.email || "" %>" autocomplete="off">
+            </label>
+            <label><%= t("employees.password") %>
+              <input type="password" name="wachtwoord" placeholder="<%= t("employees.keepPassword") %>" autocomplete="new-password">
+            </label>
+          </div>
+          <div class="form-actions">
+            <button class="ghost" type="submit"><%= t("common.save") %></button>
+          </div>
+        </form>
+      </li>
+      <% }) %>
+    </ul>
+    <% } %>
+  </section>
+
+  <form class="form settings-form" method="post" action="/instellingen/beheerders">
+    <section class="form-card">
+      <h2><%= t("admins.new") %></h2>
+      <div class="form-grid form-grid-2">
+        <label><%= t("employees.firstName") %>
+          <input name="voornaam" required autocomplete="off">
+        </label>
+        <label><%= t("employees.lastName") %>
+          <input name="achternaam" required autocomplete="off">
+        </label>
+        <label><%= t("employees.email") %>
+          <input type="email" name="email" required autocomplete="off">
+        </label>
+        <label><%= t("employees.password") %>
+          <input type="password" name="wachtwoord" required minlength="8" autocomplete="new-password">
+          <span class="hint"><%= t("validation.passwordShort") %></span>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button class="btn" type="submit"><%= t("admins.add") %></button>
+      </div>
+    </section>
+  </form>
+</div>

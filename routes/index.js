@@ -862,7 +862,10 @@ function routes() {
     const email = String(req.body.email || "").trim();
     const password = String(req.body.password || "");
     const global = platformUserByEmail(email);
-    if (global && verifyPassword(password, global.wachtwoord)) {
+    if (global) {
+      if (!verifyPassword(password, global.wachtwoord)) {
+        return renderLogin(req, res, { ctx, next: nextUrl, status: 401, error: req.t("login.error") });
+      }
       setSessionCookie(res, global.id, PLATFORM_SESSION);
       if (!nextUrl || nextUrl === "/") return res.redirect("/instellingen/werkruimtes");
       return res.redirect(nextUrl);
@@ -1160,7 +1163,7 @@ function routes() {
         setSessionCookie(res, admin.id, PLATFORM_SESSION);
         return toastT(req, res, "/instellingen/beheerders", "toast.azureLinked");
       }
-      const global = platformUserByAzure(profile.oid, profile.email);
+      const global = platformUserByAzure(profile.oid, profile.emails || profile.email);
       if (global) {
         linkAzureToAdmin(global, profile);
         ctx.tenant.patchAzure({ lastError: "" });

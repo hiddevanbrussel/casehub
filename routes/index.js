@@ -591,7 +591,14 @@ async function generateBatchOwnerDocuments(req, res, { owner, recipe, settings, 
     "document",
     entries[0].job.id,
     `${recipe.name} · ${request.method} ${request.path} · ${entries.length} betrokkenen`,
-    { ...request, body: { count: entries.length, names: targets.map((item) => item.name).filter(Boolean) } }
+    {
+      ...request,
+      body: {
+        count: entries.length,
+        names: targets.map((item) => item.name).filter(Boolean),
+        data: create.clipJson(entries[0]?.target?.data),
+      },
+    }
   );
 
   const failAll = (message) => {

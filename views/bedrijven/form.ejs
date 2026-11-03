@@ -6,7 +6,7 @@
       <h1><%= bedrijf && bedrijf.id ? t('companies.edit') : t('companies.new') %></h1>
     </div>
     <div class="actions">
-      <a class="ghost" href="<%= bedrijf && bedrijf.id ? '/bedrijven/' + bedrijf.id : '/bedrijven' %>"><%= t('common.cancel') %></a>
+      <a class="ghost" href="<%= bedrijf && bedrijf.id ? '/bedrijven?focus=' + bedrijf.id : '/bedrijven' %>"><%= t('common.cancel') %></a>
       <button class="btn" type="submit"><%= t('common.save') %></button>
     </div>
   </div>

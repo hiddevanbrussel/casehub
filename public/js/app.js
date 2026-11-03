@@ -784,8 +784,8 @@
       const i18n = window.I18N || {};
       const blocks = [
         [i18n.cases || "Cases", data.zaken.map((z) => [`/zaken?focus=${encodeURIComponent(z.id)}`, `${z.zaaknummer} · ${z.titel}`])],
-        [i18n.companies || "Companies", data.bedrijven.map((b) => [`/bedrijven/${b.id}`, b.handelsnaam])],
-        [i18n.persons || "Persons", data.personen.map((p) => [`/personen/${p.id}`, p.naam])],
+        [i18n.companies || "Companies", data.bedrijven.map((b) => [`/bedrijven?focus=${encodeURIComponent(b.id)}`, b.handelsnaam])],
+        [i18n.persons || "Persons", data.personen.map((p) => [`/personen?focus=${encodeURIComponent(p.id)}`, p.naam])],
         [i18n.employees || "Employees", data.werknemers.map((w) => [`/werknemers/${w.id}`, w.naam])],
       ];
       results.innerHTML = blocks

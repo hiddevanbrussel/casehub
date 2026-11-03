@@ -497,13 +497,13 @@
             <% peekPeople.forEach(function (p) { %>
               <li>
                 <span class="who-avatar assignee-av tone-<%= p.id.charCodeAt(0) % 4 %>" aria-hidden="true"><%= String(p.naam || "?").split(/\s+/).map(function (part) { return part[0]; }).filter(Boolean).slice(0, 2).join("").toUpperCase() %></span>
-                <a href="/personen/<%= p.id %>"><%= p.naam %></a>
+                <a href="/personen?focus=<%= p.id %>"><%= p.naam %></a>
               </li>
             <% }) %>
             <% peekCompanies.forEach(function (b) { %>
               <li>
                 <span class="who-avatar assignee-av tone-1" aria-hidden="true"><%- icon("building-2") %></span>
-                <a href="/bedrijven/<%= b.id %>"><%= b.handelsnaam %></a>
+                <a href="/bedrijven?focus=<%= b.id %>"><%= b.handelsnaam %></a>
               </li>
             <% }) %>
           </ul>

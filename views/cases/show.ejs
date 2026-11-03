@@ -170,7 +170,7 @@
             <% persons.forEach(function (p) { %>
             <li>
               <span class="who-avatar assignee-av tone-<%= p.id.charCodeAt(0) % 4 %>" aria-hidden="true"><%= String(p.naam || "?").split(/\s+/).map(function (part) { return part[0]; }).slice(0, 2).join("").toUpperCase() %></span>
-              <a href="/personen/<%= p.id %>"><%= p.naam %></a>
+              <a href="/personen?focus=<%= p.id %>"><%= p.naam %></a>
             </li>
             <% }) %>
             <% companies.forEach(function (b) { %>
@@ -178,7 +178,7 @@
               <span class="who-avatar assignee-av tone-1" aria-hidden="true">
                 <%- icon("building-2") %>
               </span>
-              <a href="/bedrijven/<%= b.id %>"><%= b.handelsnaam %></a>
+              <a href="/bedrijven?focus=<%= b.id %>"><%= b.handelsnaam %></a>
             </li>
             <% }) %>
           </ul>
@@ -236,7 +236,7 @@
           <li>
             <span class="who-avatar assignee-av tone-<%= p.id.charCodeAt(0) % 4 %>" aria-hidden="true"><%= String(p.naam || "?").split(/\s+/).map(function (part) { return part[0]; }).slice(0, 2).join("").toUpperCase() %></span>
             <div>
-              <a href="/personen/<%= p.id %>"><%= p.naam %></a>
+              <a href="/personen?focus=<%= p.id %>"><%= p.naam %></a>
               <% if (p.email) { %><small><%= p.email %></small><% } %>
             </div>
           </li>
@@ -252,7 +252,7 @@
               <%- icon("building-2") %>
             </span>
             <div>
-              <a href="/bedrijven/<%= b.id %>"><%= b.handelsnaam %></a>
+              <a href="/bedrijven?focus=<%= b.id %>"><%= b.handelsnaam %></a>
               <% if (b.plaats) { %><small><%= b.plaats %></small><% } %>
             </div>
           </li>

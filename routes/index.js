@@ -320,8 +320,8 @@ function auditEntityHref(item) {
   const entity = item.entity;
   const entityId = item.entityId;
   if (entity === "zaak" && entityId) return zaakFocusPath(entityId);
-  if (entity === "persoon" && entityId) return `/personen/${entityId}`;
-  if (entity === "bedrijf" && entityId) return `/bedrijven/${entityId}`;
+  if (entity === "persoon" && entityId) return nawFocusPath("/personen", entityId);
+  if (entity === "bedrijf" && entityId) return nawFocusPath("/bedrijven", entityId);
   if (entity === "werknemer" && entityId) return `/werknemers/${entityId}`;
   if (entity === "zaaktype") return "/instellingen/zaaktypen";
   if (entity === "recipe") return "/templates";
@@ -370,6 +370,21 @@ function zaakFocusPath(id, extra = {}) {
   if (extra.peekTab) params.set("peekTab", extra.peekTab);
   const qs = params.toString();
   return qs ? `/zaken?${qs}` : "/zaken";
+}
+
+function nawFocusPath(base, id, extra = {}) {
+  if (!id) return base;
+  const params = new URLSearchParams();
+  params.set("focus", id);
+  if (extra.peekTab) params.set("peekTab", extra.peekTab);
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+function peekTabFromNawTab(tab) {
+  if (tab === "cases") return "cases";
+  if (tab === "contacts") return "contacts";
+  return "";
 }
 
 function peekTabFromCaseTab(tab) {
@@ -1890,6 +1905,7 @@ function routes() {
         peek: null,
         peekCases: [],
         peekPersons: [],
+        peekTab: "contacts",
         lazyPending: true,
       });
     }
@@ -1899,6 +1915,9 @@ function routes() {
     if (focusId && !store.bedrijf(focusId)) focusId = "";
     if (!composing && !focusId && all[0]) focusId = all[0].id;
     const peek = composing ? draftBedrijf() : (focusId ? store.bedrijf(focusId) : null);
+    const peekTab = ["contacts", "cases"].includes(String(req.query.peekTab || ""))
+      ? String(req.query.peekTab)
+      : "contacts";
     res.render("bedrijven/index", {
       title: req.t("nav.companies"),
       bedrijven: all,
@@ -1911,6 +1930,7 @@ function routes() {
       peek,
       peekCases: peek && peek.id ? linkedZaken("company", peek.id) : [],
       peekPersons: peek && peek.id ? store.personenForBedrijf(peek.id) : [],
+      peekTab,
       lazyPending: false,
       ...(fragment ? { layout: false } : {}),
     });
@@ -1926,23 +1946,14 @@ function routes() {
     if (fromList) {
       return toastT(req, res, nawListPath("/bedrijven", { ...req.body, filterFocus: row.id }), "toast.companySaved");
     }
-    toastT(req, res, `/bedrijven/${row.id}`, "toast.companySaved");
+    toastT(req, res, nawFocusPath("/bedrijven", row.id), "toast.companySaved");
   });
 
   r.get("/bedrijven/:id", (req, res) => {
     const bedrijf = store.bedrijf(req.params.id);
     if (!bedrijf) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCompany") });
-    const zaken = store.zaken({}).filter((z) => z.bedrijfIds.includes(bedrijf.id)).sort(sortLinkedCases);
-    const personen = store.personenForBedrijf(bedrijf.id);
-    const tab = ["contacts", "cases"].includes(String(req.query.tab || "")) ? String(req.query.tab) : "details";
-    res.render("bedrijven/show", {
-      title: bedrijf.handelsnaam,
-      bedrijf,
-      zaken,
-      personen,
-      tab,
-      canWrite: canWriteMaster(req.user),
-    });
+    const peekTab = peekTabFromNawTab(req.query.tab);
+    res.redirect(nawFocusPath("/bedrijven", bedrijf.id, peekTab ? { peekTab } : {}));
   });
 
   r.get("/bedrijven/:id/bewerken", requireRole("admin", "zaakmanager"), (req, res) => {
@@ -1969,7 +1980,7 @@ function routes() {
     if (req.body.from === "list") {
       return toastT(req, res, nawListPath("/bedrijven", { ...req.body, filterFocus: req.params.id }), "toast.companySaved");
     }
-    toastT(req, res, `/bedrijven/${req.params.id}`, "toast.companySaved");
+    toastT(req, res, nawFocusPath("/bedrijven", req.params.id), "toast.companySaved");
   });
 
   r.post("/bedrijven/:id/verwijderen", requireRole("admin", "zaakmanager"), (req, res) => {
@@ -1996,6 +2007,7 @@ function routes() {
         peek: null,
         peekCases: [],
         bedrijven: [],
+        peekTab: "cases",
         lazyPending: true,
       });
     }
@@ -2005,6 +2017,7 @@ function routes() {
     if (focusId && !store.persoon(focusId)) focusId = "";
     if (!composing && !focusId && all[0]) focusId = all[0].id;
     const peek = composing ? draftPersoon() : (focusId ? store.persoon(focusId) : null);
+    const peekTab = String(req.query.peekTab || "") === "cases" ? "cases" : "";
     res.render("personen/index", {
       title: req.t("nav.persons"),
       personen: all,
@@ -2017,6 +2030,7 @@ function routes() {
       peek,
       peekCases: peek && peek.id ? linkedZaken("person", peek.id) : [],
       bedrijven: store.bedrijven(),
+      peekTab,
       lazyPending: false,
       ...(fragment ? { layout: false } : {}),
     });
@@ -2032,23 +2046,14 @@ function routes() {
     if (fromList) {
       return toastT(req, res, nawListPath("/personen", { ...req.body, filterFocus: row.id }), "toast.personSaved");
     }
-    toastT(req, res, `/personen/${row.id}`, "toast.personSaved");
+    toastT(req, res, nawFocusPath("/personen", row.id), "toast.personSaved");
   });
 
   r.get("/personen/:id", (req, res) => {
-    const showBsn = req.query.bsn === "1" && isAdmin(req.user);
-    if (showBsn) store.log(req.user, "bsn-inzage", "persoon", req.params.id, "BSN getoond");
-    const persoon = store.persoon(req.params.id, { showBsn });
+    const persoon = store.persoon(req.params.id);
     if (!persoon) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundPerson") });
-    const zaken = store.zaken({}).filter((z) => z.persoonIds.includes(persoon.id)).sort(sortLinkedCases);
-    res.render("personen/show", {
-      title: persoon.naam,
-      persoon,
-      zaken,
-      canWrite: canWriteMaster(req.user),
-      showBsn,
-      tab: req.query.tab === "cases" ? "cases" : "details",
-    });
+    const peekTab = peekTabFromNawTab(req.query.tab);
+    res.redirect(nawFocusPath("/personen", persoon.id, peekTab ? { peekTab } : {}));
   });
 
   r.get("/personen/:id/bewerken", requireRole("admin", "zaakmanager"), (req, res) => {
@@ -2075,7 +2080,7 @@ function routes() {
     if (req.body.from === "list") {
       return toastT(req, res, nawListPath("/personen", { ...req.body, filterFocus: req.params.id }), "toast.personSaved");
     }
-    toastT(req, res, `/personen/${req.params.id}`, "toast.personSaved");
+    toastT(req, res, nawFocusPath("/personen", req.params.id), "toast.personSaved");
   });
 
   r.post("/personen/:id/anonimiseren", requireRole("admin", "zaakmanager"), (req, res) => {
@@ -2083,7 +2088,7 @@ function routes() {
     if (req.body.from === "list") {
       return toastT(req, res, nawListPath("/personen", req.body), "toast.personAnon");
     }
-    toastT(req, res, `/personen/${req.params.id}`, "toast.personAnon");
+    toastT(req, res, nawFocusPath("/personen", req.params.id), "toast.personAnon");
   });
 
   r.post("/personen/:id/verwijderen", requireRole("admin"), (req, res) => {

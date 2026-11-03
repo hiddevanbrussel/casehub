@@ -18,6 +18,7 @@
   const composing = Boolean(typeof compose !== "undefined" && compose);
   const peekCaseRows = typeof peekCases !== "undefined" ? peekCases : [];
   const peekPersonRows = typeof peekPersons !== "undefined" ? peekPersons : [];
+  const activePeekTab = typeof peekTab !== "undefined" && peekTab === "cases" ? "cases" : "contacts";
   const initials = function (name) {
     return String(name || "?").split(/\s+/).map(function (part) { return part[0]; }).filter(Boolean).slice(0, 2).join("").toUpperCase();
   };
@@ -88,7 +89,7 @@
       </div>
       <% } %>
       <% bedrijven.forEach(function (b) { %>
-      <div class="queue-row is-simple <%= b.id === focusId ? 'is-focused' : '' %>" data-open="/bedrijven/<%= b.id %>">
+      <div class="queue-row is-simple <%= b.id === focusId ? 'is-focused' : '' %>" data-open="<%= listQs({ focus: b.id }) %>">
         <% if (canDelete) { %>
         <label class="list-check">
           <input type="checkbox" name="ids" value="<%= b.id %>" data-check-row aria-label="<%= b.handelsnaam %>">
@@ -245,14 +246,14 @@
       </form>
       <% if (!composing) { %>
       <div class="peek-tabs peek-view" role="tablist" aria-label="<%= peekCompany.handelsnaam %>">
-        <button type="button" class="is-active" role="tab" id="peek-tab-contacts" aria-controls="peek-panel-contacts" aria-selected="true" tabindex="0" data-peek-tab="contacts">
+        <button type="button" class="<%= activePeekTab === "contacts" ? "is-active" : "" %>" role="tab" id="peek-tab-contacts" aria-controls="peek-panel-contacts" aria-selected="<%= activePeekTab === "contacts" ? "true" : "false" %>" tabindex="<%= activePeekTab === "contacts" ? "0" : "-1" %>" data-peek-tab="contacts">
           <%= t("companies.contacts") %><% if (peekPersonRows.length) { %> (<%= peekPersonRows.length %>)<% } %>
         </button>
-        <button type="button" role="tab" id="peek-tab-cases" aria-controls="peek-panel-cases" aria-selected="false" tabindex="-1" data-peek-tab="cases">
+        <button type="button" class="<%= activePeekTab === "cases" ? "is-active" : "" %>" role="tab" id="peek-tab-cases" aria-controls="peek-panel-cases" aria-selected="<%= activePeekTab === "cases" ? "true" : "false" %>" tabindex="<%= activePeekTab === "cases" ? "0" : "-1" %>" data-peek-tab="cases">
           <%= t("companies.linkedCases") %><% if (peekCaseRows.length) { %> (<%= peekCaseRows.length %>)<% } %>
         </button>
       </div>
-      <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-contacts" aria-labelledby="peek-tab-contacts" data-peek-panel="contacts">
+      <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-contacts" aria-labelledby="peek-tab-contacts" data-peek-panel="contacts"<% if (activePeekTab !== "contacts") { %> hidden<% } %>>
         <% if (!peekPersonRows.length) { %>
           <p class="muted"><%= t("companies.noContacts") %></p>
         <% } else { %>
@@ -271,12 +272,10 @@
           </ul>
         <% } %>
       </section>
-      <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-cases" aria-labelledby="peek-tab-cases" data-peek-panel="cases" hidden>
+      <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-cases" aria-labelledby="peek-tab-cases" data-peek-panel="cases"<% if (activePeekTab !== "cases") { %> hidden<% } %>>
         <%- include("../partials/case-list", {
           caseRows: peekCaseRows,
           compact: true,
-          limit: 8,
-          viewAllHref: peekCompany.id ? "/bedrijven/" + peekCompany.id + "?tab=cases" : "",
           emptyTitle: t("companies.noCases"),
         }) %>
       </section>

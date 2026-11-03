@@ -91,7 +91,7 @@
       </div>
       <% } %>
       <% personen.forEach(function (p) { %>
-      <div class="queue-row is-simple <%= p.id === focusId ? 'is-focused' : '' %>" data-open="/personen/<%= p.id %>">
+      <div class="queue-row is-simple <%= p.id === focusId ? 'is-focused' : '' %>" data-open="<%= listQs({ focus: p.id }) %>">
         <% if (canDelete) { %>
         <label class="list-check">
           <input type="checkbox" name="ids" value="<%= p.id %>" data-check-row aria-label="<%= p.naam || p.nummer %>">
@@ -268,7 +268,7 @@
             </div>
             <div>
               <dt><%= t("persons.company") %></dt>
-              <dd class="<%= peekPerson.bedrijf ? '' : 'is-empty' %>"><%= peekPerson.bedrijf ? peekPerson.bedrijf.handelsnaam : "—" %></dd>
+              <dd class="<%= peekPerson.bedrijf ? '' : 'is-empty' %>"><% if (peekPerson.bedrijf) { %><a href="/bedrijven?focus=<%= peekPerson.bedrijf.id %>"><%= peekPerson.bedrijf.handelsnaam %></a><% } else { %>—<% } %></dd>
             </div>
           </div>
           <div class="peek-props-row">
@@ -309,8 +309,6 @@
         <%- include("../partials/case-list", {
           caseRows: peekCaseRows,
           compact: true,
-          limit: 8,
-          viewAllHref: peekPerson.id ? "/personen/" + peekPerson.id + "?tab=cases" : "",
           emptyTitle: t("persons.noCases"),
         }) %>
       </section>

@@ -47,7 +47,7 @@ app.use((req, res, next) => {
   res.locals.workspace = req.workspace;
   res.locals.workspaces = workspaces();
   const continueRequest = () => {
-    const meta = req.store ? req.store.meta() : { orgName: config.orgName };
+    const meta = (req.store && req.store.meta()) || { orgName: config.orgName };
     const user = currentUser(req);
     req.user = user;
     res.locals.user = user;
@@ -87,9 +87,12 @@ app.use((_req, res) => {
 
 app.use((err, _req, res, _next) => {
   console.error(err);
+  if (res.headersSent) return;
+  const t = typeof res.locals.t === "function" ? res.locals.t : (key) => key;
+  if (!res.locals.meta) res.locals.meta = { orgName: config.orgName };
   res.status(500).render("fout", {
-    title: res.locals.t("error.title"),
-    message: res.locals.t("error.server"),
+    title: t("error.title"),
+    message: t("error.server"),
   });
 });
 

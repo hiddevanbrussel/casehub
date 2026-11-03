@@ -40,8 +40,8 @@ Change `SESSION_SECRET` in `.env` or in `docker-compose.yml` before going live.
 
 ## Workspaces and roles
 
-- **Superadmins** are not tied to one branch. They only create workspaces and other superadmins under **Settings → Workspaces** and **Settings → Administrators**. They do not work in cases or workspace settings.
-- **Workspace administrators** manage the rest of the settings in their branch: organisation, case types, integrations, templates and staff.
+- **Superadmins** are not tied to one branch. They create workspaces and other superadmins under **Settings → Workspaces** and **Settings → Administrators**, and they can open any workspace to handle cases, people and settings.
+- **Workspace administrators** manage the rest of the settings in their branch: organisation, case types, integrations, templates and staff. They cannot add workspaces or superadmins.
 - Other employees belong to one workspace and only see that branch.
 - The login form has a workspace dropdown. Optional **login domains** on a workspace restrict who may sign in there (email host must match; subdomains are allowed). Leave the field empty for no restriction. Superadmins always get in.
 - Hostnames can also map to a workspace when they match a linked domain.

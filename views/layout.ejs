@@ -8,26 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/public/css/app.css?v=superadmin-1">
+  <link rel="stylesheet" href="/public/css/app.css?v=superadmin-2">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
-    <a class="brand" href="<%= typeof isGlobalAdmin !== 'undefined' && isGlobalAdmin ? '/instellingen/werkruimtes' : '/' %>">
+    <a class="brand" href="/">
       <%- include("partials/brand-mark") %>
       <strong><%= meta.orgName %></strong>
     </a>
     <nav>
-      <% if (typeof isGlobalAdmin !== "undefined" && isGlobalAdmin) { %>
-      <p class="nav-label"><%= t('nav.admin') %></p>
-      <a class="<%= navActive('/instellingen/werkruimtes') %>" href="/instellingen/werkruimtes">
-        <%- icon("building-2") %>
-        <%= t('workspace.manage') %>
-      </a>
-      <a class="<%= navActive('/instellingen/beheerders') %>" href="/instellingen/beheerders">
-        <%- icon("shield-check") %>
-        <%= t('admins.manage') %>
-      </a>
-      <% } else { %>
       <p class="nav-label"><%= t('nav.home') %></p>
       <a class="<%= path === '/' ? 'is-active' : '' %>" href="/" data-tour="dash">
         <%- icon("layout-dashboard") %>
@@ -60,6 +49,16 @@
 
       <% if (typeof isAdmin !== "undefined" && isAdmin) { %>
       <p class="nav-label"><%= t('nav.admin') %></p>
+      <% if (typeof isGlobalAdmin !== "undefined" && isGlobalAdmin) { %>
+      <a class="<%= navActive('/instellingen/werkruimtes') %>" href="/instellingen/werkruimtes">
+        <%- icon("building-2") %>
+        <%= t('workspace.manage') %>
+      </a>
+      <a class="<%= navActive('/instellingen/beheerders') %>" href="/instellingen/beheerders">
+        <%- icon("shield-check") %>
+        <%= t('admins.manage') %>
+      </a>
+      <% } %>
       <% if (!isHr) { %>
       <a class="<%= navActive('/werknemers') %>" href="/werknemers" data-tour="employees">
         <%- icon("users") %>
@@ -75,21 +74,16 @@
         <%= t('nav.settings') %>
       </a>
       <% } %>
-      <% } %>
     </nav>
 
   </aside>
 
   <div class="shell">
     <header class="topbar">
-      <% if (!(typeof isGlobalAdmin !== "undefined" && isGlobalAdmin)) { %>
       <label class="top-search" data-tour="search">
         <%- icon("search") %>
         <input type="search" placeholder="<%= t('search.top', { org: meta.orgName }) %>" data-palette-open readonly>
       </label>
-      <% } else { %>
-      <div class="top-search is-empty"></div>
-      <% } %>
       <div class="topbar-end">
         <%- include("partials/theme-toggle") %>
         <%- include("partials/lang-switcher") %>

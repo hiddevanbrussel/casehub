@@ -35,7 +35,7 @@ const {
 } = require("../lib/db");
 const { verifyPassword } = require("../lib/crypto");
 const { STATUSSEN, PRIORITEITEN, ROLLEN, OVERVIEW_GROUPS, PERSON_GROUPS, COMPANY_GROUPS, parseView, includesQ, slugFile, firstName, ymdToday } = require("../lib/format");
-const { currentUser, requireAuth, requireRole, requireGlobalAdmin, restrictGlobalAdmin, setSessionCookie, clearSessionCookie, canWriteMaster, isAdmin, isGlobalAdmin } = require("../lib/auth");
+const { currentUser, requireAuth, requireRole, requireGlobalAdmin, setSessionCookie, clearSessionCookie, canWriteMaster, isAdmin, isGlobalAdmin } = require("../lib/auth");
 const config = require("../config");
 const create = require("../lib/create");
 const azure = require("../lib/azure");
@@ -281,9 +281,9 @@ function employeeFormLocals(req, extra = {}) {
 }
 
 function targetWorkspaceSlug(req) {
-  if (!isGlobalAdmin(req.user)) return req.store.slug;
+  if (!isGlobalAdmin(req.user)) return req.store?.slug;
   const wanted = slugify(req.body.workspace || "");
-  return workspace(wanted) ? wanted : req.store.slug;
+  return workspace(wanted) ? wanted : req.store?.slug;
 }
 
 function persistWerknemer(req, input) {
@@ -642,7 +642,7 @@ function finishPlatformSetup(req, res, admin, item, nextUrl) {
     setWorkspaceCookie(res, item.slug);
     setLangCookie(res, item.defaultLang);
   }
-  res.redirect(nextUrl || "/instellingen/werkruimtes");
+  res.redirect(nextUrl || "/");
 }
 
 function firstWorkspaceTenant() {
@@ -804,7 +804,7 @@ function handlePlatformSetup(req, res) {
       }
       tenant.saveMeta({ setupAzureDone: true }, null);
       setPlatformAzureDone(true);
-      return finishPlatformSetup(req, res, admin, item, link ? "/auth/azure?link=1" : "/instellingen/werkruimtes");
+      return finishPlatformSetup(req, res, admin, item, link ? "/auth/azure?link=1" : "/");
     });
   }
 
@@ -883,7 +883,8 @@ function routes() {
     setWorkspaceCookie(res, item.slug);
     setLangCookie(res, item.defaultLang);
     if (isGlobalAdmin(req.user)) {
-      return res.redirect("/instellingen/werkruimtes");
+      const nextUrl = req.query.next && String(req.query.next).startsWith("/") ? req.query.next : "/";
+      return res.redirect(nextUrl === "/werkruimtes" ? "/" : nextUrl);
     }
     clearSessionCookie(res);
     const nextUrl = req.query.next && String(req.query.next).startsWith("/") ? req.query.next : "/login";
@@ -893,7 +894,7 @@ function routes() {
   r.get("/login", (req, res) => {
     const existing = req.user || currentUser(req);
     if (existing) {
-      return res.redirect(isGlobalAdmin(existing) ? "/instellingen/werkruimtes" : "/");
+      return res.redirect("/");
     }
     const ctx = tenantForLogin(req);
     if (!ctx.item) return res.redirect("/werkruimtes");
@@ -914,8 +915,7 @@ function routes() {
         return renderLogin(req, res, { ctx, next: nextUrl, status: 401, error: req.t("login.error") });
       }
       setSessionCookie(res, global.id, PLATFORM_SESSION);
-      if (!nextUrl || nextUrl === "/") return res.redirect("/instellingen/werkruimtes");
-      return res.redirect(nextUrl);
+      return res.redirect(nextUrl || "/");
     }
     if (!workspaceAllowsEmail(ctx.item, email)) {
       return renderLogin(req, res, { ctx, next: nextUrl, status: 401, error: req.t("login.domainDenied") });
@@ -1215,10 +1215,8 @@ function routes() {
         linkAzureToAdmin(global, profile);
         ctx.tenant.patchAzure({ lastError: "" });
         setSessionCookie(res, global.id, PLATFORM_SESSION);
-        const nextUrl = req.query.next && String(req.query.next).startsWith("/") ? req.query.next : "/instellingen/werkruimtes";
-        if (nextUrl === "/" || nextUrl === "/login" || nextUrl === "/werkruimtes") {
-          return res.redirect("/instellingen/werkruimtes");
-        }
+        const nextUrl = req.query.next && String(req.query.next).startsWith("/") ? req.query.next : "/";
+        if (nextUrl === "/login" || nextUrl === "/werkruimtes") return res.redirect("/");
         return res.redirect(nextUrl);
       }
       if (!workspaceAllowsEmail(ctx.item, profile.email)) {
@@ -1238,10 +1236,23 @@ function routes() {
   });
 
   r.use(requireAuth);
-  r.use(restrictGlobalAdmin);
 
   r.use((req, res, next) => {
-    if (!req.store || isCases(store.meta())) return next();
+    if (req.store) return next();
+    const route = req.path || "";
+    const platformOnly =
+      route === "/logout" ||
+      route === "/api/tour" ||
+      route === "/instellingen" ||
+      route.startsWith("/instellingen/werkruimtes") ||
+      route.startsWith("/instellingen/beheerders");
+    if (isGlobalAdmin(req.user) && platformOnly) return next();
+    if (isGlobalAdmin(req.user)) return res.redirect("/instellingen/werkruimtes");
+    return res.redirect("/login");
+  });
+
+  r.use((req, res, next) => {
+    if (!req.store || isCases(req.store.meta())) return next();
     if (
       req.path.startsWith("/zaken") ||
       req.path.startsWith("/personen") ||
@@ -2234,7 +2245,7 @@ function routes() {
     res.render("instellingen/beheerders", {
       title: req.t("admins.manage"),
       items: platformUsers().map(publicPlatformUser),
-      azureReady: azure.enabled(azure.azureSettings(store)),
+      azureReady: Boolean(req.store) && azure.enabled(azure.azureSettings(req.store)),
     });
   });
 

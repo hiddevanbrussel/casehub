@@ -692,6 +692,7 @@ async function startStufOwnerDocument(req, res, { owner, recipe, settings, job, 
     party,
     data: payload,
     actor: req.user,
+    org: { orgName: store.meta().orgName || "", slug: store.slug || settings.slug || "" },
     referentienummer,
   });
   store.log(

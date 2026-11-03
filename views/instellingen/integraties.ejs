@@ -5,6 +5,7 @@
     return { cls: "badge-afgerond", label: t("common.connected") };
   }
   const createBadge = statusBadge(createReady, create.active);
+  const stufBadge = statusBadge(stufReady, stuf.active);
   const azureBadge = statusBadge(azureReady, azure.active);
 %>
 <p class="back-link"><a href="/instellingen"><%= t("settings.back") %></a></p>
@@ -18,6 +19,7 @@
 <div class="int-stack">
   <form method="post" action="/instellingen/integraties/active" class="form-card int-card">
     <input type="hidden" name="azureActive" value="<%= azure.active !== false ? "1" : "0" %>">
+    <input type="hidden" name="stufActive" value="<%= stuf.active !== false ? "1" : "0" %>">
     <header class="int-card-head">
       <%- icon("file-plus", { class: "set-ico" }) %>
       <div>
@@ -29,9 +31,6 @@
     <% if (createReady) { %><p class="int-card-meta"><%= createSummary %></p><% } %>
     <% if (create.lastError) { %><p class="int-card-error"><%= create.lastError %></p><% } %>
     <% if (create.lastSyncAt) { %><p class="hint"><%= t("create.lastSync") %> <%= formatDateTime(create.lastSyncAt) %></p><% } %>
-    <% if (create.stufDcr && create.stufDcr.enabled) { %>
-    <p class="hint"><%= t("create.stuf.enable") %></p>
-    <% } %>
     <% if (create.lastWebhookAt) { %>
     <p class="hint">
       <%= t("create.lastWebhook") %>
@@ -62,6 +61,44 @@
 
   <form method="post" action="/instellingen/integraties/active" class="form-card int-card">
     <input type="hidden" name="createActive" value="<%= create.active !== false ? "1" : "0" %>">
+    <input type="hidden" name="azureActive" value="<%= azure.active !== false ? "1" : "0" %>">
+    <header class="int-card-head">
+      <%- icon("file-output", { class: "set-ico" }) %>
+      <div>
+        <h2><%= t("integrations.stufName") %></h2>
+        <p><%= t("integrations.stufAbout") %></p>
+      </div>
+      <span class="badge <%= stufBadge.cls %>"><%= stufBadge.label %></span>
+    </header>
+    <% if (stufReady) { %><p class="int-card-meta"><%= stufSummary %></p><% } %>
+    <% if (stuf.lastError) { %><p class="int-card-error"><%= stuf.lastError %></p><% } %>
+    <% if (stuf.lastResultAt) { %>
+    <p class="hint">
+      <%= t("stuf.lastResult") %>
+      <%= formatDateTime(stuf.lastResultAt) %>
+      · <%= t("stuf.status." + (stuf.lastResultStatus || "ok")) %>
+      <% if (stuf.lastResultDetail) { %> · <%= stuf.lastResultDetail %><% } %>
+    </p>
+    <% } else { %>
+    <p class="hint"><%= t("stuf.lastResultNone") %></p>
+    <% } %>
+    <footer class="int-card-foot">
+      <% if (stufReady) { %>
+      <label class="set-toggle is-compact">
+        <span><strong><%= t("integrations.active") %></strong></span>
+        <input type="hidden" name="stufActive" value="0">
+        <input type="checkbox" name="stufActive" value="1" data-auto-submit <%= stuf.active !== false ? "checked" : "" %> aria-label="StUF-DCR <%= t('integrations.active') %>">
+      </label>
+      <% } else { %>
+      <input type="hidden" name="stufActive" value="<%= stuf.active !== false ? "1" : "0" %>">
+      <% } %>
+      <a class="<%= stufReady ? "ghost" : "btn" %>" href="/instellingen/integraties/stuf-dcr"><%= t("integrations.configure") %></a>
+    </footer>
+  </form>
+
+  <form method="post" action="/instellingen/integraties/active" class="form-card int-card">
+    <input type="hidden" name="createActive" value="<%= create.active !== false ? "1" : "0" %>">
+    <input type="hidden" name="stufActive" value="<%= stuf.active !== false ? "1" : "0" %>">
     <header class="int-card-head">
       <%- icon("key-round", { class: "set-ico" }) %>
       <div>

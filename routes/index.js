@@ -466,10 +466,13 @@ function visibleRecipes() {
   return store.recipes().filter((recipe) => !recipe.hideFromUserView);
 }
 
+function documentChannelReady() {
+  return create.enabled(create.createSettings(store)) || stufDcr.enabled(stufDcr.stufSettings(store));
+}
+
 function employeeDocContext() {
   if (!isHr(store.meta())) return { recipes: [], createReady: false };
-  const settings = create.createSettings(store);
-  return { recipes: visibleRecipes(), createReady: create.enabled(settings) };
+  return { recipes: visibleRecipes(), createReady: documentChannelReady() };
 }
 
 function draftZaak() {
@@ -592,15 +595,12 @@ function saveStufOwnerFile(tenant, job, file, actor) {
 }
 
 function rememberStuf(tenant, { status, path, detail, jobId }) {
-  const settings = create.createSettings(tenant);
-  tenant.patchCreate({
-    stufDcr: {
-      ...settings.stufDcr,
-      lastResultAt: nowIso(),
-      lastResultStatus: status,
-      lastResultPath: String(path || "").slice(0, 300),
-      lastResultDetail: String(detail || "").slice(0, 400),
-    },
+  tenant.patchStuf({
+    lastResultAt: nowIso(),
+    lastResultStatus: status,
+    lastResultPath: String(path || "").slice(0, 300),
+    lastResultDetail: String(detail || "").slice(0, 400),
+    lastError: status === "error" ? String(detail || "").slice(0, 400) : "",
   });
   tenant.log(null, "stuf-dcr", "document", jobId || "stuf-dcr", `${status}${detail ? ` · ${detail}` : ""}`);
   console.log(`stuf-dcr ${status} ${path || ""} ${jobId || ""}`.trim());
@@ -669,12 +669,12 @@ async function applyStufResult(req, tenant, job, parsed) {
   rememberStuf(tenant, { status: "pending", path: req.originalUrl, detail: parsed.status, jobId: job.id });
 }
 
-async function startStufOwnerDocument(req, res, { owner, recipe, settings, job, payload, target, docsUrl }) {
+async function startStufOwnerDocument(req, res, { owner, recipe, settings, stuf, job, payload, target, docsUrl }) {
   const zaak = owner.zaakId ? store.zaak(owner.zaakId) : null;
   const werknemer = owner.werknemerId ? store.werknemer(owner.werknemerId) : null;
   const party = stufDcr.partyFromTarget(target, werknemer);
   const referentienummer = job.id;
-  const callbackUrl = stufDcr.publicCallbackUrl(create.publicOrigin(req, settings), settings.slug);
+  const callbackUrl = stufDcr.publicCallbackUrl(stufDcr.publicOrigin(req, store), stuf.slug);
   store.updateDocumentJob(
     job.id,
     {
@@ -685,14 +685,14 @@ async function startStufOwnerDocument(req, res, { owner, recipe, settings, job, 
     req.user
   );
   const xml = stufDcr.buildStartRequest({
-    settings,
+    settings: stuf,
     job,
     recipe,
     zaak,
     party,
     data: payload,
     actor: req.user,
-    org: { orgName: store.meta().orgName || "", slug: store.slug || settings.slug || "" },
+    org: { orgName: store.meta().orgName || "", slug: store.slug || stuf.slug || "" },
     referentienummer,
   });
   store.log(
@@ -701,15 +701,17 @@ async function startStufOwnerDocument(req, res, { owner, recipe, settings, job, 
     "document",
     job.id,
     `${recipe.name} · StUF-DCR verzoekStartenDocumentcreatieDi02`,
-    { method: "POST", path: settings.stufDcr.dcaUrl, body: stufDcr.clipXml(xml) }
+    { method: "POST", path: stuf.dcaUrl, body: stufDcr.clipXml(xml) }
   );
   const headers = {};
-  try {
-    headers.Authorization = `Bearer ${await create.getToken(settings)}`;
-  } catch {
-    /* SOAP uses its own contract; REST token is optional. */
+  if (create.configured(settings)) {
+    try {
+      headers.Authorization = `Bearer ${await create.getToken(settings)}`;
+    } catch {
+      /* SOAP uses its own contract; REST token is optional. */
+    }
   }
-  const result = await stufDcr.startDocumentcreatie(settings, xml, headers);
+  const result = await stufDcr.startDocumentcreatie(stuf, xml, headers);
   const presentUrl = result.presentUrl || result.resultUrl;
   store.updateDocumentJob(
     job.id,
@@ -727,6 +729,7 @@ async function startStufOwnerDocument(req, res, { owner, recipe, settings, job, 
   }
   if (result.outcome === "failed") {
     store.updateDocumentJob(job.id, { status: "error", error: result.status || "StUF-DCR fout" }, req.user);
+    store.patchStuf({ lastError: result.status || "StUF-DCR fout" });
     return generateReply(req, res, { next: docsUrl, message: `StUF-DCR: ${result.status || "fout"}` });
   }
   if (presentUrl) {
@@ -865,8 +868,11 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
   const recipe = store.recipe(req.body.recipeId);
   if (!recipe) return generateReply(req, res, { next: backUrl, message: req.t("toast.pickTemplate") });
   const settings = create.createSettings(store);
-  if (!create.enabled(settings)) return generateReply(req, res, { next: backUrl, message: req.t("toast.createOff") });
+  const stuf = stufDcr.stufSettings(store);
   const interactive = String(req.body.mode || "") === "interactive";
+  if (!(interactive && stufDcr.enabled(stuf)) && !create.enabled(settings)) {
+    return generateReply(req, res, { next: backUrl, message: req.t("toast.createOff") });
+  }
   const batchTargets = !interactive && Array.isArray(targets) && targets.length > 1 ? targets : null;
   if (batchTargets) {
     return generateBatchOwnerDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl });
@@ -875,12 +881,12 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
   const payload = target?.data || data;
   const outName = target?.fileName || fileName;
   const { job, hook } = addOwnerJob(req, settings, { owner, recipe, interactive, target });
-  if (interactive && stufDcr.enabled(settings)) {
+  if (interactive && stufDcr.enabled(stuf)) {
     try {
-      return await startStufOwnerDocument(req, res, { owner, recipe, settings, job, payload, target, docsUrl });
+      return await startStufOwnerDocument(req, res, { owner, recipe, settings, stuf, job, payload, target, docsUrl });
     } catch (err) {
       store.updateDocumentJob(job.id, { status: "error", error: err.message }, req.user);
-      store.patchCreate({ lastError: err.message });
+      store.patchStuf({ lastError: err.message });
       return generateReply(req, res, { next: docsUrl, message: `StUF-DCR: ${err.message}` });
     }
   }
@@ -1497,9 +1503,9 @@ function routes() {
       }
       return sendSoap(res, stufDcr.buildFault("Onbekende creatiejob"), 404);
     }
-    const settings = create.createSettings(found.store);
+    const stuf = stufDcr.stufSettings(found.store);
     await runWithStore(found.store, () => applyStufResult(req, found.store, found.job, parsed));
-    return stufConfirm(res, settings, parsed, found.job);
+    return stufConfirm(res, stuf, parsed, found.job);
   }
 
   r.get("/api/stuf-dcr/:slug", (req, res) => stufEndpointInfo(req, res, req.params.slug));
@@ -1898,7 +1904,7 @@ function routes() {
       peekTab,
       recipes: composing ? [] : recipesForZaak(peek),
       templatesLinked: Boolean(peekType?.recipeIds?.length),
-      createReady: create.enabled(settings),
+      createReady: documentChannelReady(),
       groups: OVERVIEW_GROUPS,
       statussen: STATUSSEN,
       prioriteiten: PRIORITEITEN,
@@ -2466,7 +2472,7 @@ function routes() {
       },
       zaken,
       recipes: visibleRecipes(),
-      createReady: create.enabled(settings),
+      createReady: documentChannelReady(),
       tab,
       canWrite: isHr(store.meta()) ? canWriteMaster(req.user) : isAdmin(req.user),
     });
@@ -2903,12 +2909,16 @@ function routes() {
 
   r.get("/instellingen/integraties", requireRole("admin"), (req, res) => {
     const settings = create.createSettings(store);
+    const stuf = stufDcr.stufSettings(store);
     const azureCfg = azure.azureSettings(store);
     res.render("instellingen/integraties", {
       title: req.t("integrations.title"),
       create: settings,
       createReady: create.configured(settings),
       createSummary: create.createSummary(settings, req.t),
+      stuf,
+      stufReady: stufDcr.configured(stuf),
+      stufSummary: stufDcr.stufSummary(stuf),
       azure: azureCfg,
       azureReady: azure.configured(azureCfg),
       azureSummary: azure.azureSummary(azureCfg, req.t),
@@ -2917,6 +2927,7 @@ function routes() {
 
   r.post("/instellingen/integraties/active", requireRole("admin"), (req, res) => {
     store.patchCreate({ active: leaseFlag(req.body.createActive) }, req.user, "Create actief bijgewerkt");
+    store.patchStuf({ active: leaseFlag(req.body.stufActive) }, req.user, "StUF-DCR actief bijgewerkt");
     store.patchAzure({ active: leaseFlag(req.body.azureActive) }, req.user, "Azure actief bijgewerkt");
     toastT(req, res, "/instellingen/integraties", "toast.integrationsSaved");
   });
@@ -2930,7 +2941,6 @@ function routes() {
       createReady: create.configured(settings),
       recipeCount: store.recipes().length,
       webhookExample: origin ? `${origin}/api/create/webhook/${settings.slug || "workspace"}/…` : "",
-      stufCallback: stufDcr.publicCallbackUrl(origin, settings.slug),
     });
   });
 
@@ -2952,6 +2962,21 @@ function routes() {
       store.patchCreate({ lastError: err.message });
       toastT(req, res, "/instellingen/integraties/create", "toast.testFail", { msg: err.message });
     }
+  });
+
+  r.get("/instellingen/integraties/stuf-dcr", requireRole("admin"), (req, res) => {
+    const stuf = stufDcr.stufSettings(store);
+    res.render("instellingen/stuf-dcr", {
+      title: req.t("stuf.title"),
+      stuf,
+      stufReady: stufDcr.configured(stuf),
+      stufCallback: stufDcr.publicCallbackUrl(stufDcr.publicOrigin(req, store), stuf.slug),
+    });
+  });
+
+  r.post("/instellingen/stuf-dcr", requireRole("admin"), (req, res) => {
+    stufDcr.saveStufSettings(store, req.body, req.user);
+    toastT(req, res, "/instellingen/integraties", "toast.stufSaved");
   });
 
   r.get("/instellingen/integraties/azure", requireRole("admin"), (req, res) => {

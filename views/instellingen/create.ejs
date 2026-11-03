@@ -38,54 +38,6 @@
     <input name="authDomain" value="<%= create.authDomain %>" placeholder="auth.example.com" autocomplete="off">
   </label>
   <p class="hint"><%= t('create.authDomainHint') %></p>
-
-  <section class="form-section">
-    <h2><%= t("create.stuf.title") %></h2>
-    <p class="hint"><%= t("create.stuf.lede") %></p>
-    <label class="set-toggle">
-      <span>
-        <strong><%= t("create.stuf.enable") %></strong>
-        <small><%= t("create.stuf.enableHint") %></small>
-      </span>
-      <input type="hidden" name="stufEnabled" value="0">
-      <input type="checkbox" name="stufEnabled" value="1" <%= create.stufDcr && create.stufDcr.enabled ? "checked" : "" %>>
-    </label>
-    <label><%= t("create.stuf.dcaUrl") %>
-      <input name="stufDcaUrl" value="<%= create.stufDcr && create.stufDcr.dcaUrl || "" %>" placeholder="https://create.example.nl/stuf/dcr" autocomplete="off">
-    </label>
-    <p class="hint"><%= t("create.stuf.dcaUrlHint") %></p>
-    <label><%= t("create.stuf.soapAction") %>
-      <input name="stufSoapAction" value="<%= create.stufDcr && create.stufDcr.soapAction || "" %>" placeholder="http://www.kinggemeenten.nl/StUF/sector/dcr/0310/verzoekStartenDocumentcreatieDi02" autocomplete="off">
-    </label>
-    <div class="form-row form-row-2">
-      <label><%= t("create.stuf.ontvangerOrganisatie") %> <input name="stufOntvangerOrganisatie" value="<%= create.stufDcr && create.stufDcr.ontvangerOrganisatie || "" %>" autocomplete="off"></label>
-      <label><%= t("create.stuf.ontvangerApplicatie") %> <input name="stufOntvangerApplicatie" value="<%= create.stufDcr && create.stufDcr.ontvangerApplicatie || "OmniDocs Create" %>" autocomplete="off"></label>
-    </div>
-    <div class="form-row form-row-2">
-      <label><%= t("create.stuf.zenderOrganisatie") %> <input name="stufZenderOrganisatie" value="<%= create.stufDcr && create.stufDcr.zenderOrganisatie || "" %>" autocomplete="off"></label>
-      <label><%= t("create.stuf.zenderApplicatie") %> <input name="stufZenderApplicatie" value="<%= create.stufDcr && create.stufDcr.zenderApplicatie || "Zaakhub" %>" autocomplete="off"></label>
-    </div>
-    <div class="form-row form-row-2">
-      <label><%= t("create.stuf.zenderAdministratie") %> <input name="stufZenderAdministratie" value="<%= create.stufDcr && create.stufDcr.zenderAdministratie || "" %>" autocomplete="off"></label>
-      <label><%= t("create.stuf.zenderGebruiker") %> <input name="stufZenderGebruiker" value="<%= create.stufDcr && create.stufDcr.zenderGebruiker || "" %>" autocomplete="off"></label>
-    </div>
-    <p class="hint"><%= t("create.stuf.callback") %></p>
-    <% if (typeof stufCallback !== "undefined" && stufCallback) { %>
-    <p class="hint mono"><%= stufCallback %></p>
-    <p class="hint"><%= t("create.stuf.callbackHint") %></p>
-    <% } %>
-    <% if (create.stufDcr && create.stufDcr.lastResultAt) { %>
-    <p class="hint">
-      <%= t("create.stuf.lastResult") %>
-      <%= formatDateTime(create.stufDcr.lastResultAt) %>
-      · <%= t("create.stuf.status." + (create.stufDcr.lastResultStatus || "ok")) %>
-      <% if (create.stufDcr.lastResultDetail) { %> · <%= create.stufDcr.lastResultDetail %><% } %>
-    </p>
-    <% } else { %>
-    <p class="hint"><%= t("create.stuf.lastResultNone") %></p>
-    <% } %>
-  </section>
-
   <div class="form-actions">
     <button class="btn" type="submit"><%= t('create.save') %></button>
     <button class="ghost" type="submit" form="create-test"><%= t('integrations.test') %></button>

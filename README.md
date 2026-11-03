@@ -14,7 +14,14 @@ Open http://localhost:3000
 
 ## First install
 
-On an **empty** data volume the onboarding wizard opens:
+On an **empty** data volume the onboarding wizard opens. `docker compose down` keeps the volume; a rebuild then skips the wizard. To start from scratch:
+
+```bash
+docker compose down -v
+docker compose up --build -d
+```
+
+On an empty volume the wizard asks you to:
 
 1. Create a **superadmin** account.
 2. Create the **first workspace** (name, language, profile, optional login domain, and a workspace administrator).

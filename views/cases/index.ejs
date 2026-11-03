@@ -74,7 +74,7 @@
       <section class="board-col">
         <h3 class="status-<%= g.id %>"><%= t("group." + g.id) %> · <%= items.length %></h3>
         <% items.forEach(function (z) { %>
-          <a class="board-card" href="/zaken/<%= z.id %>">
+          <a class="board-card" href="/zaken?focus=<%= z.id %>">
             <strong><%= z.titel %></strong>
             <small><%= z.zaaknummer %></small>
           </a>
@@ -159,7 +159,7 @@
         <% } %>
         <% zaken.forEach(function (z) { %>
         <% const preview = snippet(z.omschrijving); %>
-        <div class="queue-row <%= z.id === focusId ? 'is-focused' : '' %> <%= z.status === 'nieuw' ? 'is-unread' : '' %>" data-open="/zaken/<%= z.id %>">
+        <div class="queue-row <%= z.id === focusId ? 'is-focused' : '' %> <%= z.status === 'nieuw' ? 'is-unread' : '' %>" data-open="/zaken?focus=<%= z.id %>">
           <label class="list-check">
             <input type="checkbox" name="ids" value="<%= z.id %>" data-check-row aria-label="<%= z.zaaknummer %>">
           </label>

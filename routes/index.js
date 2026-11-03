@@ -319,7 +319,7 @@ function auditEntityHref(item) {
   if (!item) return "";
   const entity = item.entity;
   const entityId = item.entityId;
-  if (entity === "zaak" && entityId) return `/zaken/${entityId}`;
+  if (entity === "zaak" && entityId) return zaakFocusPath(entityId);
   if (entity === "persoon" && entityId) return `/personen/${entityId}`;
   if (entity === "bedrijf" && entityId) return `/bedrijven/${entityId}`;
   if (entity === "werknemer" && entityId) return `/werknemers/${entityId}`;
@@ -361,6 +361,22 @@ function linkedZaken(kind, id) {
     if (kind === "person") return (z.persoonIds || []).includes(id);
     return (z.bedrijfIds || []).includes(id);
   }).sort(sortLinkedCases);
+}
+
+function zaakFocusPath(id, extra = {}) {
+  if (!id) return "/zaken";
+  const params = new URLSearchParams();
+  params.set("focus", id);
+  if (extra.peekTab) params.set("peekTab", extra.peekTab);
+  const qs = params.toString();
+  return qs ? `/zaken?${qs}` : "/zaken";
+}
+
+function peekTabFromCaseTab(tab) {
+  if (tab === "documents") return "docs";
+  if (tab === "activity") return "activity";
+  if (tab === "relations") return "holders";
+  return "";
 }
 
 function zakenListPath(src) {
@@ -1407,11 +1423,15 @@ function routes() {
     });
     const total = all.length;
     const pages = Math.max(1, Math.ceil(total / pageSize) || 1);
-    const page = Math.min(pages, Math.max(1, Number(req.query.page) || 1));
-    const start = (page - 1) * pageSize;
-    const pageZaken = view === "board" ? all : all.slice(start, start + pageSize);
     let focusId = composing ? "" : String(req.query.focus || "");
     if (focusId && !store.zaak(focusId)) focusId = "";
+    let page = Math.min(pages, Math.max(1, Number(req.query.page) || 1));
+    if (focusId && view !== "board" && !req.query.page) {
+      const focusIndex = all.findIndex((z) => z.id === focusId);
+      if (focusIndex >= 0) page = Math.floor(focusIndex / pageSize) + 1;
+    }
+    const start = (page - 1) * pageSize;
+    const pageZaken = view === "board" ? all : all.slice(start, start + pageSize);
     if (!composing && !focusId && pageZaken[0]) focusId = pageZaken[0].id;
     const peek = composing ? draftZaak() : (focusId ? store.zaak(focusId) : null);
     const settings = create.createSettings(store);
@@ -1529,31 +1549,14 @@ function routes() {
     if (fromList) {
       return toastT(req, res, zakenListPath({ ...req.body, filterFocus: zaak.id, filterPage: "1" }), "toast.caseCreated");
     }
-    toastT(req, res, `/zaken/${zaak.id}`, "toast.caseCreated");
+    toastT(req, res, zaakFocusPath(zaak.id), "toast.caseCreated");
   });
 
   r.get("/zaken/:id", (req, res) => {
     const zaak = store.zaak(req.params.id);
     if (!zaak) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
-    const type = zaak.zaaktypeId ? store.zaaktype(zaak.zaaktypeId) : null;
-    const recipes = recipesForZaak(zaak);
-    const settings = create.createSettings(store);
-    res.render("cases/show", {
-      title: zaak.titel || zaak.zaaknummer,
-      zaak: {
-        ...zaak,
-        documentJobs: (zaak.documentJobs || []).map((job) => ({
-          ...job,
-          finalizeUrl: create.withAuthDomain(job.finalizeUrl, settings),
-        })),
-      },
-      recipes,
-      templatesLinked: Boolean(type?.recipeIds?.length),
-      createReady: create.enabled(settings),
-      tab: ["activity", "documents", "relations"].includes(req.query.tab) ? req.query.tab : "overview",
-      statussen: STATUSSEN,
-      activity: store.zaakActivity(zaak),
-    });
+    const peekTab = peekTabFromCaseTab(req.query.tab);
+    res.redirect(zaakFocusPath(zaak.id, peekTab ? { peekTab } : {}));
   });
 
   r.get("/zaken/:id/bewerken", (req, res) => {
@@ -1596,7 +1599,7 @@ function routes() {
     if (fromList) {
       return toastT(req, res, zakenListPath({ ...req.body, filterFocus: zaak.id }), "toast.caseSaved");
     }
-    toastT(req, res, `/zaken/${req.params.id}`, "toast.caseSaved");
+    toastT(req, res, zaakFocusPath(req.params.id), "toast.caseSaved");
   });
 
   r.post("/zaken/:id/status", (req, res) => {
@@ -1606,7 +1609,7 @@ function routes() {
       if (req.body.from === "list") {
         return toastT(req, res, zakenListPath({ ...req.body, filterFocus: zaak.id }), "toast.quickStatusOff");
       }
-      return toastT(req, res, `/zaken/${zaak.id}`, "toast.quickStatusOff");
+      return toastT(req, res, zaakFocusPath(zaak.id), "toast.quickStatusOff");
     }
     const next = STATUSSEN.some((s) => s.id === req.body.status) ? req.body.status : zaak.status;
     store.saveZaak(
@@ -1630,7 +1633,7 @@ function routes() {
     if (req.body.from === "list") {
       return toastT(req, res, zakenListPath({ ...req.body, filterFocus: zaak.id }), "toast.caseSaved");
     }
-    toastT(req, res, `/zaken/${zaak.id}`, "toast.caseSaved");
+    toastT(req, res, zaakFocusPath(zaak.id), "toast.caseSaved");
   });
 
   r.post("/zaken/:id/verwijderen", (req, res) => {
@@ -1664,7 +1667,7 @@ function routes() {
         "toast.attachmentDeleted"
       );
     }
-    toastT(req, res, `/zaken/${req.params.id}?tab=documents`, "toast.attachmentDeleted");
+    toastT(req, res, zaakFocusPath(req.params.id, { peekTab: "docs" }), "toast.attachmentDeleted");
   }
 
   r.post("/zaken/:id/bijlagen/:bijlageId/verwijderen", (req, res) => {
@@ -1695,8 +1698,8 @@ function routes() {
       owner: { zaakId: zaak.id },
       data: create.prefillData(zaak, recipe || {}),
       fileName: `${(recipe && recipe.name) || "document"}-${zaak.zaaknummer}.pdf`,
-      docsUrl: fromList ? listBack : `/zaken/${zaak.id}?tab=documents`,
-      backUrl: fromList ? listBack : `/zaken/${zaak.id}`,
+      docsUrl: fromList ? listBack : zaakFocusPath(zaak.id, { peekTab: "docs" }),
+      backUrl: fromList ? listBack : zaakFocusPath(zaak.id),
     });
   });
 

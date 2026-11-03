@@ -177,8 +177,8 @@
         <tbody>
           <% zaken.forEach(function (z) { %>
           <tr>
-            <td><a href="/zaken/<%= z.id %>"><%= z.zaaknummer %></a></td>
-            <td><a href="/zaken/<%= z.id %>"><%= z.titel %></a></td>
+            <td><a href="/zaken?focus=<%= z.id %>"><%= z.zaaknummer %></a></td>
+            <td><a href="/zaken?focus=<%= z.id %>"><%= z.titel %></a></td>
             <td class="muted"><%= z.zaaktype || "—" %></td>
             <td><span class="dash-status dash-status-<%= z.status %>"><%= t("status." + z.status) %></span></td>
             <td class="muted"><%= whenLabel(z.updatedAt) %></td>

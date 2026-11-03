@@ -21,7 +21,7 @@
       <h1><%= zaak && zaak.id ? t('cases.edit') : t('cases.new') %></h1>
     </div>
     <div class="actions">
-      <a class="ghost" href="<%= zaak && zaak.id ? '/zaken/' + zaak.id : '/zaken' %>"><%= t('common.cancel') %></a>
+      <a class="ghost" href="<%= zaak && zaak.id ? '/zaken?focus=' + zaak.id : '/zaken' %>"><%= t('common.cancel') %></a>
       <button class="btn" type="submit"><%= t('common.save') %></button>
     </div>
   </div>

@@ -26,7 +26,7 @@
       <%- icon("bookmark") %>
     </span>
     <div class="doc-item-body">
-      <a href="/zaken/<%= z.id %>"><%= z.titel || z.zaaknummer %></a>
+      <a href="/zaken?focus=<%= z.id %>"><%= z.titel || z.zaaknummer %></a>
       <p class="doc-item-meta">
         <span class="mono"><%= z.zaaknummer %></span>
         <span class="badge badge-<%= z.status %>"><%= t("status." + z.status) %></span>

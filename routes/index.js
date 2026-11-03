@@ -58,6 +58,11 @@ const upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 },
 });
 
+const certUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 512 * 1024 },
+});
+
 function toast(res, path, message) {
   const sep = String(path).includes("?") ? "&" : "?";
   res.redirect(`${path}${sep}toast=${encodeURIComponent(message)}`);
@@ -1469,7 +1474,22 @@ function routes() {
     );
   }
 
+  function rejectStufClientCert(req, res, tenant) {
+    const stuf = stufDcr.stufSettings(tenant);
+    const auth = stufDcr.verifyInboundClientCert(req, stuf);
+    if (auth.ok) return false;
+    const detail = auth.code === "missing" ? "geen clientcertificaat" : "clientcertificaat komt niet overeen";
+    rememberStuf(tenant, {
+      status: "auth",
+      path: req.originalUrl || req.path,
+      detail,
+    });
+    sendSoap(res, stufDcr.buildFault("Clientcertificaat ontbreekt of komt niet overeen"), 403);
+    return true;
+  }
+
   async function handleStufInbound(req, res, tenantHint) {
+    if (tenantHint && rejectStufClientCert(req, res, tenantHint)) return;
     const xml = stufXmlBody(req);
     if (!xml.trim()) {
       return sendSoap(res, stufDcr.buildFault("Leeg SOAP-bericht"), 400);
@@ -1503,6 +1523,7 @@ function routes() {
       }
       return sendSoap(res, stufDcr.buildFault("Onbekende creatiejob"), 404);
     }
+    if (found.store !== tenantHint && rejectStufClientCert(req, res, found.store)) return;
     const stuf = stufDcr.stufSettings(found.store);
     await runWithStore(found.store, () => applyStufResult(req, found.store, found.job, parsed));
     return stufConfirm(res, stuf, parsed, found.job);
@@ -2974,10 +2995,22 @@ function routes() {
     });
   });
 
-  r.post("/instellingen/stuf-dcr", requireRole("admin"), (req, res) => {
-    stufDcr.saveStufSettings(store, req.body, req.user);
-    toastT(req, res, "/instellingen/integraties", "toast.stufSaved");
-  });
+  r.post(
+    "/instellingen/stuf-dcr",
+    requireRole("admin"),
+    certUpload.fields([
+      { name: "inboundCertFile", maxCount: 1 },
+      { name: "outboundCertFile", maxCount: 1 },
+    ]),
+    (req, res) => {
+      try {
+        stufDcr.saveStufSettings(req.store, req.body, req.user, req.files || {});
+        toastT(req, res, "/instellingen/integraties", "toast.stufSaved");
+      } catch (err) {
+        toastT(req, res, "/instellingen/integraties/stuf-dcr", "toast.stufCertFail", { msg: err.message });
+      }
+    }
+  );
 
   r.get("/instellingen/integraties/azure", requireRole("admin"), (req, res) => {
     const settings = azure.azureSettings(store);

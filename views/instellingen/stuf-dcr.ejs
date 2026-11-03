@@ -8,7 +8,7 @@
 </div>
 
 <% if (stuf.lastError) { %><p class="alert"><%= stuf.lastError %></p><% } %>
-<form class="form" method="post" action="/instellingen/stuf-dcr">
+<form class="form" method="post" action="/instellingen/stuf-dcr" enctype="multipart/form-data">
   <label><%= t("stuf.dcaUrl") %>
     <input name="dcaUrl" required value="<%= stuf.dcaUrl %>" placeholder="https://create.example.nl/stuf/dcr" autocomplete="off">
   </label>
@@ -32,6 +32,49 @@
     <label><%= t("stuf.zenderAdministratie") %> <input name="zenderAdministratie" value="<%= stuf.zenderAdministratie %>" autocomplete="off"></label>
     <label><%= t("stuf.zenderGebruiker") %> <input name="zenderGebruiker" value="<%= stuf.zenderGebruiker %>" autocomplete="off"></label>
   </div>
+
+  <section class="form-section">
+    <h2><%= t("stuf.certsTitle") %></h2>
+    <p class="hint"><%= t("stuf.certsHint") %></p>
+    <label><%= t("stuf.inboundCert") %>
+      <input type="file" name="inboundCertFile" accept=".cer,.crt,.pem,.txt">
+    </label>
+    <label><%= t("stuf.inboundCertPem") %>
+      <textarea name="inboundCertPem" rows="6" placeholder="-----BEGIN CERTIFICATE-----" autocomplete="off"></textarea>
+    </label>
+    <p class="hint"><%= t("stuf.inboundCertHint") %></p>
+    <% if (stuf.hasInboundCert) { %>
+    <p class="hint">
+      <%= t("stuf.inboundCertPresent") %>
+      <% if (stuf.inboundCertMeta && stuf.inboundCertMeta.subject) { %> · <%= stuf.inboundCertMeta.subject %><% } %>
+      <% if (stuf.inboundCertMeta && stuf.inboundCertMeta.fingerprint) { %> · <%= stuf.inboundCertMeta.fingerprint %><% } %>
+    </p>
+    <label class="set-toggle">
+      <span><strong><%= t("stuf.clearInboundCert") %></strong></span>
+      <input type="hidden" name="clearInboundCert" value="0">
+      <input type="checkbox" name="clearInboundCert" value="1">
+    </label>
+    <% } %>
+    <label><%= t("stuf.outboundCert") %>
+      <input type="file" name="outboundCertFile" accept=".pfx,.p12">
+    </label>
+    <label><%= t("stuf.outboundPass") %>
+      <input name="outboundPass" type="password" value="" placeholder="<%= stuf.hasOutboundCert ? t('stuf.keepSecret') : '' %>" autocomplete="new-password">
+    </label>
+    <p class="hint"><%= t("stuf.outboundCertHint") %></p>
+    <% if (stuf.hasOutboundCert) { %>
+    <p class="hint">
+      <%= t("stuf.outboundCertPresent") %>
+      <% if (stuf.outboundCertMeta && stuf.outboundCertMeta.fileName) { %> · <%= stuf.outboundCertMeta.fileName %><% } %>
+    </p>
+    <label class="set-toggle">
+      <span><strong><%= t("stuf.clearOutboundCert") %></strong></span>
+      <input type="hidden" name="clearOutboundCert" value="0">
+      <input type="checkbox" name="clearOutboundCert" value="1">
+    </label>
+    <% } %>
+  </section>
+
   <p class="hint"><%= t("stuf.callback") %></p>
   <% if (stufCallback) { %>
   <p class="hint mono"><%= stufCallback %></p>

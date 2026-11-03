@@ -71,6 +71,7 @@
       <span class="badge <%= stufBadge.cls %>"><%= stufBadge.label %></span>
     </header>
     <% if (stufReady) { %><p class="int-card-meta"><%= stufSummary %></p><% } %>
+    <% if (stuf.hasInboundCert) { %><p class="hint"><%= t("stuf.inboundCertPresent") %></p><% } %>
     <% if (stuf.lastError) { %><p class="int-card-error"><%= stuf.lastError %></p><% } %>
     <% if (stuf.lastResultAt) { %>
     <p class="hint">

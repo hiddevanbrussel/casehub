@@ -272,17 +272,13 @@
         <% } %>
       </section>
       <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-cases" aria-labelledby="peek-tab-cases" data-peek-panel="cases" hidden>
-        <% if (!peekCaseRows.length) { %>
-          <p class="muted"><%= t("companies.noCases") %></p>
-        <% } else { %>
-          <ul class="peek-stake-list">
-            <% peekCaseRows.forEach(function (z) { %>
-              <li>
-                <a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a>
-              </li>
-            <% }) %>
-          </ul>
-        <% } %>
+        <%- include("../partials/case-list", {
+          caseRows: peekCaseRows,
+          compact: true,
+          limit: 8,
+          viewAllHref: peekCompany.id ? "/bedrijven/" + peekCompany.id + "?tab=cases" : "",
+          emptyTitle: t("companies.noCases"),
+        }) %>
       </section>
       <% } %>
     <% } %>

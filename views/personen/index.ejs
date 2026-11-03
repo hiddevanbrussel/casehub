@@ -306,17 +306,13 @@
       <% if (!composing) { %>
       <section class="peek-related peek-view">
         <h3><%= t("persons.linkedCases") %><% if (peekCaseRows.length) { %> (<%= peekCaseRows.length %>)<% } %></h3>
-        <% if (!peekCaseRows.length) { %>
-          <p class="muted"><%= t("persons.noCases") %></p>
-        <% } else { %>
-          <ul class="peek-stake-list">
-            <% peekCaseRows.forEach(function (z) { %>
-              <li>
-                <a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a>
-              </li>
-            <% }) %>
-          </ul>
-        <% } %>
+        <%- include("../partials/case-list", {
+          caseRows: peekCaseRows,
+          compact: true,
+          limit: 8,
+          viewAllHref: peekPerson.id ? "/personen/" + peekPerson.id + "?tab=cases" : "",
+          emptyTitle: t("persons.noCases"),
+        }) %>
       </section>
       <% } %>
     <% } %>

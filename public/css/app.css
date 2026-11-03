@@ -1933,6 +1933,12 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
 .doc-empty { padding: 8px 0 4px; }
 .doc-empty p { margin: 0; color: var(--muted); }
 .doc-empty-hint { margin-top: 6px !important; max-width: 42ch; font-size: 13px; line-height: 1.45; }
+.case-list-more {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+.case-list-more a { color: var(--accent); }
 .doc-list.is-compact .doc-item {
   grid-template-columns: 40px minmax(0, 1fr);
   padding: 8px 0;
@@ -2779,6 +2785,7 @@ html[data-theme="dark"] .login-body.has-hero .login-card {
 .file-ico svg { width: 16px; height: 16px; }
 .file-ico.file-pdf { background: #fde8e8; color: #e11d48; }
 .file-ico.file-image { background: #fff4dd; color: #c2410c; }
+.file-ico.file-case { background: var(--accent-soft); color: var(--accent); }
 .case-add {
   margin-top: 14px; border: 0; background: none; color: var(--accent);
   font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 0;
@@ -2910,6 +2917,7 @@ html[data-theme="dark"] .list-search { background: var(--surface-2); }
 html[data-theme="dark"] .file-ico { background: #1e3a5f; color: #93c5fd; }
 html[data-theme="dark"] .file-ico.file-pdf { background: #3a1c28; color: #fda4af; }
 html[data-theme="dark"] .file-ico.file-image { background: #3d2e14; color: #fdba8c; }
+html[data-theme="dark"] .file-ico.file-case { background: var(--accent-soft); color: var(--accent); }
 html[data-theme="dark"] .tone-1 { background: #1e3a5f; color: #93c5fd; }
 html[data-theme="dark"] .tone-2 { background: #3b2454; color: #d8b4fe; }
 html[data-theme="dark"] .tone-3 { background: #3d2e14; color: #fbbf24; }

@@ -1,0 +1,46 @@
+<%
+  const rows = (typeof caseRows !== "undefined" ? caseRows : []).slice();
+  const compact = Boolean(locals.compact);
+  const limit = Number(locals.limit) || 0;
+  const shown = limit ? rows.slice(0, limit) : rows;
+  function whenLabel(iso) {
+    if (!iso) return "";
+    const bucket = dayBucket(iso);
+    if (bucket === "today") return t("dash.todayAt", { time: formatTime(iso) });
+    if (bucket === "yesterday") return t("dash.yesterdayAt", { time: formatTime(iso) });
+    return formatDateTimeShort(iso);
+  }
+  function caseWhen(z) {
+    return z.deadline ? formatDate(z.deadline) : whenLabel(z.updatedAt || z.createdAt);
+  }
+%>
+<% if (!rows.length) { %>
+  <div class="doc-empty">
+    <p><%= locals.emptyTitle || t("employees.noCases") %></p>
+  </div>
+<% } else { %>
+<ul class="doc-list<%= compact ? " is-compact" : "" %>">
+  <% shown.forEach(function (z) { %>
+  <li class="doc-item">
+    <span class="file-ico file-case" aria-hidden="true">
+      <%- icon("bookmark") %>
+    </span>
+    <div class="doc-item-body">
+      <a href="/zaken/<%= z.id %>"><%= z.titel || z.zaaknummer %></a>
+      <p class="doc-item-meta">
+        <span class="mono"><%= z.zaaknummer %></span>
+        <span class="badge badge-<%= z.status %>"><%= t("status." + z.status) %></span>
+        <% if (z.overdue) { %><span class="badge badge-overdue"><%= t("dash.overdueBadge") %></span><% } %>
+        <% if (z.zaaktype) { %><span><%= z.zaaktype %></span><% } %>
+        <% if (caseWhen(z)) { %><span><%= caseWhen(z) %></span><% } %>
+      </p>
+    </div>
+  </li>
+  <% }) %>
+</ul>
+<% if (limit && rows.length > shown.length && locals.viewAllHref) { %>
+  <p class="case-list-more">
+    <a href="<%= viewAllHref %>"><%= t("dash.viewAllShort") %></a>
+  </p>
+<% } %>
+<% } %>

@@ -51,12 +51,10 @@
 <% } else if (activeTab === "cases") { %>
 <section class="panel">
   <header><h2><%= t('companies.linkedCases') %></h2></header>
-  <% if (!zaken.length) { %><p class="muted"><%= t('companies.noCases') %></p><% } %>
-  <ul class="rows">
-    <% zaken.forEach(function (z) { %>
-      <li><a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a></li>
-    <% }) %>
-  </ul>
+  <%- include("../partials/case-list", {
+    caseRows: zaken,
+    emptyTitle: t("companies.noCases"),
+  }) %>
 </section>
 <% } else { %>
 <section class="panel">

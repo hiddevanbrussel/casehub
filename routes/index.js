@@ -252,9 +252,16 @@ function draftWerknemer() {
   };
 }
 
+function sortLinkedCases(a, b) {
+  const rank = (z) => (z.overdue ? 0 : ["afgerond", "geannuleerd"].includes(z.status) ? 2 : 1);
+  const byRank = rank(a) - rank(b);
+  if (byRank) return byRank;
+  return String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+}
+
 function assignedZaken(id) {
   if (!id) return [];
-  return store.zaken({}).filter((z) => z.behandelaarId === id);
+  return store.zaken({}).filter((z) => z.behandelaarId === id).sort(sortLinkedCases);
 }
 
 function employeeCanWrite(req) {
@@ -353,7 +360,7 @@ function linkedZaken(kind, id) {
   return store.zaken({}).filter((z) => {
     if (kind === "person") return (z.persoonIds || []).includes(id);
     return (z.bedrijfIds || []).includes(id);
-  });
+  }).sort(sortLinkedCases);
 }
 
 function zakenListPath(src) {
@@ -1753,7 +1760,7 @@ function routes() {
   r.get("/bedrijven/:id", (req, res) => {
     const bedrijf = store.bedrijf(req.params.id);
     if (!bedrijf) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCompany") });
-    const zaken = store.zaken({}).filter((z) => z.bedrijfIds.includes(bedrijf.id));
+    const zaken = store.zaken({}).filter((z) => z.bedrijfIds.includes(bedrijf.id)).sort(sortLinkedCases);
     const personen = store.personenForBedrijf(bedrijf.id);
     const tab = ["contacts", "cases"].includes(String(req.query.tab || "")) ? String(req.query.tab) : "details";
     res.render("bedrijven/show", {
@@ -1861,7 +1868,7 @@ function routes() {
     if (showBsn) store.log(req.user, "bsn-inzage", "persoon", req.params.id, "BSN getoond");
     const persoon = store.persoon(req.params.id, { showBsn });
     if (!persoon) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundPerson") });
-    const zaken = store.zaken({}).filter((z) => z.persoonIds.includes(persoon.id));
+    const zaken = store.zaken({}).filter((z) => z.persoonIds.includes(persoon.id)).sort(sortLinkedCases);
     res.render("personen/show", {
       title: persoon.naam,
       persoon,
@@ -2007,9 +2014,10 @@ function routes() {
     const werknemer = store.werknemer(req.params.id);
     if (!werknemer) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
     const settings = create.createSettings(store);
-    const zaken = isCases(store.meta())
-      ? store.zaken({}).filter((z) => z.behandelaarId === werknemer.id)
-      : [];
+    const zaken = isCases(store.meta()) ? assignedZaken(werknemer.id) : [];
+    const tab = ["documents", "cases"].includes(String(req.query.tab || ""))
+      ? String(req.query.tab)
+      : "details";
     res.render("werknemers/show", {
       title: werknemer.naam,
       werknemer: {
@@ -2022,7 +2030,7 @@ function routes() {
       zaken,
       recipes: visibleRecipes(),
       createReady: create.enabled(settings),
-      tab: req.query.tab === "documents" ? "documents" : "details",
+      tab,
       canWrite: isHr(store.meta()) ? canWriteMaster(req.user) : isAdmin(req.user),
     });
   });

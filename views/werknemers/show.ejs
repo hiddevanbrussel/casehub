@@ -1,6 +1,6 @@
 <%
   const canGenerate = Boolean(createReady && recipes.length);
-  const detailsTab = tab !== "documents";
+  const tabId = tab === "documents" || tab === "cases" ? tab : "details";
   const aanhefLabel = werknemer.aanhef === "heer" ? t("hr.heer") : (werknemer.aanhef === "mevrouw" ? t("hr.mevrouw") : (werknemer.aanhef || "—"));
   const v = function (value) { return value || "—"; };
 %>
@@ -35,11 +35,17 @@
   </div>
 
   <nav class="case-tabs">
-    <a class="<%= detailsTab ? 'is-active' : '' %>" href="/werknemers/<%= werknemer.id %>">
+    <a class="<%= tabId === 'details' ? 'is-active' : '' %>" href="/werknemers/<%= werknemer.id %>">
       <%- icon("user") %>
       <%= t('hr.tabContact') %>
     </a>
-    <a class="<%= detailsTab ? '' : 'is-active' %>" href="/werknemers/<%= werknemer.id %>?tab=documents">
+    <% if (isCases) { %>
+    <a class="<%= tabId === 'cases' ? 'is-active' : '' %>" href="/werknemers/<%= werknemer.id %>?tab=cases">
+      <%- icon("bookmark") %>
+      <%= t('employees.assignedCases') %><% if (zaken.length) { %> (<%= zaken.length %>)<% } %>
+    </a>
+    <% } %>
+    <a class="<%= tabId === 'documents' ? 'is-active' : '' %>" href="/werknemers/<%= werknemer.id %>?tab=documents">
       <%- icon("file-text") %>
       <%= t('cases.tabDocuments') %>
     </a>
@@ -73,14 +79,20 @@
       <strong><%= v(werknemer.afdeling) %></strong>
     </div>
     <% } %>
+    <% if (isCases) { %>
+    <div>
+      <span><%= t('employees.assignedCases') %></span>
+      <strong><a href="/werknemers/<%= werknemer.id %>?tab=cases"><%= zaken.length %></a></strong>
+    </div>
+    <% } %>
     <div>
       <span><%= t('hr.updated') %></span>
       <strong><%= formatDateTime(werknemer.updatedAt) %></strong>
     </div>
   </section>
 
-  <% if (detailsTab) { %>
-  <div class="case-cols">
+  <% if (tabId === "details") { %>
+  <div class="<%= isHr ? 'case-cols' : '' %>">
     <div>
       <section class="case-card">
         <h2>
@@ -179,23 +191,21 @@
         </div>
       </section>
       <% } %>
-
-      <% if (isCases) { %>
-      <section class="case-card">
-        <h2>
-          <%- icon("bookmark") %>
-          <%= t('employees.assignedCases') %>
-        </h2>
-        <% if (!zaken.length) { %><p class="muted"><%= t('employees.noCases') %></p><% } %>
-        <ul class="rows">
-          <% zaken.forEach(function (z) { %>
-            <li><a href="/zaken/<%= z.id %>"><span class="mono"><%= z.zaaknummer %></span> <%= z.titel %></a></li>
-          <% }) %>
-        </ul>
-      </section>
-      <% } %>
     </div>
   </div>
+  <% } else if (tabId === "cases") { %>
+  <section class="case-card">
+    <header class="case-panel-head">
+      <h2>
+        <%- icon("bookmark") %>
+        <%= t('employees.assignedCases') %>
+      </h2>
+    </header>
+    <%- include("../partials/case-list", {
+      caseRows: zaken,
+      emptyTitle: t("employees.noCases"),
+    }) %>
+  </section>
   <% } else { %>
   <section class="case-card">
     <header class="case-panel-head">

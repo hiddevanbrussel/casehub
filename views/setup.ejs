@@ -1,17 +1,40 @@
+<% const setupKind = typeof kind !== "undefined" ? kind : "tenant"; %>
+<%
+  let setupTitle = t("onboard.title");
+  let setupLede = setupKind === "platform" ? t("onboard.platformLede") : t("onboard.lede");
+  if (step === "firstWorkspace") {
+    setupTitle = t("onboard.firstWorkspace");
+    setupLede = t("onboard.firstWorkspaceLede");
+  } else if (step === "admin") {
+    setupTitle = setupKind === "platform" ? t("onboard.title") : t("onboard.admin");
+    setupLede = setupKind === "platform" ? t("onboard.adminPlatformLede") : t("onboard.adminLede");
+  } else if (step === "org") {
+    setupTitle = t("onboard.org");
+    setupLede = t("onboard.orgLede");
+  } else if (step === "profile") {
+    setupTitle = t("onboard.profile");
+    setupLede = t("onboard.profileLede");
+  } else if (step === "create") {
+    setupTitle = t("onboard.create");
+    setupLede = t("onboard.createLede");
+  } else if (step === "azure") {
+    setupTitle = t("onboard.azure");
+    setupLede = t("onboard.azureLede");
+  }
+%>
 <!DOCTYPE html>
 <html lang="<%= lang %>"<% if (theme === 'dark') { %> data-theme="dark"<% } %>>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= t('onboard.title') %> · <%= meta.orgName %></title>
+  <title><%= setupTitle %> · <%= meta.orgName %></title>
   <link rel="icon" href="/public/brand/mark.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/public/css/app.css?v=ws-onboard">
+  <link rel="stylesheet" href="/public/css/app.css?v=ws-onboard-4">
 </head>
 <body class="login-body">
-  <% const setupKind = typeof kind !== "undefined" ? kind : "tenant"; %>
   <main class="login-card setup-card">
     <div class="setup-top">
       <div class="brand brand-lg">
@@ -23,14 +46,18 @@
         <%- include("partials/lang-switcher") %>
       </div>
     </div>
-    <h1><%= t('onboard.title') %></h1>
-    <p class="lede"><%= setupKind === "platform" ? t("onboard.platformLede") : t("onboard.lede") %></p>
-    <p class="hint"><%= t('onboard.stepOf', { n: stepIndex + 1, total: steps.length }) %></p>
-    <ol class="setup-steps" style="grid-template-columns: repeat(<%= steps.length %>, 1fr)">
+    <ol class="setup-steps" aria-label="<%= t('onboard.stepOf', { n: stepIndex + 1, total: steps.length }) %>">
       <% steps.forEach(function (item, i) { %>
-        <li class="<%= i < stepIndex ? 'is-done' : (i === stepIndex ? 'is-active' : '') %>"><%= t('onboard.' + item) %></li>
+        <li class="<%= i < stepIndex ? 'is-done' : (i === stepIndex ? 'is-active' : '') %>">
+          <span class="setup-step-index" aria-hidden="true"><%= i + 1 %></span>
+          <%= t('onboard.' + item) %>
+        </li>
       <% }) %>
     </ol>
+    <header class="setup-intro">
+      <h1><%= setupTitle %></h1>
+      <p class="lede"><%= setupLede %></p>
+    </header>
     <% if (error) { %><p class="alert"><%= error %></p><% } %>
 
     <% if (step === "org") { %>
@@ -42,7 +69,6 @@
       <label><%= t('settings.prefix') %>
         <input name="zaakPrefix" required maxlength="6" value="<%= values.zaakPrefix || meta.zaakPrefix %>">
       </label>
-      <p class="hint"><%= t('onboard.orgLede') %></p>
       <div class="setup-actions">
         <button class="btn" type="submit"><%= t('onboard.next') %></button>
       </div>
@@ -52,7 +78,6 @@
     <% if (step === "profile") { %>
     <form method="post" action="/setup">
       <input type="hidden" name="step" value="profile">
-      <p class="hint"><%= t('onboard.profileLede') %></p>
       <div class="profile-picks">
         <label class="profile-pick">
           <input type="radio" name="appProfile" value="cases" <%= (values.appProfile || 'cases') === 'cases' ? 'checked' : '' %>>
@@ -98,7 +123,6 @@
     <% if (step === "admin") { %>
     <form method="post" action="/setup">
       <input type="hidden" name="step" value="admin">
-      <p class="hint"><%= setupKind === "platform" ? t("onboard.adminPlatformLede") : t("onboard.adminLede") %></p>
       <div class="form-row form-row-2">
         <label><%= t('employees.firstName') %>
           <input name="voornaam" required autofocus value="<%= values.voornaam || '' %>">
@@ -130,56 +154,78 @@
     <% if (step === "firstWorkspace") { %>
     <form method="post" action="/setup">
       <input type="hidden" name="step" value="firstWorkspace">
-      <p class="hint"><%= t("onboard.firstWorkspaceLede") %></p>
-      <label><%= t("workspace.name") %>
-        <input name="name" required autofocus value="<%= values.name || '' %>" placeholder="CaseFlow" autocomplete="off">
-      </label>
-      <div class="form-row form-row-2">
-        <label><%= t("workspace.slug") %>
-          <input name="slug" value="<%= values.slug || '' %>" placeholder="nl" autocomplete="off">
-          <span class="hint"><%= t("workspace.slugHint") %></span>
+      <div class="setup-cluster">
+        <label><%= t("workspace.name") %>
+          <input name="name" required autofocus value="<%= values.name || '' %>" placeholder="CaseFlow" autocomplete="off">
         </label>
-        <label><%= t("workspace.lang") %>
-          <select name="defaultLang">
-            <% langs.forEach(function (item) { %>
-            <option value="<%= item.id %>" <%= (values.defaultLang || lang) === item.id ? "selected" : "" %>><%= item.label %></option>
-            <% }) %>
-          </select>
-        </label>
-      </div>
-      <label><%= t("workspace.domain") %>
-        <input name="domains" value="<%= values.domains || '' %>" placeholder="<%= t("workspace.domainPlaceholder") %>" autocomplete="off">
-        <span class="hint"><%= t("workspace.domainHint") %></span>
-      </label>
-      <div class="profile-picks">
-        <label class="profile-pick">
-          <input type="radio" name="appProfile" value="cases" <%= (values.appProfile || "cases") === "cases" ? "checked" : "" %>>
-          <span>
-            <strong><%= t("onboard.profileCases") %></strong>
-            <small><%= t("onboard.profileCasesHint") %></small>
-          </span>
-        </label>
-        <label class="profile-pick">
-          <input type="radio" name="appProfile" value="hr" <%= values.appProfile === "hr" ? "checked" : "" %>>
-          <span>
-            <strong><%= t("onboard.profileHr") %></strong>
-            <small><%= t("onboard.profileHrHint") %></small>
-          </span>
-        </label>
-        <label class="profile-pick">
-          <input type="radio" name="appProfile" value="both" <%= values.appProfile === "both" ? "checked" : "" %>>
-          <span>
-            <strong><%= t("onboard.profileBoth") %></strong>
-            <small><%= t("onboard.profileBothHint") %></small>
-          </span>
+        <div class="form-row form-row-2">
+          <label><%= t("workspace.slug") %>
+            <input name="slug" value="<%= values.slug || '' %>" placeholder="nl" autocomplete="off">
+          </label>
+          <label><%= t("workspace.lang") %>
+            <select name="defaultLang">
+              <% langs.forEach(function (item) { %>
+              <option value="<%= item.id %>" <%= (values.defaultLang || lang) === item.id ? "selected" : "" %>><%= item.label %></option>
+              <% }) %>
+            </select>
+          </label>
+        </div>
+        <p class="hint"><%= t("workspace.slugHint") %></p>
+        <label><%= t("workspace.domain") %>
+          <input name="domains" value="<%= values.domains || '' %>" placeholder="<%= t("workspace.domainPlaceholder") %>" autocomplete="off">
+          <span class="hint"><%= t("workspace.domainHint") %></span>
         </label>
       </div>
+      <fieldset class="setup-cluster">
+        <legend><%= t("onboard.profile") %></legend>
+        <div class="profile-picks">
+          <label class="profile-pick">
+            <input type="radio" name="appProfile" value="cases" <%= (values.appProfile || "cases") === "cases" ? "checked" : "" %>>
+            <span>
+              <strong><%= t("onboard.profileCases") %></strong>
+              <small><%= t("onboard.profileCasesHint") %></small>
+            </span>
+          </label>
+          <label class="profile-pick">
+            <input type="radio" name="appProfile" value="hr" <%= values.appProfile === "hr" ? "checked" : "" %>>
+            <span>
+              <strong><%= t("onboard.profileHr") %></strong>
+              <small><%= t("onboard.profileHrHint") %></small>
+            </span>
+          </label>
+          <label class="profile-pick">
+            <input type="radio" name="appProfile" value="both" <%= values.appProfile === "both" ? "checked" : "" %>>
+            <span>
+              <strong><%= t("onboard.profileBoth") %></strong>
+              <small><%= t("onboard.profileBothHint") %></small>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+      <fieldset class="setup-cluster">
+        <legend><%= t("workspace.admin") %></legend>
+        <p class="hint"><%= t("workspace.adminLede") %></p>
+        <div class="form-row form-row-2">
+          <label><%= t("employees.firstName") %>
+            <input name="adminVoornaam" required value="<%= values.adminVoornaam || '' %>" autocomplete="off">
+          </label>
+          <label><%= t("employees.lastName") %>
+            <input name="adminAchternaam" required value="<%= values.adminAchternaam || '' %>" autocomplete="off">
+          </label>
+        </div>
+        <label><%= t("employees.email") %>
+          <input type="email" name="adminEmail" required value="<%= values.adminEmail || '' %>" autocomplete="off">
+        </label>
+        <label><%= t("employees.password") %>
+          <input type="password" name="adminWachtwoord" required minlength="8" autocomplete="new-password">
+        </label>
+      </fieldset>
+      <input type="hidden" name="seedDemo" value="0">
       <label class="set-toggle">
         <span>
           <strong><%= t("workspace.seedDemo") %></strong>
           <small><%= t("workspace.seedHint") %></small>
         </span>
-        <input type="hidden" name="seedDemo" value="0">
         <input type="checkbox" name="seedDemo" value="1" <%= values.seedDemo ? "checked" : "" %>>
       </label>
       <div class="setup-actions">
@@ -192,7 +238,6 @@
     <% if (step === "create") { %>
     <form method="post" action="/setup">
       <input type="hidden" name="step" value="create">
-      <p class="hint"><%= t('onboard.createLede') %></p>
       <label><%= t('create.baseUrl') %>
         <input name="baseUrl" value="<%= values.baseUrl || 'https://app.omnidocs.cloud' %>">
       </label>
@@ -226,7 +271,6 @@
     <% if (step === "azure") { %>
     <form method="post" action="/setup">
       <input type="hidden" name="step" value="azure">
-      <p class="hint"><%= t('onboard.azureLede') %></p>
       <label><%= t('azure.tenantId') %>
         <input name="tenantId" value="<%= values.tenantId || '' %>" autocomplete="off">
       </label>

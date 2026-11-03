@@ -4,51 +4,7 @@
   const companies = zaak.bedrijven || [];
   const events = typeof activity !== "undefined" ? activity : [];
   const recentEvents = events.slice(0, 3);
-  const linkedBijlageIds = {};
-  (zaak.documentJobs || []).forEach(function (job) {
-    if (job.bijlageId) linkedBijlageIds[job.bijlageId] = true;
-  });
-  const docRows = [];
-  (zaak.documentJobs || []).forEach(function (job) {
-    const file = job.bijlageId ? zaak.bijlagen.find(function (b) { return b.id === job.bijlageId; }) : null;
-    const done = Boolean(file) || job.status === "success";
-    docRows.push({
-      name: file ? file.naam : job.recipeName,
-      size: file ? file.size : 0,
-      at: file ? file.at : job.updatedAt || job.createdAt,
-      fileHref: file ? "/zaken/" + zaak.id + "/bijlagen/" + file.id : "",
-      isPdf: file ? /pdf/i.test(file.mime || "") || /\.pdf$/i.test(file.naam || "") : /\.pdf$/i.test(job.recipeName || ""),
-      isImage: file ? /^image\//i.test(file.mime || "") || /\.(jpe?g|png|gif|webp)$/i.test(file.naam || "") : false,
-      createUrl: done ? "" : (job.finalizeUrl || ""),
-      status: done ? "success" : job.status,
-      error: job.error || "",
-      deleteHref: file
-        ? "/zaken/" + zaak.id + "/bijlagen/" + file.id + "/verwijderen"
-        : "/zaken/" + zaak.id + "/documenten/" + job.id + "/verwijderen",
-    });
-  });
-  zaak.bijlagen.forEach(function (b) {
-    if (linkedBijlageIds[b.id]) return;
-    docRows.push({
-      name: b.naam,
-      size: b.size,
-      at: b.at,
-      fileHref: "/zaken/" + zaak.id + "/bijlagen/" + b.id,
-      isPdf: /pdf/i.test(b.mime || "") || /\.pdf$/i.test(b.naam || ""),
-      isImage: /^image\//i.test(b.mime || "") || /\.(jpe?g|png|gif|webp)$/i.test(b.naam || ""),
-      createUrl: "",
-      status: "uploaded",
-      error: "",
-      deleteHref: "/zaken/" + zaak.id + "/bijlagen/" + b.id + "/verwijderen",
-    });
-  });
-  function formatSize(n) {
-    const bytes = Number(n) || 0;
-    if (!bytes) return "";
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1048576) return (bytes / 1024).toFixed(bytes < 10240 ? 1 : 0).replace(".0", "") + " kB";
-    return (bytes / 1048576).toFixed(1).replace(".0", "") + " MB";
-  }
+  const docRows = documentRows(zaak, { basePath: "/zaken/" + zaak.id });
   function whenLabel(iso) {
     if (!iso) return "";
     const bucket = dayBucket(iso);
@@ -62,18 +18,6 @@
     if (ev.action === "gewijzigd") return t("cases.activityUpdated");
     if (ev.detail) return ev.detail;
     return t("cases.activityUpdated");
-  }
-  function docStatusLabel(code) {
-    if (code === "uploaded") return t("cases.docUploaded");
-    if (code === "success") return t("cases.docCompleted");
-    if (code === "error") return t("cases.docFailed");
-    if (code === "generating") return t("cases.docGenerating");
-    return t("cases.docInCreate");
-  }
-  function docKind(row) {
-    if (row.isPdf) return "pdf";
-    if (row.isImage) return "image";
-    return "file";
   }
   const tabId = tab || "overview";
   const tabs = [
@@ -206,27 +150,7 @@
           <a href="/zaken/<%= zaak.id %>?tab=documents"><%= t("dash.viewAllShort") %></a>
           <% } %>
         </header>
-        <% if (!docRows.length) { %>
-          <p class="muted"><%= t("dash.noDocs") %></p>
-        <% } else { %>
-          <ul class="case-files">
-            <% docRows.slice(0, 4).forEach(function (row) { %>
-            <li>
-              <span class="file-ico file-<%= docKind(row) %>" aria-hidden="true">
-                <%- icon("file-text") %>
-              </span>
-              <div>
-                <% if (row.fileHref) { %>
-                  <a href="<%= row.fileHref %>"<% if (row.isPdf) { %> data-pdf-preview data-pdf-name="<%= row.name %>"<% } %>><%= row.name %></a>
-                <% } else { %>
-                  <strong><%= row.name %></strong>
-                <% } %>
-                <small><%= [formatSize(row.size), row.at ? formatDateLong(row.at) : ""].filter(Boolean).join(" · ") || docStatusLabel(row.status) %></small>
-              </div>
-            </li>
-            <% }) %>
-          </ul>
-        <% } %>
+        <%- include("../partials/doc-list", { docRows: docRows, compact: true, canDelete: false, emptyTitle: t("dash.noDocs") }) %>
         <button type="button" class="case-add" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>>
           <%- icon("plus") %>
           <%= t("cases.addDocument") %>
@@ -293,49 +217,11 @@
       <h2><%= t("cases.tabDocuments") %></h2>
       <button type="button" class="linkish" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>><%= t("cases.addDocument") %></button>
     </header>
-    <% if (!docRows.length) { %>
-      <p class="muted"><%= t("dash.noDocs") %></p>
-    <% } else { %>
-    <table class="doc-table">
-      <thead>
-        <tr>
-          <th><%= t("cases.name") %></th>
-          <th><%= t("cases.openCreate") %></th>
-          <th><%= t("cases.status") %></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% docRows.forEach(function (row) { %>
-        <tr>
-          <td>
-            <% if (row.fileHref) { %>
-              <a href="<%= row.fileHref %>"<% if (row.isPdf) { %> data-pdf-preview data-pdf-name="<%= row.name %>"<% } %>><%= row.name %></a>
-            <% } else { %>
-              <strong><%= row.name %></strong>
-            <% } %>
-          </td>
-          <td>
-            <% if (row.createUrl) { %>
-              <a href="<%= row.createUrl %>" rel="noopener"><%= t("cases.openCreate") %></a>
-            <% } else { %>
-              <span class="muted">—</span>
-            <% } %>
-          </td>
-          <td>
-            <span class="badge badge-<%= row.status === 'error' ? 'wacht_op_info' : (row.status === 'uploaded' || row.status === 'success' ? 'afgerond' : 'nieuw') %>"><%= docStatusLabel(row.status) %></span>
-            <% if (row.error) { %><small class="muted"> <%= row.error %></small><% } %>
-          </td>
-          <td>
-            <form method="post" action="<%= row.deleteHref %>" data-confirm="<%= t('cases.confirmDeleteDoc') %>">
-              <button class="linkish danger-text" type="submit"><%= t("common.delete") %></button>
-            </form>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-    <% } %>
+    <%- include("../partials/doc-list", {
+      docRows: docRows,
+      emptyTitle: t("cases.docEmpty"),
+      emptyHint: canGenerate ? t("cases.docEmptyHint") : t("cases.generateNeedsIntegration"),
+    }) %>
   </section>
   <% } else { %>
   <section class="case-panel">

@@ -1,0 +1,9 @@
+<input type="hidden" name="from" value="list">
+<% if (typeof q !== "undefined" && q) { %><input type="hidden" name="filterQ" value="<%= q %>"><% } %>
+<% if (typeof group !== "undefined" && group) { %><input type="hidden" name="filterGroup" value="<%= group %>"><% } %>
+<% if (typeof status !== "undefined" && status) { %><input type="hidden" name="filterStatus" value="<%= status %>"><% } %>
+<% if (typeof zaaktypeId !== "undefined" && zaaktypeId) { %><input type="hidden" name="filterZaaktypeId" value="<%= zaaktypeId %>"><% } %>
+<% if (typeof prioriteit !== "undefined" && prioriteit) { %><input type="hidden" name="filterPrioriteit" value="<%= prioriteit %>"><% } %>
+<% if (typeof page !== "undefined" && Number(page) !== 1) { %><input type="hidden" name="filterPage" value="<%= page %>"><% } %>
+<% if (typeof pageSize !== "undefined" && Number(pageSize) !== 10) { %><input type="hidden" name="filterPageSize" value="<%= pageSize %>"><% } %>
+<input type="hidden" name="filterPeekTab" value="docs">

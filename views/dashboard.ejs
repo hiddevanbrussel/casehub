@@ -26,12 +26,12 @@
     </div>
     <div class="actions">
       <% if (isCases) { %>
-      <a class="btn dash-cta" href="/zaken?nieuw=1">
+      <a class="btn dash-cta" href="/zaken?nieuw=1" data-tour="new-case">
         <%- icon("plus") %>
         <%= t("dash.newCase") %>
       </a>
       <% } else if (canWriteEmployees) { %>
-      <a class="btn dash-cta" href="/werknemers?nieuw=1"><%= t("nav.newEmployee") %></a>
+      <a class="btn dash-cta" href="/werknemers?nieuw=1" data-tour="new-employee"><%= t("nav.newEmployee") %></a>
       <% } %>
     </div>
   </div>

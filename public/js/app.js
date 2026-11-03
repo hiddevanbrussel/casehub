@@ -600,23 +600,103 @@
         item.classList.toggle("is-hidden", Boolean(q) && !item.textContent.toLowerCase().includes(q));
       });
     });
+    const generateForm = generateModal.querySelector("[data-generate-form]");
+    const modeInput = generateModal.querySelector("[data-generate-mode]");
+    const title = generateModal.querySelector("[data-generate-title]");
+    const submit = generateModal.querySelector("[data-generate-submit]");
+
+    const generateLabel = (mode) => {
+      const i18n = window.I18N || {};
+      return mode === "interactive"
+        ? (i18n.generateInteractive || "Generate interactively")
+        : (i18n.generateDoc || "Generate document");
+    };
+
+    const setGenerateBusy = (busy) => {
+      const i18n = window.I18N || {};
+      generateModal.dataset.busy = busy ? "1" : "";
+      generateModal.querySelectorAll("button").forEach((btn) => {
+        btn.disabled = busy;
+      });
+      if (!submit) return;
+      submit.classList.toggle("is-busy", busy);
+      submit.textContent = busy
+        ? (i18n.generating || "Generating…")
+        : generateLabel(modeInput?.value);
+    };
+
+    const openCreateTab = (label) => {
+      const tab = window.open("about:blank", "_blank");
+      if (!tab) return null;
+      try {
+        tab.document.title = label;
+        if (tab.document.body) tab.document.body.textContent = label;
+      } catch {
+        // Cross-origin or empty tab; location is set after the request.
+      }
+      return tab;
+    };
+
+    generateModal.addEventListener("cancel", (event) => {
+      if (generateModal.dataset.busy === "1") event.preventDefault();
+    }, { signal });
+
     document.querySelectorAll("[data-generate-open]").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (btn.disabled) return;
         const mode = btn.dataset.generateOpen;
-        const i18n = window.I18N || {};
-        const label = mode === "interactive"
-          ? (i18n.generateInteractive || "Generate interactively")
-          : (i18n.generateDoc || "Generate document");
-        const modeInput = generateModal.querySelector("[data-generate-mode]");
-        const title = generateModal.querySelector("[data-generate-title]");
-        const submit = generateModal.querySelector("[data-generate-submit]");
+        const label = generateLabel(mode);
         if (modeInput) modeInput.value = mode;
         if (title) title.textContent = label;
-        if (submit) submit.textContent = label;
+        if (submit && generateModal.dataset.busy !== "1") submit.textContent = label;
         generateModal.showModal();
       }, { signal });
     });
+
+    generateForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (generateModal.dataset.busy === "1") return;
+      const i18n = window.I18N || {};
+      const label = i18n.generating || "Generating…";
+      setGenerateBusy(true);
+      const tab = openCreateTab(label);
+      try {
+        const body = new URLSearchParams();
+        new FormData(generateForm).forEach((value, key) => {
+          if (typeof value === "string") body.append(key, value);
+        });
+        const res = await fetch(generateForm.action, {
+          method: "POST",
+          body,
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data.open) {
+          if (tab) tab.location.replace(data.open);
+          else window.open(data.open, "_blank");
+        } else if (tab) {
+          tab.close();
+        }
+        const here = new URL(window.location.href);
+        let toast = data.toast || "";
+        if (!toast && data.next) {
+          try {
+            toast = new URL(data.next, window.location.origin).searchParams.get("toast") || "";
+          } catch {
+            toast = "";
+          }
+        }
+        if (toast) here.searchParams.set("toast", toast);
+        if (generateForm.querySelector('input[name="from"]')?.value === "list") {
+          here.searchParams.set("peekTab", "docs");
+        }
+        go(here.pathname + here.search);
+      } catch {
+        if (tab) tab.close();
+        setGenerateBusy(false);
+      }
+    }, { signal });
   }
   };
 

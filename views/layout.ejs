@@ -8,28 +8,39 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/public/css/app.css?v=ws-delete-menu">
+  <link rel="stylesheet" href="/public/css/app.css?v=superadmin-1">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
-    <a class="brand" href="/">
+    <a class="brand" href="<%= typeof isGlobalAdmin !== 'undefined' && isGlobalAdmin ? '/instellingen/werkruimtes' : '/' %>">
       <%- include("partials/brand-mark") %>
       <strong><%= meta.orgName %></strong>
     </a>
     <nav>
+      <% if (typeof isGlobalAdmin !== "undefined" && isGlobalAdmin) { %>
+      <p class="nav-label"><%= t('nav.admin') %></p>
+      <a class="<%= navActive('/instellingen/werkruimtes') %>" href="/instellingen/werkruimtes">
+        <%- icon("building-2") %>
+        <%= t('workspace.manage') %>
+      </a>
+      <a class="<%= navActive('/instellingen/beheerders') %>" href="/instellingen/beheerders">
+        <%- icon("shield-check") %>
+        <%= t('admins.manage') %>
+      </a>
+      <% } else { %>
       <p class="nav-label"><%= t('nav.home') %></p>
-      <a class="<%= path === '/' ? 'is-active' : '' %>" href="/">
+      <a class="<%= path === '/' ? 'is-active' : '' %>" href="/" data-tour="dash">
         <%- icon("layout-dashboard") %>
         <%= t('nav.dashboard') %>
       </a>
       <% if (isCases) { %>
-      <a class="<%= navActive('/zaken') %>" href="/zaken">
+      <a class="<%= navActive('/zaken') %>" href="/zaken" data-tour="cases">
         <%- icon("bookmark") %>
         <%= t('nav.cases') %>
       </a>
       <% } %>
       <% if (isHr) { %>
-      <a class="<%= navActive('/werknemers') %>" href="/werknemers">
+      <a class="<%= navActive('/werknemers') %>" href="/werknemers" data-tour="employees">
         <%- icon("users") %>
         <%= t('nav.employees') %>
       </a>
@@ -37,7 +48,7 @@
 
       <% if (isCases) { %>
       <p class="nav-label"><%= t('nav.naw') %></p>
-      <a class="<%= navActive('/personen') %>" href="/personen">
+      <a class="<%= navActive('/personen') %>" href="/personen" data-tour="persons">
         <%- icon("user") %>
         <%= t('nav.persons') %>
       </a>
@@ -50,7 +61,7 @@
       <% if (typeof isAdmin !== "undefined" && isAdmin) { %>
       <p class="nav-label"><%= t('nav.admin') %></p>
       <% if (!isHr) { %>
-      <a class="<%= navActive('/werknemers') %>" href="/werknemers">
+      <a class="<%= navActive('/werknemers') %>" href="/werknemers" data-tour="employees">
         <%- icon("users") %>
         <%= t('nav.employees') %>
       </a>
@@ -59,10 +70,11 @@
         <%- icon("scroll-text") %>
         <%= t('nav.audit') %>
       </a>
-      <a class="<%= navActive('/instellingen') %>" href="/instellingen">
+      <a class="<%= navActive('/instellingen') %>" href="/instellingen" data-tour="settings">
         <%- icon("settings") %>
         <%= t('nav.settings') %>
       </a>
+      <% } %>
       <% } %>
     </nav>
 
@@ -70,10 +82,14 @@
 
   <div class="shell">
     <header class="topbar">
-      <label class="top-search">
+      <% if (!(typeof isGlobalAdmin !== "undefined" && isGlobalAdmin)) { %>
+      <label class="top-search" data-tour="search">
         <%- icon("search") %>
         <input type="search" placeholder="<%= t('search.top', { org: meta.orgName }) %>" data-palette-open readonly>
       </label>
+      <% } else { %>
+      <div class="top-search is-empty"></div>
+      <% } %>
       <div class="topbar-end">
         <%- include("partials/theme-toggle") %>
         <%- include("partials/lang-switcher") %>
@@ -82,8 +98,8 @@
         <div class="top-who">
           <span class="who-avatar" aria-hidden="true"><%= initials %></span>
           <strong><%= user.naam %></strong>
-          <% if (typeof isGlobalAdmin !== "undefined" && isGlobalAdmin && typeof workspaces !== "undefined" && workspaces.length > 1) { %>
-          <a class="who-out" href="/werkruimtes" title="<%= t('workspace.switch') %>" aria-label="<%= t('workspace.switch') %>"><%- icon("building-2") %></a>
+          <% if (typeof isGlobalAdmin !== "undefined" && isGlobalAdmin && typeof workspaces !== "undefined" && workspaces.length) { %>
+          <a class="who-out" href="/instellingen/werkruimtes" title="<%= t('workspace.switch') %>" aria-label="<%= t('workspace.switch') %>"><%- icon("building-2") %></a>
           <% } %>
           <form method="post" action="/logout">
             <button class="who-out" type="submit" title="<%= t('nav.signOut') %>" aria-label="<%= t('nav.signOut') %>">
@@ -120,9 +136,31 @@
   <% if (toast) { %>
   <div class="toast" role="status"><%= toast %></div>
   <% } %>
-  <script>window.I18N = <%- JSON.stringify({ nothing: t("search.nothing"), cases: t("nav.cases"), companies: t("nav.companies"), persons: t("nav.persons"), employees: t("nav.employees"), selected: t("templates.selected"), allAllowed: t("templates.allAllowed"), download: t("common.download"), generateDoc: t("cases.generateDoc"), generateInteractive: t("cases.generateInteractive"), stakeNoMatch: t("cases.stakeholderNoMatch"), loading: t("common.loading"), loadError: t("common.loadError") }) %>;</script>
+  <script>window.I18N = <%- JSON.stringify({ nothing: t("search.nothing"), cases: t("nav.cases"), companies: t("nav.companies"), persons: t("nav.persons"), employees: t("nav.employees"), selected: t("templates.selected"), allAllowed: t("templates.allAllowed"), download: t("common.download"), generateDoc: t("cases.generateDoc"), generateInteractive: t("cases.generateInteractive"), generating: t("cases.generating"), stakeNoMatch: t("cases.stakeholderNoMatch"), loading: t("common.loading"), loadError: t("common.loadError") }) %>;</script>
   <template id="icon-chevron-down"><%- icon("chevron-down") %></template>
+  <div class="tour" id="tour" hidden>
+    <div class="tour-scrim" data-tour-scrim></div>
+    <div class="tour-spot" data-tour-spot></div>
+    <div class="tour-card" data-tour-card role="region" aria-labelledby="tour-title" aria-live="polite">
+      <div class="tour-head">
+        <h2 id="tour-title" data-tour-title></h2>
+        <span class="tour-progress" data-tour-progress></span>
+      </div>
+      <p data-tour-body></p>
+      <div class="tour-actions">
+        <button type="button" class="ghost" data-tour-skip></button>
+        <div class="tour-move">
+          <button type="button" class="ghost" data-tour-back></button>
+          <button type="button" class="btn" data-tour-next></button>
+        </div>
+      </div>
+    </div>
+  </div>
   <script src="/public/js/theme.js?v=boot"></script>
-  <script src="/public/js/app.js?v=boot-screen"></script>
+  <script src="/public/js/app.js?v=create-tab-3"></script>
+  <% if (typeof tour !== "undefined" && tour) { %>
+  <script>window.TOUR = <%- JSON.stringify(tour) %>;</script>
+  <script src="/public/js/tour.js?v=3"></script>
+  <% } %>
 </body>
 </html>

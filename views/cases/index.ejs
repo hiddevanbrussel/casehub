@@ -289,7 +289,7 @@
     <% } else { %>
       <% const peekPeople = peekCase.personen || []; %>
       <% const peekCompanies = peekCase.bedrijven || []; %>
-      <% const peekFiles = peekCase.bijlagen || []; %>
+      <% const peekDocRows = documentRows(peekCase, { basePath: "/zaken/" + peekCase.id }); %>
       <% const peekHolderCount = peekPeople.length + peekCompanies.length; %>
       <% const activePeekTab = typeof peekTab !== "undefined" ? peekTab : "holders"; %>
       <% const peekRecipes = typeof recipes !== "undefined" ? recipes : []; %>
@@ -486,7 +486,7 @@
           <%= t("cases.recentActivity") %>
         </button>
         <button type="button" class="<%= activePeekTab === "docs" ? "is-active" : "" %>" role="tab" id="peek-tab-docs" aria-controls="peek-panel-docs" aria-selected="<%= activePeekTab === "docs" ? "true" : "false" %>" tabindex="<%= activePeekTab === "docs" ? "0" : "-1" %>" data-peek-tab="docs">
-          <%= t("cases.tabDocuments") %><% if (peekFiles.length) { %> (<%= peekFiles.length %>)<% } %>
+          <%= t("cases.tabDocuments") %><% if (peekDocRows.length) { %> (<%= peekDocRows.length %>)<% } %>
         </button>
       </div>
       <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-holders" aria-labelledby="peek-tab-holders" data-peek-panel="holders"<% if (activePeekTab !== "holders") { %> hidden<% } %>>
@@ -524,26 +524,12 @@
         <% } %>
       </section>
       <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-docs" aria-labelledby="peek-tab-docs" data-peek-panel="docs"<% if (activePeekTab !== "docs") { %> hidden<% } %>>
-        <% if (!peekFiles.length) { %>
-          <p class="muted"><%= t("dash.noDocs") %></p>
-          <% if (!peekCanGenerate) { %>
-            <p class="peek-docs-hint"><%= peekGenerateHint %></p>
-          <% } %>
-        <% } else { %>
-          <ul class="case-files peek-files">
-            <% peekFiles.forEach(function (file) { %>
-            <li>
-              <span class="file-ico<%= /pdf/i.test(file.mime || "") || /\.pdf$/i.test(file.naam || "") ? " file-pdf" : (/^image\//.test(file.mime || "") ? " file-image" : "") %>" aria-hidden="true">
-                <%- icon("file-text") %>
-              </span>
-              <div>
-                <a href="/zaken/<%= peekCase.id %>/bijlagen/<%= file.id %>"<% if (/pdf/i.test(file.mime || "") || /\.pdf$/i.test(file.naam || "")) { %> data-pdf-preview data-pdf-name="<%= file.naam %>"<% } %>><%= file.naam %></a>
-                <% if (file.at) { %><small><%= formatDateLong(file.at) %></small><% } %>
-              </div>
-            </li>
-            <% }) %>
-          </ul>
-        <% } %>
+        <%- include("../partials/doc-list", {
+          docRows: peekDocRows,
+          fromList: true,
+          emptyTitle: t("cases.docEmpty"),
+          emptyHint: peekCanGenerate ? t("cases.docEmptyHint") : peekGenerateHint,
+        }) %>
       </section>
       <%- include("../partials/generate-doc", { action: "/zaken/" + peekCase.id + "/documenten", recipes: peekRecipes, canGenerate: peekCanGenerate, hideButtons: true, fromList: true }) %>
       <% } %>

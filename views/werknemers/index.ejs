@@ -146,6 +146,9 @@
         <p><%= t("employees.peekEmpty") %></p>
       </div>
     <% } else { %>
+      <% const peekRecipes = typeof recipes !== "undefined" ? recipes : []; %>
+      <% const peekCanGenerate = Boolean(isHr && typeof createReady !== "undefined" && createReady && peekRecipes.length); %>
+      <% const peekGenerateHint = (typeof createReady !== "undefined" && createReady) ? t("cases.noTemplates") : t("cases.generateNeedsIntegration"); %>
       <% if (canEditPeek && !composing) { %>
       <div class="peek-bar peek-view">
         <div class="peek-actions">
@@ -153,6 +156,12 @@
             <%- icon("pencil") %>
             <%= t("common.edit") %>
           </button>
+          <% if (isHr) { %>
+          <button type="button" class="btn peek-create-doc" data-generate-open="generate" <%= peekCanGenerate ? "" : "disabled" %><% if (!peekCanGenerate) { %> title="<%= peekGenerateHint %>"<% } %>>
+            <%- icon("file-plus") %>
+            <%= t("cases.createDoc") %>
+          </button>
+          <% } %>
           <% if (canDeletePeek) { %>
           <details class="menu-dots">
             <summary class="icon-more" aria-label="<%= t('cases.more') %>"><%- icon("ellipsis") %></summary>
@@ -313,6 +322,20 @@
         <p class="peek-copy peek-view"><%= [salutationLabel(peekEmp.aanhef), addressLine(peekEmp)].filter(Boolean).join(" · ") || t("employees.noAddress") %></p>
         <% } %>
       </form>
+      <% if (!composing && isHr) { %>
+      <% const peekDocRows = documentRows(peekEmp, { basePath: "/werknemers/" + peekEmp.id }); %>
+      <section class="peek-related peek-view">
+        <h3><%= t("cases.tabDocuments") %><% if (peekDocRows.length) { %> (<%= peekDocRows.length %>)<% } %></h3>
+        <%- include("../partials/doc-list", {
+          docRows: peekDocRows,
+          fromList: true,
+          canDelete: canWrite,
+          emptyTitle: t("hr.docEmpty"),
+          emptyHint: peekCanGenerate ? t("hr.docEmptyHint") : peekGenerateHint,
+        }) %>
+      </section>
+      <%- include("../partials/generate-doc", { action: "/werknemers/" + peekEmp.id + "/documenten", recipes: peekRecipes, canGenerate: peekCanGenerate, hideButtons: true, fromList: true }) %>
+      <% } %>
       <% if (!composing && isCases) { %>
       <section class="peek-related peek-view">
         <h3><%= t("employees.assignedCases") %><% if (peekCaseRows.length) { %> (<%= peekCaseRows.length %>)<% } %></h3>

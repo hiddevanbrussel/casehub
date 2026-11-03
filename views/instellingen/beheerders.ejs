@@ -24,6 +24,16 @@
         </div>
         <div class="workspace-admin-actions">
           <% if (self) { %><span class="badge badge-afgerond"><%= t("admins.you") %></span><% } %>
+          <% if (self) { %>
+            <% if (item.azureOid) { %>
+              <span class="hint azure-linked"><%= t("azure.linkedAs", { email: item.azureEmail || "Microsoft" }) %></span>
+              <form method="post" action="/instellingen/beheerders/<%= item.id %>/azure-ontkoppelen" data-confirm="<%= t('azure.unlinkConfirm') %>">
+                <button class="ghost" type="submit"><%= t("azure.unlink") %></button>
+              </form>
+            <% } else { %>
+              <a class="ghost" href="/auth/azure?link=1"><%= t("azure.link") %></a>
+            <% } %>
+          <% } %>
           <% if (!self && items.length > 1) { %>
           <details class="menu-dots">
             <summary class="ghost icon-more" aria-label="<%= t('cases.more') %>"><%- icon("ellipsis") %></summary>

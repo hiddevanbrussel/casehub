@@ -15,8 +15,10 @@ const { formatDate, formatDateLong, formatDateTime, formatDateTimeShort, formatT
 const { currentUser, canWriteMaster, isAdmin, isGlobalAdmin } = require("./lib/auth");
 const { i18nMiddleware } = require("./lib/i18n");
 const { icon } = require("./lib/icon");
+const { documentRows, formatFileSize } = require("./lib/docs");
 const { themeMiddleware } = require("./lib/theme");
 const { isHr, isCases, appProfile } = require("./lib/profile");
+const { tourPayload } = require("./lib/tour");
 const { routes } = require("./routes");
 
 if (["1", "true", "yes"].includes(String(process.env.SEED_DEMO || "").toLowerCase())) {
@@ -68,6 +70,9 @@ app.use((req, res, next) => {
     res.locals.fullName = fullName;
     res.locals.navActive = (prefix) => (req.path === prefix || req.path.startsWith(`${prefix}/`) ? "is-active" : "");
     res.locals.icon = icon;
+    res.locals.documentRows = documentRows;
+    res.locals.formatFileSize = formatFileSize;
+    res.locals.tour = tourPayload(req, res.locals);
     next();
   };
   if (req.store) return runWithStore(req.store, continueRequest);

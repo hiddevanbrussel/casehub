@@ -11,6 +11,7 @@ const {
   runWithStore,
   setWorkspaceCookie,
   createWorkspace,
+  addWorkspaceAdmin,
   updateWorkspace,
   deleteWorkspace,
   slugify,
@@ -20,17 +21,20 @@ const {
   PLATFORM_SESSION,
   needsPlatformSetup,
   platformSetupStep,
+  platformUser,
   platformUserByEmail,
+  platformUserByAzure,
   platformUsers,
   publicPlatformUser,
   savePlatformUser,
+  markPlatformTourDone,
   deletePlatformUser,
   relocateWerknemer,
   isGlobalAdminEmail,
 } = require("../lib/db");
 const { verifyPassword } = require("../lib/crypto");
 const { STATUSSEN, PRIORITEITEN, ROLLEN, OVERVIEW_GROUPS, PERSON_GROUPS, COMPANY_GROUPS, parseView, includesQ, slugFile, firstName, ymdToday } = require("../lib/format");
-const { requireAuth, requireRole, requireGlobalAdmin, setSessionCookie, clearSessionCookie, canWriteMaster, isAdmin, isGlobalAdmin } = require("../lib/auth");
+const { currentUser, requireAuth, requireRole, requireGlobalAdmin, restrictGlobalAdmin, setSessionCookie, clearSessionCookie, canWriteMaster, isAdmin, isGlobalAdmin } = require("../lib/auth");
 const config = require("../config");
 const create = require("../lib/create");
 const azure = require("../lib/azure");
@@ -54,6 +58,22 @@ const upload = multer({
 function toast(res, path, message) {
   const sep = String(path).includes("?") ? "&" : "?";
   res.redirect(`${path}${sep}toast=${encodeURIComponent(message)}`);
+}
+
+function wantsJson(req) {
+  return String(req.get("accept") || "").includes("application/json");
+}
+
+function withToast(path, message) {
+  const sep = String(path).includes("?") ? "&" : "?";
+  return `${path}${sep}toast=${encodeURIComponent(message)}`;
+}
+
+function generateReply(req, res, { open = "", next = "", message = "" }) {
+  const nextUrl = message ? withToast(next, message) : next;
+  if (wantsJson(req)) return res.json({ open, next: nextUrl });
+  if (open) return res.redirect(open);
+  return res.redirect(nextUrl);
 }
 
 function toastT(req, res, path, key, vars) {
@@ -115,7 +135,16 @@ function workspaceError(req, err) {
   if (err.message === "Invalid domain.") return req.t("workspace.domainInvalid");
   if (err.message === "Last workspace") return req.t("workspace.last");
   if (err.message === "Workspace not found.") return req.t("error.notFound");
-  return err.message;
+  return adminError(req, err);
+}
+
+function workspaceAdminInput(body) {
+  return {
+    adminVoornaam: body.adminVoornaam,
+    adminAchternaam: body.adminAchternaam,
+    adminEmail: body.adminEmail,
+    adminWachtwoord: body.adminWachtwoord,
+  };
 }
 
 function adminError(req, err) {
@@ -162,6 +191,7 @@ function nawListPath(base, src) {
     q: src.filterQ,
     group: src.filterGroup,
     focus: src.filterFocus,
+    peekTab: src.filterPeekTab,
   };
   Object.keys(map).forEach((key) => {
     const value = map[key];
@@ -394,6 +424,12 @@ function visibleRecipes() {
   return store.recipes().filter((recipe) => !recipe.hideFromUserView);
 }
 
+function employeeDocContext() {
+  if (!isHr(store.meta())) return { recipes: [], createReady: false };
+  const settings = create.createSettings(store);
+  return { recipes: visibleRecipes(), createReady: create.enabled(settings) };
+}
+
 function draftZaak() {
   return {
     id: "",
@@ -430,9 +466,9 @@ function recipesForZaak(zaak) {
 
 async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl, backUrl }) {
   const recipe = store.recipe(req.body.recipeId);
-  if (!recipe) return toastT(req, res, backUrl, "toast.pickTemplate");
+  if (!recipe) return generateReply(req, res, { next: backUrl, message: req.t("toast.pickTemplate") });
   const settings = create.createSettings(store);
-  if (!create.enabled(settings)) return toastT(req, res, backUrl, "toast.createOff");
+  if (!create.enabled(settings)) return generateReply(req, res, { next: backUrl, message: req.t("toast.createOff") });
   const interactive = String(req.body.mode || "") === "interactive";
   const job = store.addDocumentJob(
     {
@@ -445,13 +481,16 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
     },
     req.user
   );
-  const webhookUrl = interactive ? create.webhookUrlFor(settings, job) : "";
+  const hook = create.prepareWebhook(req, settings, job);
+  if (hook.returnUrl) store.updateDocumentJob(job.id, { returnUrl: hook.returnUrl });
+  const webhookUrl = hook.webhookUrl;
+  const webhookHeaders = hook.webhookHeaders;
   const request = interactive
     ? create.prepareGenerateRequest(settings, {
         recipeId: recipe.itemId,
         data,
         webhookUrl,
-        webhookHeaders: webhookUrl ? { "X-Zaakhub-Token": job.token } : undefined,
+        webhookHeaders,
       })
     : create.generateDocumentRequest(settings, {
         recipeId: recipe.itemId,
@@ -473,15 +512,20 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
         recipeId: recipe.itemId,
         data,
         webhookUrl,
-        webhookHeaders: webhookUrl ? { "X-Zaakhub-Token": job.token } : undefined,
+        webhookHeaders,
       });
       store.updateDocumentJob(
         job.id,
         { finalizeUrl: prepared.finalizeUrl || "", expiresAtUtc: prepared.expiresAtUtc || "" },
         req.user
       );
-      if (prepared.finalizeUrl) return res.redirect(create.withAuthDomain(prepared.finalizeUrl, settings));
-      return toastT(req, res, docsUrl, "toast.noFinalize");
+      if (prepared.finalizeUrl) {
+        return generateReply(req, res, {
+          open: create.withAuthDomain(prepared.finalizeUrl, settings),
+          next: docsUrl,
+        });
+      }
+      return generateReply(req, res, { next: docsUrl, message: req.t("toast.noFinalize") });
     }
     const generated = await create.generateDocument(settings, {
       recipeId: recipe.itemId,
@@ -492,28 +536,27 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
     const fileUri = generated?.fileUri || generated?.url || "";
     if (!fileUri) {
       store.updateDocumentJob(job.id, { status: "error", error: "No fileUri" }, req.user);
-      return toastT(req, res, docsUrl, "toast.noFileUri");
+      return generateReply(req, res, { next: docsUrl, message: req.t("toast.noFileUri") });
     }
     const file = await create.fetchGeneratedFile(settings, fileUri);
     if (!file) {
       store.updateDocumentJob(job.id, { status: "error", documentUrl: fileUri, error: "Download failed" }, req.user);
-      return toastT(req, res, docsUrl, "toast.noFileUri");
+      return generateReply(req, res, { next: docsUrl, message: req.t("toast.noFileUri") });
     }
     if (generated.contentType && (!file.mime || file.mime === "application/octet-stream")) file.mime = generated.contentType;
     if (!file.mime || file.mime === "application/octet-stream") file.mime = "application/pdf";
     if (!file.naam || file.naam === "document") file.naam = fileName;
     const bijlage = store.addBijlage(owner, create.saveGeneratedFile(file, req.store.dataDir), req.user);
     store.updateDocumentJob(job.id, { status: "success", documentUrl: fileUri, bijlageId: bijlage.id }, req.user);
-    toastT(req, res, docsUrl, "toast.documentGenerated");
+    return generateReply(req, res, { next: docsUrl, message: req.t("toast.documentGenerated") });
   } catch (err) {
     if (!interactive && create.isMissingRequiredValue(err)) {
       try {
-        const webhookUrl = create.webhookUrlFor(settings, job);
         const fallback = create.prepareGenerateRequest(settings, {
           recipeId: recipe.itemId,
           data,
           webhookUrl,
-          webhookHeaders: webhookUrl ? { "X-Zaakhub-Token": job.token } : undefined,
+          webhookHeaders,
         });
         store.log(
           req.user,
@@ -527,7 +570,7 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
           recipeId: recipe.itemId,
           data,
           webhookUrl,
-          webhookHeaders: webhookUrl ? { "X-Zaakhub-Token": job.token } : undefined,
+          webhookHeaders,
         });
         store.updateDocumentJob(
           job.id,
@@ -540,17 +583,22 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
           },
           req.user
         );
-        if (prepared.finalizeUrl) return res.redirect(create.withAuthDomain(prepared.finalizeUrl, settings));
-        return toastT(req, res, docsUrl, "toast.noFinalize");
+        if (prepared.finalizeUrl) {
+          return generateReply(req, res, {
+            open: create.withAuthDomain(prepared.finalizeUrl, settings),
+            next: docsUrl,
+          });
+        }
+        return generateReply(req, res, { next: docsUrl, message: req.t("toast.noFinalize") });
       } catch (prepareErr) {
         store.updateDocumentJob(job.id, { status: "error", error: prepareErr.message }, req.user);
         store.patchCreate({ lastError: prepareErr.message });
-        return toast(res, docsUrl, `Create: ${prepareErr.message}`);
+        return generateReply(req, res, { next: docsUrl, message: `Create: ${prepareErr.message}` });
       }
     }
     store.updateDocumentJob(job.id, { status: "error", error: err.message }, req.user);
     store.patchCreate({ lastError: err.message });
-    toast(res, docsUrl, `Create: ${err.message}`);
+    return generateReply(req, res, { next: docsUrl, message: `Create: ${err.message}` });
   }
 }
 
@@ -593,7 +641,7 @@ function finishPlatformSetup(req, res, admin, item) {
     setWorkspaceCookie(res, item.slug);
     setLangCookie(res, item.defaultLang);
   }
-  res.redirect("/");
+  res.redirect("/instellingen/werkruimtes");
 }
 
 function renderSetup(req, res, step, extra = {}) {
@@ -694,6 +742,9 @@ function handlePlatformSetup(req, res) {
       defaultLang: req.body.defaultLang,
       appProfile: req.body.appProfile,
       domains: req.body.domains,
+      adminVoornaam: req.body.adminVoornaam,
+      adminAchternaam: req.body.adminAchternaam,
+      adminEmail: req.body.adminEmail,
     };
     try {
       const created = createWorkspace({
@@ -703,6 +754,7 @@ function handlePlatformSetup(req, res) {
         appProfile: req.body.appProfile,
         seedDemo: leaseFlag(req.body.seedDemo),
         domains: req.body.domains,
+        ...workspaceAdminInput(req.body),
       });
       return finishPlatformSetup(req, res, admin, created);
     } catch (err) {
@@ -730,6 +782,7 @@ function routes() {
   });
 
   r.get("/werkruimtes", (req, res) => {
+    if (req.user && isGlobalAdmin(req.user)) return res.redirect("/instellingen/werkruimtes");
     const list = workspaces();
     if (!req.user) {
       if (!list.length) {
@@ -783,8 +836,7 @@ function routes() {
     setWorkspaceCookie(res, item.slug);
     setLangCookie(res, item.defaultLang);
     if (isGlobalAdmin(req.user)) {
-      const nextUrl = req.query.next && String(req.query.next).startsWith("/") ? req.query.next : "/";
-      return res.redirect(nextUrl === "/login" || nextUrl === "/werkruimtes" ? "/" : nextUrl);
+      return res.redirect("/instellingen/werkruimtes");
     }
     clearSessionCookie(res);
     const nextUrl = req.query.next && String(req.query.next).startsWith("/") ? req.query.next : "/login";
@@ -792,7 +844,10 @@ function routes() {
   });
 
   r.get("/login", (req, res) => {
-    if (req.user || require("../lib/auth").currentUser(req)) return res.redirect("/");
+    const existing = req.user || currentUser(req);
+    if (existing) {
+      return res.redirect(isGlobalAdmin(existing) ? "/instellingen/werkruimtes" : "/");
+    }
     const ctx = tenantForLogin(req);
     if (!ctx.item) return res.redirect("/werkruimtes");
     if (!req.store || req.store.slug !== ctx.item.slug) setWorkspaceCookie(res, ctx.item.slug);
@@ -809,6 +864,7 @@ function routes() {
     const global = platformUserByEmail(email);
     if (global && verifyPassword(password, global.wachtwoord)) {
       setSessionCookie(res, global.id, PLATFORM_SESSION);
+      if (!nextUrl || nextUrl === "/") return res.redirect("/instellingen/werkruimtes");
       return res.redirect(nextUrl);
     }
     if (!workspaceAllowsEmail(ctx.item, email)) {
@@ -846,18 +902,18 @@ function routes() {
     if (job.token && headerToken !== job.token) return res.status(401).json({ ok: false });
 
     const body = req.body || {};
-    const fileUrl = body.url || body.fileUri || "";
+    const settings = create.createSettings(tenant);
+    const fileUrl = create.documentUriFromBody(body);
     const failed = Boolean(body.error) || /error|fail/i.test(String(body.status || ""));
     const patch = {
       status: failed ? "error" : "success",
-      documentGenerationId: body.documentGenerationId || "",
+      documentGenerationId: body.documentGenerationId || body.generationId || body.metadata?.documentGenerationId || "",
       documentUrl: fileUrl,
       error: failed ? JSON.stringify(body.error || body.status || "Genereren mislukt") : "",
     };
 
     if (!failed && fileUrl) {
       try {
-        const settings = create.createSettings(tenant);
         const file = await create.fetchGeneratedFile(settings, fileUrl);
         if (file) {
           const bijlage = tenant.addBijlage(
@@ -873,7 +929,11 @@ function routes() {
     }
 
     tenant.updateDocumentJob(job.id, patch, null);
-    res.json({ ok: true });
+    const origin = create.publicOrigin(req, settings);
+    res.json({
+      ok: true,
+      navigateToUri: job.returnUrl || create.navigateToUriForJob(origin, job),
+    });
   }
 
   r.post("/api/create/webhook/:slug/:jobId", async (req, res) => {
@@ -1034,24 +1094,49 @@ function routes() {
     res.redirect("/setup");
   });
 
+  function azureCookie(res, name, value) {
+    res.cookie(name, value, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.COOKIE_SECURE === "true",
+      maxAge: value ? 10 * 60 * 1000 : 0,
+    });
+  }
+
+  function linkAzureToAdmin(admin, profile) {
+    return savePlatformUser({
+      id: admin.id,
+      voornaam: admin.voornaam,
+      achternaam: admin.achternaam,
+      email: admin.email,
+      wachtwoord: admin.wachtwoord,
+      azureOid: profile.oid,
+      azureEmail: profile.email,
+    });
+  }
+
   r.get("/auth/azure", (req, res) => {
+    const current = currentUser(req);
+    const linking = String(req.query.link || "") === "1" && isGlobalAdmin(current);
     const ctx = tenantForLogin(req);
     if (!ctx.item) return res.redirect("/login");
     setWorkspaceCookie(res, ctx.item.slug);
     const settings = azure.azureSettings(ctx.tenant);
-    if (!azure.enabled(settings)) return res.redirect("/login");
+    if (!azure.enabled(settings)) {
+      if (linking) return toastT(req, res, "/instellingen/beheerders", "toast.azureOff");
+      return res.redirect("/login");
+    }
     const state = crypto.randomBytes(24).toString("hex");
-    res.cookie("zaakhub_azure", state, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.COOKIE_SECURE === "true",
-      maxAge: 10 * 60 * 1000,
-    });
+    azureCookie(res, "zaakhub_azure", state);
+    if (linking) azureCookie(res, "zaakhub_azure_link", current.id);
+    else res.clearCookie("zaakhub_azure_link");
     res.redirect(azure.authorizeUrl(settings, { state, redirectUri: azure.redirectUri(req, ctx.tenant) }));
   });
 
   r.get("/auth/azure/callback", async (req, res) => {
     const ctx = tenantForLogin(req);
+    const linkId = String(req.cookies?.zaakhub_azure_link || "");
+    res.clearCookie("zaakhub_azure_link");
     try {
       if (!ctx.item) throw new Error(req.t("login.error"));
       if (req.query.error) throw new Error(String(req.query.error_description || req.query.error));
@@ -1067,6 +1152,25 @@ function routes() {
         redirectUri: azure.redirectUri(req, ctx.tenant),
       });
       const profile = await azure.fetchProfile(tokens.access_token);
+      if (linkId) {
+        const admin = platformUser(linkId);
+        if (!admin) throw new Error(req.t("login.error"));
+        linkAzureToAdmin(admin, profile);
+        ctx.tenant.patchAzure({ lastError: "" });
+        setSessionCookie(res, admin.id, PLATFORM_SESSION);
+        return toastT(req, res, "/instellingen/beheerders", "toast.azureLinked");
+      }
+      const global = platformUserByAzure(profile.oid, profile.email);
+      if (global) {
+        linkAzureToAdmin(global, profile);
+        ctx.tenant.patchAzure({ lastError: "" });
+        setSessionCookie(res, global.id, PLATFORM_SESSION);
+        const nextUrl = req.query.next && String(req.query.next).startsWith("/") ? req.query.next : "/instellingen/werkruimtes";
+        if (nextUrl === "/" || nextUrl === "/login" || nextUrl === "/werkruimtes") {
+          return res.redirect("/instellingen/werkruimtes");
+        }
+        return res.redirect(nextUrl);
+      }
       if (!workspaceAllowsEmail(ctx.item, profile.email)) {
         throw new Error("DOMAIN_DENIED");
       }
@@ -1078,14 +1182,16 @@ function routes() {
     } catch (err) {
       const message = err.message === "DOMAIN_DENIED" ? req.t("login.domainDenied") : err.message;
       if (ctx.tenant) ctx.tenant.patchAzure({ lastError: message });
+      if (linkId) return toast(res, "/instellingen/beheerders", message);
       res.redirect(`/login?error=${encodeURIComponent(message)}`);
     }
   });
 
   r.use(requireAuth);
+  r.use(restrictGlobalAdmin);
 
   r.use((req, res, next) => {
-    if (isCases(store.meta())) return next();
+    if (!req.store || isCases(store.meta())) return next();
     if (
       req.path.startsWith("/zaken") ||
       req.path.startsWith("/personen") ||
@@ -1095,6 +1201,12 @@ function routes() {
     }
     if (req.path.startsWith("/instellingen/zaaktypen")) return res.redirect("/instellingen");
     next();
+  });
+
+  r.post("/api/tour", (req, res) => {
+    if (isGlobalAdmin(req.user)) markPlatformTourDone(req.user.id);
+    else store.markTourDone(req.user.id);
+    res.json({ ok: true });
   });
 
   r.get("/", (req, res) => {
@@ -1419,13 +1531,25 @@ function routes() {
     res.sendFile(path.resolve(filePath));
   });
 
+  function afterCaseDocumentDelete(req, res) {
+    if (req.body.from === "list") {
+      return toastT(
+        req,
+        res,
+        zakenListPath({ ...req.body, filterFocus: req.params.id, filterPeekTab: "docs" }),
+        "toast.attachmentDeleted"
+      );
+    }
+    toastT(req, res, `/zaken/${req.params.id}?tab=documents`, "toast.attachmentDeleted");
+  }
+
   r.post("/zaken/:id/bijlagen/:bijlageId/verwijderen", (req, res) => {
     const bijlage = store.bijlage(req.params.bijlageId);
     if (!bijlage || bijlage.zaakId !== req.params.id) {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
     }
     store.deleteBijlage(req.params.bijlageId, req.user);
-    toastT(req, res, `/zaken/${req.params.id}?tab=documents`, "toast.attachmentDeleted");
+    afterCaseDocumentDelete(req, res);
   });
 
   r.post("/zaken/:id/documenten/:jobId/verwijderen", (req, res) => {
@@ -1434,7 +1558,7 @@ function routes() {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
     }
     store.deleteDocumentJob(req.params.jobId, req.user);
-    toastT(req, res, `/zaken/${req.params.id}?tab=documents`, "toast.attachmentDeleted");
+    afterCaseDocumentDelete(req, res);
   });
 
   r.post("/zaken/:id/documenten", async (req, res) => {
@@ -1679,6 +1803,7 @@ function routes() {
     res.locals.contentMod = " is-split-list";
     const q = req.query.q || "";
     const group = req.query.group || "";
+    const docs = employeeDocContext();
     if (lazyPending) {
       return res.render("werknemers/index", {
         title: req.t("employees.overview"),
@@ -1692,6 +1817,8 @@ function routes() {
         peek: null,
         peekCases: [],
         lazyPending: true,
+        peekTab: "docs",
+        ...docs,
       });
     }
     const composing = canWrite && String(req.query.nieuw || "") === "1";
@@ -1700,6 +1827,9 @@ function routes() {
     if (focusId && !store.werknemer(focusId)) focusId = "";
     if (!composing && !focusId && all[0]) focusId = all[0].id;
     const peek = composing ? draftWerknemer() : (focusId ? store.werknemer(focusId) : null);
+    const peekTab = ["docs", "cases"].includes(String(req.query.peekTab || ""))
+      ? String(req.query.peekTab)
+      : "docs";
     res.render("werknemers/index", {
       title: req.t("employees.overview"),
       werknemers: all,
@@ -1711,7 +1841,9 @@ function routes() {
       focus: focusId,
       peek,
       peekCases: peek && peek.id && isCases(store.meta()) ? assignedZaken(peek.id) : [],
+      peekTab,
       lazyPending: false,
+      ...docs,
       ...(fragment ? { layout: false } : {}),
     });
   });
@@ -1743,6 +1875,7 @@ function routes() {
           peekCases: [],
           lazyPending: false,
           error: formError(req, err),
+          ...employeeDocContext(),
         });
       }
       res.status(400).render("werknemers/form", employeeFormLocals(req, {
@@ -1828,6 +1961,7 @@ function routes() {
           lazyPending: false,
           error: formError(req, err),
           forceEdit: true,
+          ...employeeDocContext(),
         });
       }
       res.status(400).render("werknemers/form", employeeFormLocals(req, {
@@ -1858,13 +1992,25 @@ function routes() {
     res.sendFile(path.resolve(filePath));
   });
 
+  function afterEmployeeDocumentDelete(req, res) {
+    if (req.body.from === "list") {
+      return toastT(
+        req,
+        res,
+        nawListPath("/werknemers", { ...req.body, filterFocus: req.params.id, filterPeekTab: "docs" }),
+        "toast.attachmentDeleted"
+      );
+    }
+    toastT(req, res, `/werknemers/${req.params.id}?tab=documents`, "toast.attachmentDeleted");
+  }
+
   r.post("/werknemers/:id/bijlagen/:bijlageId/verwijderen", employeesWrite, (req, res) => {
     const bijlage = store.bijlage(req.params.bijlageId);
     if (!bijlage || bijlage.werknemerId !== req.params.id) {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
     }
     store.deleteBijlage(req.params.bijlageId, req.user);
-    toastT(req, res, `/werknemers/${req.params.id}?tab=documents`, "toast.attachmentDeleted");
+    afterEmployeeDocumentDelete(req, res);
   });
 
   r.post("/werknemers/:id/documenten/:jobId/verwijderen", employeesWrite, (req, res) => {
@@ -1873,20 +2019,22 @@ function routes() {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
     }
     store.deleteDocumentJob(req.params.jobId, req.user);
-    toastT(req, res, `/werknemers/${req.params.id}?tab=documents`, "toast.attachmentDeleted");
+    afterEmployeeDocumentDelete(req, res);
   });
 
   r.post("/werknemers/:id/documenten", employeesWrite, async (req, res) => {
     const werknemer = store.werknemer(req.params.id);
     if (!werknemer) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
     const recipe = store.recipe(req.body.recipeId);
+    const fromList = req.body.from === "list";
+    const listBack = nawListPath("/werknemers", { ...req.body, filterFocus: werknemer.id, filterPeekTab: "docs" });
     const fileName = `${(recipe && recipe.name) || "document"}-${werknemer.personeelsnummer || werknemer.naam}.pdf`;
     await generateOwnerDocument(req, res, {
       owner: { werknemerId: werknemer.id },
       data: create.prefillEmployee(werknemer, recipe || {}),
       fileName,
-      docsUrl: `/werknemers/${werknemer.id}?tab=documents`,
-      backUrl: `/werknemers/${werknemer.id}`,
+      docsUrl: fromList ? listBack : `/werknemers/${werknemer.id}?tab=documents`,
+      backUrl: fromList ? listBack : `/werknemers/${werknemer.id}`,
     });
   });
 
@@ -1969,7 +2117,7 @@ function routes() {
     }
   });
 
-  r.get("/instellingen", requireRole("admin"), (req, res) => {
+  r.get("/instellingen", requireRole("admin", "global_admin"), (req, res) => {
     res.render("instellingen/index", { title: req.t("settings.title") });
   });
 
@@ -1993,6 +2141,7 @@ function routes() {
         appProfile: req.body.appProfile,
         seedDemo: leaseFlag(req.body.seedDemo),
         domains: req.body.domains,
+        ...workspaceAdminInput(req.body),
       });
       toastT(req, res, "/instellingen/werkruimtes", "workspace.created");
     } catch (err) {
@@ -2004,6 +2153,15 @@ function routes() {
     try {
       setWorkspaceDomains(req.params.slug, req.body.domains);
       toastT(req, res, "/instellingen/werkruimtes", "workspace.saved");
+    } catch (err) {
+      toast(res, "/instellingen/werkruimtes", workspaceError(req, err));
+    }
+  });
+
+  r.post("/instellingen/werkruimtes/:slug/beheerder", requireGlobalAdmin, (req, res) => {
+    try {
+      addWorkspaceAdmin(req.params.slug, workspaceAdminInput(req.body));
+      toastT(req, res, "/instellingen/werkruimtes", "workspace.adminCreated");
     } catch (err) {
       toast(res, "/instellingen/werkruimtes", workspaceError(req, err));
     }
@@ -2026,7 +2184,28 @@ function routes() {
     res.render("instellingen/beheerders", {
       title: req.t("admins.manage"),
       items: platformUsers().map(publicPlatformUser),
+      azureReady: azure.enabled(azure.azureSettings(store)),
     });
+  });
+
+  r.post("/instellingen/beheerders/:id/azure-ontkoppelen", requireGlobalAdmin, (req, res) => {
+    try {
+      if (req.params.id !== req.user?.id) throw new Error(req.t("error.forbiddenMsg"));
+      const admin = platformUser(req.params.id);
+      if (!admin) throw new Error("Admin not found.");
+      savePlatformUser({
+        id: admin.id,
+        voornaam: admin.voornaam,
+        achternaam: admin.achternaam,
+        email: admin.email,
+        wachtwoord: admin.wachtwoord,
+        azureOid: "",
+        azureEmail: "",
+      });
+      toastT(req, res, "/instellingen/beheerders", "toast.azureUnlinked");
+    } catch (err) {
+      toast(res, "/instellingen/beheerders", adminError(req, err));
+    }
   });
 
   r.post("/instellingen/beheerders", requireGlobalAdmin, (req, res) => {

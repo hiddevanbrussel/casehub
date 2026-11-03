@@ -1,0 +1,82 @@
+<%
+  const rows = typeof docRows !== "undefined" ? docRows : [];
+  const compact = Boolean(locals.compact);
+  const fromList = Boolean(locals.fromList);
+  const canDelete = locals.canDelete !== false;
+  const shown = compact ? rows.slice(0, 4) : rows;
+  function whenLabel(iso) {
+    if (!iso) return "";
+    const bucket = dayBucket(iso);
+    if (bucket === "today") return t("dash.todayAt", { time: formatTime(iso) });
+    if (bucket === "yesterday") return t("dash.yesterdayAt", { time: formatTime(iso) });
+    return formatDateTimeShort(iso);
+  }
+  function docStatusLabel(code) {
+    if (code === "uploaded") return t("cases.docUploaded");
+    if (code === "success") return t("cases.docCompleted");
+    if (code === "error") return t("cases.docFailed");
+    if (code === "generating") return t("cases.docGenerating");
+    return t("cases.docInCreate");
+  }
+  function docKind(row) {
+    if (row.isPdf) return "pdf";
+    if (row.isImage) return "image";
+    return "file";
+  }
+  function docBadge(code) {
+    if (code === "error") return "wacht_op_info";
+    if (code === "uploaded" || code === "success") return "afgerond";
+    return "nieuw";
+  }
+%>
+<% if (!rows.length) { %>
+  <div class="doc-empty">
+    <p><%= locals.emptyTitle || t("cases.docEmpty") %></p>
+    <% if (locals.emptyHint) { %><p class="doc-empty-hint"><%= emptyHint %></p><% } %>
+  </div>
+<% } else { %>
+<ul class="doc-list<%= compact ? " is-compact" : "" %>">
+  <% shown.forEach(function (row) { %>
+  <li class="doc-item">
+    <span class="file-ico file-<%= docKind(row) %>" aria-hidden="true">
+      <%- icon("file-text") %>
+    </span>
+    <div class="doc-item-body">
+      <% if (row.fileHref) { %>
+        <a href="<%= row.fileHref %>"<% if (row.isPdf) { %> data-pdf-preview data-pdf-name="<%= row.name %>"<% } %>><%= row.name %></a>
+      <% } else if (row.createUrl) { %>
+        <a href="<%= row.createUrl %>" target="_blank" rel="noopener noreferrer"><%= row.name %></a>
+      <% } else { %>
+        <strong><%= row.name %></strong>
+      <% } %>
+      <p class="doc-item-meta">
+        <span class="badge badge-<%= docBadge(row.status) %>"><%= docStatusLabel(row.status) %></span>
+        <% if (formatFileSize(row.size)) { %><span><%= formatFileSize(row.size) %></span><% } %>
+        <% if (row.at) { %><span><%= whenLabel(row.at) %></span><% } %>
+        <% if (row.error) { %><span class="doc-item-error"><%= row.error %></span><% } %>
+      </p>
+    </div>
+    <% if (!compact) { %>
+    <div class="doc-item-actions">
+      <% if (row.createUrl) { %>
+        <a class="ghost doc-item-create" href="<%= row.createUrl %>" target="_blank" rel="noopener noreferrer"><%= t("cases.openCreate") %></a>
+      <% } %>
+      <% if (row.downloadHref) { %>
+        <a class="icon-btn" href="<%= row.downloadHref %>" download aria-label="<%= t('common.download') %>" title="<%= t('common.download') %>">
+          <%- icon("download") %>
+        </a>
+      <% } %>
+      <% if (canDelete && row.deleteHref) { %>
+        <form method="post" action="<%= row.deleteHref %>" data-confirm="<%= t('cases.confirmDeleteDoc') %>">
+          <% if (fromList) { %><%- include("list-return-fields") %><% } %>
+          <button class="icon-btn doc-item-delete" type="submit" aria-label="<%= t('common.delete') %>" title="<%= t('common.delete') %>">
+            <%- icon("trash-2") %>
+          </button>
+        </form>
+      <% } %>
+    </div>
+    <% } %>
+  </li>
+  <% }) %>
+</ul>
+<% } %>

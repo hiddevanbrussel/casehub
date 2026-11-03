@@ -51,6 +51,28 @@
             <span class="hint"><%= t("workspace.domainHint") %></span>
           </label>
         </form>
+        <details class="workspace-admin-staff">
+          <summary><%= t("workspace.addAdmin") %></summary>
+          <form class="admin-edit" method="post" action="/instellingen/werkruimtes/<%= item.slug %>/beheerder">
+            <div class="admin-edit-grid">
+              <label><%= t("employees.firstName") %>
+                <input name="adminVoornaam" required autocomplete="off">
+              </label>
+              <label><%= t("employees.lastName") %>
+                <input name="adminAchternaam" required autocomplete="off">
+              </label>
+              <label><%= t("employees.email") %>
+                <input type="email" name="adminEmail" required autocomplete="off">
+              </label>
+              <label><%= t("employees.password") %>
+                <input type="password" name="adminWachtwoord" required minlength="8" autocomplete="new-password">
+              </label>
+            </div>
+            <div class="form-actions">
+              <button class="ghost" type="submit"><%= t("workspace.addAdmin") %></button>
+            </div>
+          </form>
+        </details>
       </li>
       <% }) %>
     </ul>
@@ -113,6 +135,24 @@
           <input type="hidden" name="seedDemo" value="0">
           <input type="checkbox" name="seedDemo" value="1" checked>
         </label>
+        <div class="span-all workspace-admin-create">
+          <span class="field-caption"><%= t("workspace.admin") %></span>
+          <p class="hint"><%= t("workspace.adminLede") %></p>
+          <div class="form-grid form-grid-2">
+            <label><%= t("employees.firstName") %>
+              <input name="adminVoornaam" required autocomplete="off">
+            </label>
+            <label><%= t("employees.lastName") %>
+              <input name="adminAchternaam" required autocomplete="off">
+            </label>
+            <label><%= t("employees.email") %>
+              <input type="email" name="adminEmail" required autocomplete="off">
+            </label>
+            <label><%= t("employees.password") %>
+              <input type="password" name="adminWachtwoord" required minlength="8" autocomplete="new-password">
+            </label>
+          </div>
+        </div>
       </div>
       <div class="form-actions">
         <button class="btn" type="submit"><%= t("workspace.create") %></button>

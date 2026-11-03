@@ -198,101 +198,21 @@
   </div>
   <% } else { %>
   <section class="case-card">
-    <h2>
-      <%- icon("file-text") %>
-      <%= t('cases.tabDocuments') %>
-    </h2>
-    <%
-      const linkedBijlageIds = {};
-      (werknemer.documentJobs || []).forEach(function (job) {
-        if (job.bijlageId) linkedBijlageIds[job.bijlageId] = true;
-      });
-      const docRows = [];
-      (werknemer.documentJobs || []).forEach(function (job) {
-        const file = job.bijlageId ? werknemer.bijlagen.find(function (b) { return b.id === job.bijlageId; }) : null;
-        const done = Boolean(file) || job.status === "success";
-        docRows.push({
-          name: file ? file.naam : job.recipeName,
-          fileHref: file ? "/werknemers/" + werknemer.id + "/bijlagen/" + file.id : "",
-          isPdf: file ? /pdf/i.test(file.mime || "") || /\.pdf$/i.test(file.naam || "") : false,
-          createUrl: done ? "" : (job.finalizeUrl || ""),
-          status: done ? "success" : job.status,
-          error: job.error || "",
-          deleteHref: file
-            ? "/werknemers/" + werknemer.id + "/bijlagen/" + file.id + "/verwijderen"
-            : "/werknemers/" + werknemer.id + "/documenten/" + job.id + "/verwijderen",
-        });
-      });
-      (werknemer.bijlagen || []).forEach(function (b) {
-        if (linkedBijlageIds[b.id]) return;
-        docRows.push({
-          name: b.naam,
-          fileHref: "/werknemers/" + werknemer.id + "/bijlagen/" + b.id,
-          isPdf: /pdf/i.test(b.mime || "") || /\.pdf$/i.test(b.naam || ""),
-          createUrl: "",
-          status: "uploaded",
-          error: "",
-          deleteHref: "/werknemers/" + werknemer.id + "/bijlagen/" + b.id + "/verwijderen",
-        });
-      });
-      function docStatusLabel(code) {
-        if (code === "uploaded") return t("cases.docUploaded");
-        if (code === "success") return t("cases.docCompleted");
-        if (code === "error") return t("cases.docFailed");
-        if (code === "generating") return t("cases.docGenerating");
-        return t("cases.docInCreate");
-      }
-      function docStatusBadge(code) {
-        if (code === "uploaded" || code === "success") return "afgerond";
-        if (code === "error") return "wacht_op_info";
-        return "nieuw";
-      }
-    %>
-    <% if (!docRows.length) { %>
-      <p class="muted"><%= t('cases.noAttachments') %></p>
-    <% } else { %>
-    <table class="doc-table">
-      <thead>
-        <tr>
-          <th><%= t('cases.name') %></th>
-          <th><%= t('cases.openCreate') %></th>
-          <th><%= t('cases.status') %></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% docRows.forEach(function (row) { %>
-        <tr>
-          <td>
-            <% if (row.fileHref) { %>
-              <a href="<%= row.fileHref %>"<% if (row.isPdf) { %> data-pdf-preview data-pdf-name="<%= row.name %>"<% } %>><%= row.name %></a>
-            <% } else { %>
-              <strong><%= row.name %></strong>
-            <% } %>
-          </td>
-          <td>
-            <% if (row.createUrl) { %>
-              <a href="<%= row.createUrl %>" rel="noopener"><%= t('cases.openCreate') %></a>
-            <% } else { %>
-              <span class="muted">—</span>
-            <% } %>
-          </td>
-          <td>
-            <span class="badge badge-<%= docStatusBadge(row.status) %>"><%= docStatusLabel(row.status) %></span>
-            <% if (row.error) { %><small class="muted"> <%= row.error %></small><% } %>
-          </td>
-          <td>
-            <% if (canWrite) { %>
-            <form method="post" action="<%= row.deleteHref %>" data-confirm="<%= t('cases.confirmDeleteDoc') %>">
-              <button class="linkish danger-text" type="submit"><%= t('common.delete') %></button>
-            </form>
-            <% } %>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-    <% } %>
+    <header class="case-panel-head">
+      <h2>
+        <%- icon("file-text") %>
+        <%= t('cases.tabDocuments') %>
+      </h2>
+      <% if (canWrite) { %>
+      <button type="button" class="linkish" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>><%= t("cases.addDocument") %></button>
+      <% } %>
+    </header>
+    <%- include("../partials/doc-list", {
+      docRows: documentRows(werknemer, { basePath: "/werknemers/" + werknemer.id }),
+      canDelete: Boolean(typeof canWrite !== "undefined" && canWrite),
+      emptyTitle: t("hr.docEmpty"),
+      emptyHint: canGenerate ? t("hr.docEmptyHint") : t("cases.generateNeedsIntegration"),
+    }) %>
   </section>
   <% } %>
 </div>

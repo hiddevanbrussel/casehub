@@ -593,7 +593,7 @@
   const generateModal = document.getElementById("generate-modal");
   if (generateModal) {
     const generateFilter = generateModal.querySelector("[data-generate-filter]");
-    const generateItems = [...generateModal.querySelectorAll(".check-item")];
+    const generateItems = [...generateModal.querySelectorAll("[data-generate-picker] .check-item")];
     generateFilter?.addEventListener("input", () => {
       const q = generateFilter.value.trim().toLowerCase();
       generateItems.forEach((item) => {
@@ -604,12 +604,20 @@
     const modeInput = generateModal.querySelector("[data-generate-mode]");
     const title = generateModal.querySelector("[data-generate-title]");
     const submit = generateModal.querySelector("[data-generate-submit]");
+    const batchHints = [...generateModal.querySelectorAll("[data-generate-hint]")];
 
     const generateLabel = (mode) => {
       const i18n = window.I18N || {};
       return mode === "interactive"
         ? (i18n.generateInteractive || "Generate interactively")
         : (i18n.generateDoc || "Generate document");
+    };
+
+    const syncBatchHint = () => {
+      const interactive = modeInput?.value === "interactive";
+      batchHints.forEach((el) => {
+        el.hidden = interactive ? el.dataset.generateHint !== "interactive" : el.dataset.generateHint !== "batch";
+      });
     };
 
     const setGenerateBusy = (busy) => {
@@ -649,6 +657,7 @@
         if (modeInput) modeInput.value = mode;
         if (title) title.textContent = label;
         if (submit && generateModal.dataset.busy !== "1") submit.textContent = label;
+        syncBatchHint();
         generateModal.showModal();
       }, { signal });
     });

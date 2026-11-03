@@ -263,5 +263,14 @@
   </section>
   <% } %>
 
-  <%- include("../partials/generate-doc", { action: "/zaken/" + zaak.id + "/documenten", recipes: recipes, canGenerate: canGenerate, hideButtons: true }) %>
+  <%- include("../partials/generate-doc", {
+    action: "/zaken/" + zaak.id + "/documenten",
+    recipes: recipes,
+    canGenerate: canGenerate,
+    hideButtons: true,
+    stakeholders: [].concat(
+      (zaak.personen || []).map(function (p) { return { key: "persoon:" + p.id, name: p.naam || "" }; }),
+      (zaak.bedrijven || []).map(function (b) { return { key: "bedrijf:" + b.id, name: b.handelsnaam || "" }; })
+    )
+  }) %>
 </div>

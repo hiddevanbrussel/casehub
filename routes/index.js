@@ -488,12 +488,30 @@ function recipesForZaak(zaak) {
   return allRecipes;
 }
 
-async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl, backUrl }) {
-  const recipe = store.recipe(req.body.recipeId);
-  if (!recipe) return generateReply(req, res, { next: backUrl, message: req.t("toast.pickTemplate") });
-  const settings = create.createSettings(store);
-  if (!create.enabled(settings)) return generateReply(req, res, { next: backUrl, message: req.t("toast.createOff") });
-  const interactive = String(req.body.mode || "") === "interactive";
+function bodyValues(value) {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  if (value == null || value === "") return [];
+  return [String(value)];
+}
+
+function partyFields(target) {
+  return {
+    persoonId: target?.kind === "persoon" ? target.id : "",
+    bedrijfId: target?.kind === "bedrijf" ? target.id : "",
+    stakeholderName: target?.name || "",
+  };
+}
+
+function documentFileName(job, fileName, file) {
+  const ext = path.extname(file?.naam || fileName || "") || ".pdf";
+  const base = [job.recipeName, job.stakeholderName].filter(Boolean).join(" - ")
+    || fileName
+    || file?.naam
+    || "document";
+  return /\.[a-z0-9]+$/i.test(base) ? base : `${base}${ext}`;
+}
+
+function addOwnerJob(req, settings, { owner, recipe, interactive, target }) {
   const job = store.addDocumentJob(
     {
       zaakId: owner.zaakId || "",
@@ -502,6 +520,7 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
       recipeName: recipe.name,
       mode: interactive ? "interactive" : "generate",
       status: interactive ? "prepared" : "generating",
+      ...partyFields(target),
     },
     req.user
   );
@@ -509,19 +528,172 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
   if (hook.returnUrl || hook.webhookUrl) {
     store.updateDocumentJob(job.id, { returnUrl: hook.returnUrl || "", webhookUrl: hook.webhookUrl || "" });
   }
+  return { job: store.documentJob(job.id) || job, hook };
+}
+
+async function saveGeneratedOwnerFile(req, settings, { job, generated, owner, fileName }) {
+  const fileUri = generated?.fileUri || generated?.url || "";
+  if (!fileUri) {
+    store.updateDocumentJob(job.id, { status: "error", error: "No fileUri" }, req.user);
+    return false;
+  }
+  const file = await create.fetchGeneratedFile(settings, fileUri);
+  if (!file) {
+    store.updateDocumentJob(job.id, { status: "error", documentUrl: fileUri, error: "Download failed" }, req.user);
+    return false;
+  }
+  if (generated.contentType && (!file.mime || file.mime === "application/octet-stream")) file.mime = generated.contentType;
+  if (!file.mime || file.mime === "application/octet-stream") file.mime = "application/pdf";
+  file.naam = documentFileName(job, fileName, file);
+  const bijlage = store.addBijlage(owner, create.saveGeneratedFile(file, req.store.dataDir), req.user);
+  store.updateDocumentJob(job.id, { status: "success", documentUrl: fileUri, bijlageId: bijlage.id }, req.user);
+  return true;
+}
+
+async function generateBatchOwnerDocuments(req, res, { owner, recipe, settings, targets, docsUrl }) {
+  try {
+    await create.getToken(settings);
+  } catch (err) {
+    store.patchCreate({ lastError: err.message });
+    return generateReply(req, res, { next: docsUrl, message: `Create: ${err.message}` });
+  }
+  const entries = targets.map((target) => {
+    const { job, hook } = addOwnerJob(req, settings, { owner, recipe, interactive: false, target });
+    return { job, hook, target };
+  });
+  const request = create.generateBatchAsyncRequest(settings, {
+    recipeId: recipe.itemId,
+    items: entries.map(({ target, hook }) => create.batchItem({
+      data: target.data,
+      webhookUrl: hook.webhookUrl,
+      webhookHeaders: hook.webhookHeaders,
+    })),
+    mimeType: "application/pdf",
+  });
+  store.log(
+    req.user,
+    "genereren",
+    "document",
+    entries[0].job.id,
+    `${recipe.name} · ${request.method} ${request.path} · ${entries.length} betrokkenen`,
+    { ...request, body: { count: entries.length, names: targets.map((item) => item.name).filter(Boolean) } }
+  );
+
+  const failAll = (message) => {
+    for (const entry of entries) {
+      store.updateDocumentJob(entry.job.id, { status: "error", error: message }, req.user);
+    }
+    store.patchCreate({ lastError: message });
+  };
+
+  const applyResults = (results) => {
+    let queued = 0;
+    let failed = 0;
+    entries.forEach((entry, index) => {
+      const result = results[index] || { success: false, message: "No batch result", generateId: "" };
+      if (result.success) {
+        store.updateDocumentJob(entry.job.id, {
+          status: "generating",
+          documentGenerationId: result.generateId || "",
+          error: "",
+        }, req.user);
+        queued += 1;
+      } else {
+        store.updateDocumentJob(entry.job.id, {
+          status: "error",
+          error: result.message || "Batch enqueue failed",
+        }, req.user);
+        failed += 1;
+      }
+    });
+    return { queued, failed };
+  };
+
+  try {
+    const results = await create.generateBatchAsync(settings, {
+      recipeId: recipe.itemId,
+      items: request.body,
+      mimeType: "application/pdf",
+    });
+    const { queued, failed } = applyResults(results);
+    if (!queued) {
+      const message = results.find((row) => row.message)?.message || "Batch enqueue failed";
+      store.patchCreate({ lastError: message });
+      return generateReply(req, res, { next: docsUrl, message: `Create: ${message}` });
+    }
+    const toast = failed
+      ? req.t("toast.documentsQueuedPartial", { n: queued, failed })
+      : req.t("toast.documentsQueued", { n: queued });
+    return generateReply(req, res, { next: docsUrl, message: toast });
+  } catch (err) {
+    if (!create.isBatchUnsupported(err)) {
+      failAll(err.message);
+      return generateReply(req, res, { next: docsUrl, message: `Create: ${err.message}` });
+    }
+    store.log(req.user, "genereren", "document", entries[0].job.id, `${recipe.name} · batch niet beschikbaar, één voor één`);
+    let saved = 0;
+    let lastError = "";
+    for (const entry of entries) {
+      try {
+        const generated = await create.generateDocument(settings, {
+          recipeId: recipe.itemId,
+          data: entry.target.data,
+          fileName: entry.target.fileName,
+          mimeType: "application/pdf",
+        });
+        if (await saveGeneratedOwnerFile(req, settings, {
+          job: entry.job,
+          generated,
+          owner,
+          fileName: entry.target.fileName,
+        })) saved += 1;
+        else lastError = "No fileUri";
+      } catch (itemErr) {
+        lastError = itemErr.message;
+        store.updateDocumentJob(entry.job.id, { status: "error", error: itemErr.message }, req.user);
+      }
+    }
+    if (!saved) {
+      store.patchCreate({ lastError: lastError || err.message });
+      return generateReply(req, res, { next: docsUrl, message: `Create: ${lastError || err.message}` });
+    }
+    return generateReply(req, res, {
+      next: docsUrl,
+      message: saved === entries.length
+        ? req.t("toast.documentsQueued", { n: saved })
+        : req.t("toast.documentsQueuedPartial", { n: saved, failed: entries.length - saved }),
+    });
+  }
+}
+
+async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl, backUrl, targets }) {
+  const recipe = store.recipe(req.body.recipeId);
+  if (!recipe) return generateReply(req, res, { next: backUrl, message: req.t("toast.pickTemplate") });
+  const settings = create.createSettings(store);
+  if (!create.enabled(settings)) return generateReply(req, res, { next: backUrl, message: req.t("toast.createOff") });
+  const interactive = String(req.body.mode || "") === "interactive";
+  const batchTargets = !interactive && Array.isArray(targets) && targets.length > 1 ? targets : null;
+  if (batchTargets) {
+    return generateBatchOwnerDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl });
+  }
+  const target = Array.isArray(targets) && targets[0] ? targets[0] : null;
+  const payload = target?.data || data;
+  const outName = target?.fileName || fileName;
+  const { job, hook } = addOwnerJob(req, settings, { owner, recipe, interactive, target });
   const webhookUrl = hook.webhookUrl;
   const webhookHeaders = hook.webhookHeaders;
   const request = interactive
     ? create.prepareGenerateRequest(settings, {
         recipeId: recipe.itemId,
-        data,
+        data: payload,
         webhookUrl,
         webhookHeaders,
       })
     : create.generateDocumentRequest(settings, {
         recipeId: recipe.itemId,
-        values: data,
-        fileName,
+        data: payload,
+        values: payload,
+        fileName: outName,
         mimeType: "application/pdf",
       });
   store.log(
@@ -536,7 +708,7 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
     if (interactive) {
       const prepared = await create.prepareGenerate(settings, {
         recipeId: recipe.itemId,
-        data,
+        data: payload,
         webhookUrl,
         webhookHeaders,
       });
@@ -555,32 +727,21 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
     }
     const generated = await create.generateDocument(settings, {
       recipeId: recipe.itemId,
-      values: data,
-      fileName,
+      data: payload,
+      values: payload,
+      fileName: outName,
       mimeType: "application/pdf",
     });
-    const fileUri = generated?.fileUri || generated?.url || "";
-    if (!fileUri) {
-      store.updateDocumentJob(job.id, { status: "error", error: "No fileUri" }, req.user);
+    if (!(await saveGeneratedOwnerFile(req, settings, { job, generated, owner, fileName: outName }))) {
       return generateReply(req, res, { next: docsUrl, message: req.t("toast.noFileUri") });
     }
-    const file = await create.fetchGeneratedFile(settings, fileUri);
-    if (!file) {
-      store.updateDocumentJob(job.id, { status: "error", documentUrl: fileUri, error: "Download failed" }, req.user);
-      return generateReply(req, res, { next: docsUrl, message: req.t("toast.noFileUri") });
-    }
-    if (generated.contentType && (!file.mime || file.mime === "application/octet-stream")) file.mime = generated.contentType;
-    if (!file.mime || file.mime === "application/octet-stream") file.mime = "application/pdf";
-    if (!file.naam || file.naam === "document") file.naam = fileName;
-    const bijlage = store.addBijlage(owner, create.saveGeneratedFile(file, req.store.dataDir), req.user);
-    store.updateDocumentJob(job.id, { status: "success", documentUrl: fileUri, bijlageId: bijlage.id }, req.user);
     return generateReply(req, res, { next: docsUrl, message: req.t("toast.documentGenerated") });
   } catch (err) {
     if (!interactive && create.isMissingRequiredValue(err)) {
       try {
         const fallback = create.prepareGenerateRequest(settings, {
           recipeId: recipe.itemId,
-          data,
+          data: payload,
           webhookUrl,
           webhookHeaders,
         });
@@ -594,7 +755,7 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
         );
         const prepared = await create.prepareGenerate(settings, {
           recipeId: recipe.itemId,
-          data,
+          data: payload,
           webhookUrl,
           webhookHeaders,
         });
@@ -1016,6 +1177,7 @@ function routes() {
       try {
         const file = await create.fetchGeneratedFile(settings, fileUrl);
         if (file) {
+          file.naam = documentFileName(job, file.naam, file);
           const bijlage = tenant.addBijlage(
             { zaakId: job.zaakId, werknemerId: job.werknemerId },
             create.saveGeneratedFile(file, tenant.dataDir),
@@ -1694,10 +1856,17 @@ function routes() {
     const recipe = store.recipe(req.body.recipeId);
     const fromList = req.body.from === "list";
     const listBack = zakenListPath({ ...req.body, filterFocus: zaak.id, filterPeekTab: "docs" });
+    const recipeName = (recipe && recipe.name) || "document";
+    const targets = create.pickStakeholders(zaak, bodyValues(req.body.stakeholder)).map((stake) => ({
+      ...stake,
+      data: create.prefillData(zaak, recipe || {}, { persoon: stake.persoon, bedrijf: stake.bedrijf }),
+      fileName: `${recipeName}-${zaak.zaaknummer}${stake.name ? `-${stake.name}` : ""}.pdf`,
+    }));
     await generateOwnerDocument(req, res, {
       owner: { zaakId: zaak.id },
-      data: create.prefillData(zaak, recipe || {}),
-      fileName: `${(recipe && recipe.name) || "document"}-${zaak.zaaknummer}.pdf`,
+      data: targets[0]?.data || create.prefillData(zaak, recipe || {}),
+      fileName: targets[0]?.fileName || `${recipeName}-${zaak.zaaknummer}.pdf`,
+      targets,
       docsUrl: fromList ? listBack : zaakFocusPath(zaak.id, { peekTab: "docs" }),
       backUrl: fromList ? listBack : zaakFocusPath(zaak.id),
     });

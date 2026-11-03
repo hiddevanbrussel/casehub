@@ -2580,6 +2580,8 @@ html[data-theme="dark"] .login-body.has-hero .login-card {
 .generate-modal .hint { margin: 0; }
 .generate-modal .tpl-picker { margin: 0; }
 .generate-modal .form .tpl-picker .check-item { cursor: pointer; }
+.generate-modal .stake-picker { margin-bottom: 12px; }
+.generate-modal .stake-picker .tpl-picker-list { max-height: 160px; }
 @media (max-height: 700px) {
   .modal-body { overflow: auto; }
 }

@@ -1,3 +1,8 @@
+<%
+  const generateStakeholders = (Array.isArray(locals.stakeholders) ? stakeholders : []).filter(function (item) {
+    return item && item.key && item.name;
+  });
+%>
 <% if (!locals.hideButtons) { %>
 <button class="btn<%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="generate" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateDoc') %></button>
 <button class="ghost<%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="interactive" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateInteractive') %></button>
@@ -12,6 +17,20 @@
     <div class="modal-body">
       <input type="hidden" name="mode" value="generate" data-generate-mode>
       <% if (locals.fromList) { %><%- include("list-return-fields") %><% } %>
+      <% if (generateStakeholders.length > 1) { %>
+      <p class="hint" data-generate-hint="batch"><%= t("cases.generateBatchHint") %></p>
+      <p class="hint" data-generate-hint="interactive" hidden><%= t("cases.generateBatchInteractive") %></p>
+      <div class="tpl-picker stake-picker" data-generate-stakeholders>
+        <div class="tpl-picker-list">
+          <% generateStakeholders.forEach(function (stake) { %>
+          <label class="check-item">
+            <input type="checkbox" name="stakeholder" value="<%= stake.key %>" checked>
+            <span><%= stake.name %></span>
+          </label>
+          <% }) %>
+        </div>
+      </div>
+      <% } %>
       <p class="hint"><%= t('cases.pickTemplate') %></p>
       <div class="tpl-picker" data-generate-picker>
         <% if (recipes.length > 6) { %>

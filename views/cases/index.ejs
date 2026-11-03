@@ -531,7 +531,17 @@
           emptyHint: peekCanGenerate ? t("cases.docEmptyHint") : peekGenerateHint,
         }) %>
       </section>
-      <%- include("../partials/generate-doc", { action: "/zaken/" + peekCase.id + "/documenten", recipes: peekRecipes, canGenerate: peekCanGenerate, hideButtons: true, fromList: true }) %>
+      <%- include("../partials/generate-doc", {
+        action: "/zaken/" + peekCase.id + "/documenten",
+        recipes: peekRecipes,
+        canGenerate: peekCanGenerate,
+        hideButtons: true,
+        fromList: true,
+        stakeholders: [].concat(
+          peekPeople.map(function (p) { return { key: "persoon:" + p.id, name: p.naam || "" }; }),
+          peekCompanies.map(function (b) { return { key: "bedrijf:" + b.id, name: b.handelsnaam || "" }; })
+        )
+      }) %>
       <% } %>
     <% } %>
   </aside>

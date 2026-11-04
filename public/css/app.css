@@ -2299,6 +2299,44 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   font-weight: 700;
 }
 .form-section .mono { word-break: break-all; }
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0 0 4px;
+  padding: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+.settings-tabs button {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 8px 2px 10px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.settings-tabs button:hover { color: var(--text); }
+.settings-tabs button.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.settings-panel {
+  display: grid;
+  gap: 14px;
+}
+.settings-panel[hidden] { display: none; }
+.settings-note {
+  display: grid;
+  gap: 6px;
+  padding-top: 4px;
+}
+.settings-note .field-caption { margin-bottom: 0; }
 .check-set { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
 .check-set legend { font-weight: 600; color: var(--text); margin-bottom: 4px; }
 .tpl-picker {

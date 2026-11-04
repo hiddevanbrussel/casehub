@@ -3010,9 +3010,11 @@ function routes() {
 
   r.get("/instellingen/integraties/stuf-dcr", requireRole("admin"), (req, res) => {
     const stuf = stufDcr.stufSettings(store);
+    const wanted = String(req.query.tab || "");
     res.render("instellingen/stuf-dcr", {
       title: req.t("stuf.title"),
       stuf,
+      stufTab: wanted === "identity" || wanted === "certs" ? wanted : "connection",
       stufReady: stufDcr.configured(stuf),
       stufCallback: stufDcr.publicCallbackUrl(stufDcr.publicOrigin(req, store), stuf.slug),
     });
@@ -3030,7 +3032,7 @@ function routes() {
         stufDcr.saveStufSettings(req.store, req.body, req.user, req.files || {});
         toastT(req, res, "/instellingen/integraties", "toast.stufSaved");
       } catch (err) {
-        toastT(req, res, "/instellingen/integraties/stuf-dcr", "toast.stufCertFail", { msg: err.message });
+        toastT(req, res, "/instellingen/integraties/stuf-dcr?tab=certs", "toast.stufCertFail", { msg: err.message });
       }
     }
   );

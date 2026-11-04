@@ -13,6 +13,45 @@
     if (el?.form) el.form.requestSubmit();
   });
 
+  const bindFormTabs = (root) => {
+    const tabs = [...root.querySelectorAll("[data-form-tab]")];
+    const panels = [...root.querySelectorAll("[data-form-panel]")];
+    const remember = root.querySelector("[data-form-tab-value]");
+    if (!tabs.length) return;
+    const activate = (id) => {
+      tabs.forEach((tab) => {
+        const on = tab.getAttribute("data-form-tab") === id;
+        tab.classList.toggle("is-active", on);
+        tab.setAttribute("aria-selected", on ? "true" : "false");
+        tab.tabIndex = on ? 0 : -1;
+      });
+      panels.forEach((panel) => {
+        panel.hidden = panel.getAttribute("data-form-panel") !== id;
+      });
+      if (remember) remember.value = id;
+    };
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => activate(tab.getAttribute("data-form-tab")));
+      tab.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+        event.preventDefault();
+        const index = tabs.indexOf(tab);
+        const next = event.key === "ArrowRight"
+          ? tabs[index + 1] || tabs[0]
+          : tabs[index - 1] || tabs[tabs.length - 1];
+        next.focus();
+        activate(next.getAttribute("data-form-tab"));
+      });
+    });
+    root.addEventListener("submit", () => {
+      const invalid = root.querySelector(":invalid");
+      if (!invalid) return;
+      const panel = invalid.closest("[data-form-panel]");
+      if (panel?.hidden) activate(panel.getAttribute("data-form-panel"));
+    });
+  };
+  document.querySelectorAll("[data-form-tabs]").forEach(bindFormTabs);
+
   let listUiAbort = null;
   const bindListUi = () => {
     listUiAbort?.abort();

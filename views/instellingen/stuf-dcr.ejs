@@ -1,3 +1,11 @@
+<%
+  const tabs = [
+    { id: "connection", label: t("stuf.tabConnection") },
+    { id: "identity", label: t("stuf.tabIdentity") },
+    { id: "certs", label: t("stuf.certsTitle") },
+  ];
+  const activeTab = tabs.some(function (tab) { return tab.id === stufTab; }) ? stufTab : "connection";
+%>
 <p class="back-link"><a href="/instellingen/integraties"><%= t("integrations.back") %></a></p>
 <div class="page-head">
   <div>
@@ -8,33 +16,66 @@
 </div>
 
 <% if (stuf.lastError) { %><p class="alert"><%= stuf.lastError %></p><% } %>
-<form class="form" method="post" action="/instellingen/stuf-dcr" enctype="multipart/form-data">
-  <label><%= t("stuf.dcaUrl") %>
-    <input name="dcaUrl" required value="<%= stuf.dcaUrl %>" placeholder="https://create.example.nl/stuf/dcr" autocomplete="off">
-  </label>
-  <p class="hint"><%= t("stuf.dcaUrlHint") %></p>
-  <label><%= t("stuf.soapAction") %>
-    <input name="soapAction" value="<%= stuf.soapAction %>" placeholder="http://www.kinggemeenten.nl/StUF/sector/dcr/0310/verzoekStartenDocumentcreatieDi02" autocomplete="off">
-  </label>
-  <label><%= t("stuf.publicUrl") %>
-    <input name="publicBaseUrl" value="<%= stuf.publicBaseUrl %>" placeholder="https://zaakhub.example.nl" autocomplete="off">
-  </label>
-  <p class="hint"><%= t("stuf.publicUrlHint") %></p>
-  <div class="form-row form-row-2">
-    <label><%= t("stuf.ontvangerOrganisatie") %> <input name="ontvangerOrganisatie" value="<%= stuf.ontvangerOrganisatie %>" autocomplete="off"></label>
-    <label><%= t("stuf.ontvangerApplicatie") %> <input name="ontvangerApplicatie" value="<%= stuf.ontvangerApplicatie %>" autocomplete="off"></label>
-  </div>
-  <div class="form-row form-row-2">
-    <label><%= t("stuf.zenderOrganisatie") %> <input name="zenderOrganisatie" value="<%= stuf.zenderOrganisatie %>" autocomplete="off"></label>
-    <label><%= t("stuf.zenderApplicatie") %> <input name="zenderApplicatie" value="<%= stuf.zenderApplicatie %>" autocomplete="off"></label>
-  </div>
-  <div class="form-row form-row-2">
-    <label><%= t("stuf.zenderAdministratie") %> <input name="zenderAdministratie" value="<%= stuf.zenderAdministratie %>" autocomplete="off"></label>
-    <label><%= t("stuf.zenderGebruiker") %> <input name="zenderGebruiker" value="<%= stuf.zenderGebruiker %>" autocomplete="off"></label>
+<form class="form" method="post" action="/instellingen/stuf-dcr" enctype="multipart/form-data" data-form-tabs>
+  <input type="hidden" name="stufTab" value="<%= activeTab %>" data-form-tab-value>
+  <div class="settings-tabs" role="tablist" aria-label="<%= t("stuf.title") %>">
+    <% tabs.forEach(function (tab) { %>
+    <% const on = tab.id === activeTab; %>
+    <button type="button" class="<%= on ? "is-active" : "" %>" role="tab" id="stuf-tab-<%= tab.id %>" aria-controls="stuf-panel-<%= tab.id %>" aria-selected="<%= on ? "true" : "false" %>" tabindex="<%= on ? "0" : "-1" %>" data-form-tab="<%= tab.id %>">
+      <%= tab.label %>
+    </button>
+    <% }) %>
   </div>
 
-  <section class="form-section">
-    <h2><%= t("stuf.certsTitle") %></h2>
+  <section class="settings-panel" role="tabpanel" id="stuf-panel-connection" aria-labelledby="stuf-tab-connection" data-form-panel="connection"<% if (activeTab !== "connection") { %> hidden<% } %>>
+    <label><%= t("stuf.dcaUrl") %>
+      <input name="dcaUrl" required value="<%= stuf.dcaUrl %>" placeholder="https://create.example.nl/stuf/dcr" autocomplete="off">
+    </label>
+    <p class="hint"><%= t("stuf.dcaUrlHint") %></p>
+    <label><%= t("stuf.soapAction") %>
+      <input name="soapAction" value="<%= stuf.soapAction %>" placeholder="http://www.kinggemeenten.nl/StUF/sector/dcr/0310/verzoekStartenDocumentcreatieDi02" autocomplete="off">
+    </label>
+    <label><%= t("stuf.publicUrl") %>
+      <input name="publicBaseUrl" value="<%= stuf.publicBaseUrl %>" placeholder="https://zaakhub.example.nl" autocomplete="off">
+    </label>
+    <p class="hint"><%= t("stuf.publicUrlHint") %></p>
+    <div class="settings-note">
+      <span class="field-caption"><%= t("stuf.callback") %></span>
+      <% if (stufCallback) { %>
+      <p class="hint mono"><%= stufCallback %></p>
+      <p class="hint"><%= t("stuf.callbackHint") %></p>
+      <% } %>
+      <% if (stuf.lastResultAt) { %>
+      <p class="hint">
+        <%= t("stuf.lastResult") %>
+        <%= formatDateTime(stuf.lastResultAt) %>
+        · <%= t("stuf.status." + (stuf.lastResultStatus || "ok")) %>
+        <% if (stuf.lastResultDetail) { %> · <%= stuf.lastResultDetail %><% } %>
+      </p>
+      <% } else { %>
+      <p class="hint"><%= t("stuf.lastResultNone") %></p>
+      <% } %>
+    </div>
+  </section>
+
+  <section class="settings-panel" role="tabpanel" id="stuf-panel-identity" aria-labelledby="stuf-tab-identity" data-form-panel="identity"<% if (activeTab !== "identity") { %> hidden<% } %>>
+    <span class="field-caption"><%= t("stuf.ontvanger") %></span>
+    <div class="form-row form-row-2">
+      <label><%= t("stuf.ontvangerOrganisatie") %> <input name="ontvangerOrganisatie" value="<%= stuf.ontvangerOrganisatie %>" autocomplete="off"></label>
+      <label><%= t("stuf.ontvangerApplicatie") %> <input name="ontvangerApplicatie" value="<%= stuf.ontvangerApplicatie %>" autocomplete="off"></label>
+    </div>
+    <span class="field-caption"><%= t("stuf.zender") %></span>
+    <div class="form-row form-row-2">
+      <label><%= t("stuf.zenderOrganisatie") %> <input name="zenderOrganisatie" value="<%= stuf.zenderOrganisatie %>" autocomplete="off"></label>
+      <label><%= t("stuf.zenderApplicatie") %> <input name="zenderApplicatie" value="<%= stuf.zenderApplicatie %>" autocomplete="off"></label>
+    </div>
+    <div class="form-row form-row-2">
+      <label><%= t("stuf.zenderAdministratie") %> <input name="zenderAdministratie" value="<%= stuf.zenderAdministratie %>" autocomplete="off"></label>
+      <label><%= t("stuf.zenderGebruiker") %> <input name="zenderGebruiker" value="<%= stuf.zenderGebruiker %>" autocomplete="off"></label>
+    </div>
+  </section>
+
+  <section class="settings-panel" role="tabpanel" id="stuf-panel-certs" aria-labelledby="stuf-tab-certs" data-form-panel="certs"<% if (activeTab !== "certs") { %> hidden<% } %>>
     <p class="hint"><%= t("stuf.certsHint") %></p>
     <label><%= t("stuf.inboundCert") %>
       <input type="file" name="inboundCertFile" accept=".cer,.crt,.pem,.txt">
@@ -75,21 +116,6 @@
     <% } %>
   </section>
 
-  <p class="hint"><%= t("stuf.callback") %></p>
-  <% if (stufCallback) { %>
-  <p class="hint mono"><%= stufCallback %></p>
-  <p class="hint"><%= t("stuf.callbackHint") %></p>
-  <% } %>
-  <% if (stuf.lastResultAt) { %>
-  <p class="hint">
-    <%= t("stuf.lastResult") %>
-    <%= formatDateTime(stuf.lastResultAt) %>
-    · <%= t("stuf.status." + (stuf.lastResultStatus || "ok")) %>
-    <% if (stuf.lastResultDetail) { %> · <%= stuf.lastResultDetail %><% } %>
-  </p>
-  <% } else { %>
-  <p class="hint"><%= t("stuf.lastResultNone") %></p>
-  <% } %>
   <div class="form-actions">
     <button class="btn" type="submit"><%= t("stuf.save") %></button>
   </div>

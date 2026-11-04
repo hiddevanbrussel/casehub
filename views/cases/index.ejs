@@ -292,7 +292,11 @@
       <% const peekCompanies = peekCase.bedrijven || []; %>
       <% const peekDocRows = documentRows(peekCase, { basePath: "/zaken/" + peekCase.id }); %>
       <% const peekHolderCount = peekPeople.length + peekCompanies.length; %>
-      <% const activePeekTab = typeof peekTab !== "undefined" ? peekTab : "holders"; %>
+      <% const peekProc = peekCase.process; %>
+      <% const hasTasksTab = Boolean(peekProc && peekProc.enabled && !peekProc.done); %>
+      <% const peekOpenTasks = hasTasksTab ? peekProc.tasks.filter(function (task) { return !task.done; }).length : 0; %>
+      <% const requestedPeekTab = typeof peekTab !== "undefined" ? peekTab : "holders"; %>
+      <% const activePeekTab = requestedPeekTab === "tasks" && !hasTasksTab ? "holders" : requestedPeekTab; %>
       <% const peekRecipes = typeof recipes !== "undefined" ? recipes : []; %>
       <% const peekCanGenerate = Boolean(typeof createReady !== "undefined" && createReady && peekRecipes.length); %>
       <% const peekGenerateHint = (typeof createReady !== "undefined" && createReady)
@@ -479,9 +483,13 @@
           <script type="application/json" data-stake-json><%- JSON.stringify({ persons: personOptions, companies: companyOptions }).replace(/</g, "\\u003c") %></script>
         </section>
       </form>
-      <%- include("../partials/process-progress", { zaak: peekCase, processPart: "actions" }) %>
       <% if (!composing) { %>
       <div class="peek-tabs peek-view" role="tablist" aria-label="<%= peekCase.titel %>">
+        <% if (hasTasksTab) { %>
+        <button type="button" class="<%= activePeekTab === "tasks" ? "is-active" : "" %>" role="tab" id="peek-tab-tasks" aria-controls="peek-panel-tasks" aria-selected="<%= activePeekTab === "tasks" ? "true" : "false" %>" tabindex="<%= activePeekTab === "tasks" ? "0" : "-1" %>" data-peek-tab="tasks">
+          <%= t("process.tasks") %><% if (peekOpenTasks) { %> (<%= peekOpenTasks %>)<% } %>
+        </button>
+        <% } %>
         <button type="button" class="<%= activePeekTab === "holders" ? "is-active" : "" %>" role="tab" id="peek-tab-holders" aria-controls="peek-panel-holders" aria-selected="<%= activePeekTab === "holders" ? "true" : "false" %>" tabindex="<%= activePeekTab === "holders" ? "0" : "-1" %>" data-peek-tab="holders">
           <%= t("cases.stakeholders") %><% if (peekHolderCount) { %> (<%= peekHolderCount %>)<% } %>
         </button>
@@ -492,6 +500,11 @@
           <%= t("cases.tabDocuments") %><% if (peekDocRows.length) { %> (<%= peekDocRows.length %>)<% } %>
         </button>
       </div>
+      <% if (hasTasksTab) { %>
+      <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-tasks" aria-labelledby="peek-tab-tasks" data-peek-panel="tasks"<% if (activePeekTab !== "tasks") { %> hidden<% } %>>
+        <%- include("../partials/process-progress", { zaak: peekCase, processPart: "actions" }) %>
+      </section>
+      <% } %>
       <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-holders" aria-labelledby="peek-tab-holders" data-peek-panel="holders"<% if (activePeekTab !== "holders") { %> hidden<% } %>>
         <% if (!peekHolderCount) { %>
           <p class="muted"><%= t("cases.noStakeholders") %></p>

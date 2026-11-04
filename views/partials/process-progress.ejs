@@ -24,9 +24,8 @@
 <% } %>
 <% if (part === "actions" || part === "all") { %>
   <% if (!proc.done && (proc.tasks.length || proc.decisions.length)) { %>
-  <section class="process-actions peek-view" aria-label="<%= t('process.current') %>">
+  <section class="process-actions" aria-label="<%= t('process.tasks') %>">
     <% if (proc.tasks.length) { %>
-      <h4><%= t("process.tasksHere") %></h4>
       <ul class="process-tasks">
         <% proc.tasks.forEach(function (task) { %>
           <li>

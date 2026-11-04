@@ -1134,16 +1134,11 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   white-space: nowrap;
 }
 .process-actions {
-  margin: 16px 24px 0;
+  margin: 0;
   display: grid;
   gap: 12px;
 }
-.process-actions h4 {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
-}
+.peek-panel .process-actions { margin: 0; }
 .process-tasks {
   list-style: none;
   margin: 0;

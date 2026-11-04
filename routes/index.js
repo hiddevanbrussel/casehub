@@ -409,6 +409,7 @@ function peekTabFromCaseTab(tab) {
   if (tab === "documents") return "docs";
   if (tab === "activity") return "activity";
   if (tab === "relations") return "holders";
+  if (tab === "tasks") return "tasks";
   return "";
 }
 
@@ -1922,7 +1923,7 @@ function routes() {
     const peek = composing ? draftZaak() : (focusId ? store.zaak(focusId) : null);
     const settings = create.createSettings(store);
     const peekType = peek?.zaaktypeId ? store.zaaktype(peek.zaaktypeId) : null;
-    const peekTab = ["holders", "activity", "docs"].includes(String(req.query.peekTab || ""))
+    const peekTab = ["holders", "activity", "docs", "tasks"].includes(String(req.query.peekTab || ""))
       ? String(req.query.peekTab)
       : "holders";
     res.render("cases/index", {

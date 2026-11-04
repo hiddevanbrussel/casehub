@@ -397,6 +397,15 @@ html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 .content.is-settings > .catalog-page {
   max-width: 960px;
 }
+.content.is-settings:has(.settings-sheet) {
+  overflow: hidden;
+  min-height: 0;
+  padding-bottom: 24px;
+}
+.content.is-settings:has(.settings-sheet) > .settings-sheet {
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .settings-stack { display: grid; gap: 16px; }
 
 .page-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 22px; }
@@ -2300,7 +2309,10 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
 }
 .form-section .mono { word-break: break-all; }
 .form.settings-sheet {
+  display: flex;
+  flex-direction: column;
   gap: 0;
+  max-width: none;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -2333,10 +2345,35 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
 .settings-sheet-title .badge { margin-top: 4px; }
 .settings-sheet-body {
   display: grid;
-  gap: 14px;
-  padding: 20px;
+  gap: 18px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px 22px 20px;
+  align-content: start;
 }
-.settings-sheet .form-actions { margin-top: 4px; }
+.settings-sheet label:not(.set-toggle) {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  gap: 8px;
+}
+.settings-sheet .field-caption {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 2px 0 0;
+}
+.settings-sheet-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+}
 html[data-theme="dark"] .settings-sheet-head {
   background:
     radial-gradient(90% 140% at 100% -20%, color-mix(in srgb, var(--accent-bright) 22%, transparent), transparent 58%),

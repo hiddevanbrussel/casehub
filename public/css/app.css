@@ -397,15 +397,6 @@ html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 .content.is-settings > .catalog-page {
   max-width: 960px;
 }
-.content.is-settings:has(.settings-sheet) {
-  overflow: hidden;
-  min-height: 0;
-  padding-bottom: 24px;
-}
-.content.is-settings:has(.settings-sheet) > .settings-sheet {
-  flex: 1 1 auto;
-  min-height: 0;
-}
 .settings-stack { display: grid; gap: 16px; }
 
 .page-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 22px; }
@@ -2346,11 +2337,7 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
 .settings-sheet-body {
   display: grid;
   gap: 18px;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding: 22px 22px 20px;
-  align-content: start;
+  padding: 20px;
 }
 .settings-sheet label:not(.set-toggle) {
   color: var(--text);

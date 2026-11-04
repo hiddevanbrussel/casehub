@@ -14,10 +14,12 @@
     <div class="settings-sheet-title">
       <span class="catalog-tile-ico" aria-hidden="true"><%- icon("file-output") %></span>
       <div>
-        <h1><%= t("stuf.title") %></h1>
+        <div class="settings-sheet-heading">
+          <h1><%= t("stuf.title") %></h1>
+          <span class="badge <%= stufReady ? "badge-afgerond" : "badge-wacht_op_info" %>"><%= stufReady ? t("common.connected") : t("common.notConfigured") %></span>
+        </div>
         <p class="lede"><%= t("stuf.lede") %></p>
       </div>
-      <span class="badge <%= stufReady ? "badge-afgerond" : "badge-wacht_op_info" %>"><%= stufReady ? t("common.connected") : t("common.notConfigured") %></span>
     </div>
     <div class="settings-tabs" role="tablist" aria-label="<%= t("stuf.title") %>">
       <% tabs.forEach(function (tab) { %>

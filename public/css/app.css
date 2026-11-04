@@ -397,6 +397,9 @@ html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 .content.is-settings > .catalog-page {
   max-width: 960px;
 }
+.content.is-settings:has(.settings-sheet) > * {
+  max-width: 540px;
+}
 .settings-stack { display: grid; gap: 16px; }
 
 .page-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 22px; }
@@ -2318,22 +2321,27 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
 }
 .settings-sheet-title {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 10px 14px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px 12px;
   align-items: start;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+}
+.settings-sheet-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px 10px;
+  flex-wrap: wrap;
 }
 .settings-sheet-title h1 {
   margin: 0;
-  font-size: 1.45rem;
+  font-size: 1.35rem;
   letter-spacing: -0.04em;
   font-weight: 800;
 }
 .settings-sheet-title .lede {
   margin: 6px 0 0;
-  max-width: 46ch;
+  max-width: none;
 }
-.settings-sheet-title .badge { margin-top: 4px; }
 .settings-sheet-body {
   display: grid;
   gap: 18px;

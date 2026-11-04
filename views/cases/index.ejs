@@ -554,8 +554,8 @@
         hideButtons: true,
         fromList: true,
         stakeholders: [].concat(
-          peekPeople.map(function (p) { return { key: "persoon:" + p.id, name: p.naam || "" }; }),
-          peekCompanies.map(function (b) { return { key: "bedrijf:" + b.id, name: b.handelsnaam || "" }; })
+          peekPeople.map(function (p) { return { key: "persoon:" + p.id, kind: "persoon", name: p.naam || "" }; }),
+          peekCompanies.map(function (b) { return { key: "bedrijf:" + b.id, kind: "bedrijf", name: b.handelsnaam || "" }; })
         )
       }) %>
       <% } %>

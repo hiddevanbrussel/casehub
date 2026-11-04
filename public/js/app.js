@@ -906,6 +906,16 @@
       });
     };
 
+    generateModal.querySelector("[data-generate-stakeholders]")?.addEventListener("change", (event) => {
+      const input = event.target;
+      if (!(input instanceof HTMLInputElement) || input.type !== "checkbox" || !input.checked) return;
+      const kind = input.getAttribute("data-stake-kind");
+      if (!kind) return;
+      generateModal.querySelectorAll("[data-generate-stakeholders] input[data-stake-kind]").forEach((box) => {
+        if (box.getAttribute("data-stake-kind") !== kind) box.checked = false;
+      });
+    });
+
     const setGenerateBusy = (busy) => {
       const i18n = window.I18N || {};
       generateModal.dataset.busy = busy ? "1" : "";

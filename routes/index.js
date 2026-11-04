@@ -2321,7 +2321,7 @@ function routes() {
     const fromList = req.body.from === "list";
     const listBack = zakenListPath({ ...req.body, filterFocus: zaak.id, filterPeekTab: "docs" });
     const recipeName = (recipe && recipe.name) || "document";
-    const targets = create.pickStakeholders(zaak, bodyValues(req.body.stakeholder)).map((stake) => ({
+    const targets = create.sameKindTargets(create.pickStakeholders(zaak, bodyValues(req.body.stakeholder))).map((stake) => ({
       ...stake,
       data: create.prefillData(zaak, recipe || {}, { persoon: stake.persoon, bedrijf: stake.bedrijf }),
       fileName: `${recipeName}-${zaak.zaaknummer}${stake.name ? `-${stake.name}` : ""}.pdf`,

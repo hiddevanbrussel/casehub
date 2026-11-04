@@ -2,6 +2,16 @@
   const generateStakeholders = (Array.isArray(locals.stakeholders) ? stakeholders : []).filter(function (item) {
     return item && item.key && item.name;
   });
+  function generateStakeKind(item) {
+    if (item.kind === "persoon" || item.kind === "bedrijf") return item.kind;
+    return String(item.key || "").indexOf("bedrijf:") === 0 ? "bedrijf" : "persoon";
+  }
+  const generatePeople = generateStakeholders.filter(function (item) { return generateStakeKind(item) === "persoon"; });
+  const generateCompanies = generateStakeholders.filter(function (item) { return generateStakeKind(item) === "bedrijf"; });
+  const bulkPeople = generatePeople.length > 1;
+  const bulkCompanies = generateCompanies.length > 1;
+  const showStakePicker = bulkPeople || bulkCompanies;
+  const defaultBulkKind = bulkPeople ? "persoon" : (bulkCompanies ? "bedrijf" : "");
 %>
 <% if (!locals.hideButtons) { %>
 <button class="btn<%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="generate" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateDoc') %></button>
@@ -17,18 +27,36 @@
     <div class="modal-body">
       <input type="hidden" name="mode" value="generate" data-generate-mode>
       <% if (locals.fromList) { %><%- include("list-return-fields") %><% } %>
-      <% if (generateStakeholders.length > 1) { %>
+      <% if (showStakePicker) { %>
       <p class="hint" data-generate-hint="batch"><%= t("cases.generateBatchHint") %></p>
       <p class="hint" data-generate-hint="interactive" hidden><%= t("cases.generateBatchInteractive") %></p>
       <div class="tpl-picker stake-picker" data-generate-stakeholders>
-        <div class="tpl-picker-list">
-          <% generateStakeholders.forEach(function (stake) { %>
-          <label class="check-item">
-            <input type="checkbox" name="stakeholder" value="<%= stake.key %>" checked>
-            <span><%= stake.name %></span>
-          </label>
-          <% }) %>
+        <% if (bulkPeople) { %>
+        <div class="stake-picker-group">
+          <p class="stake-picker-label"><%= t("nav.persons") %></p>
+          <div class="tpl-picker-list">
+            <% generatePeople.forEach(function (stake) { %>
+            <label class="check-item">
+              <input type="checkbox" name="stakeholder" value="<%= stake.key %>" data-stake-kind="persoon" <%= defaultBulkKind === "persoon" ? "checked" : "" %>>
+              <span><%= stake.name %></span>
+            </label>
+            <% }) %>
+          </div>
         </div>
+        <% } %>
+        <% if (bulkCompanies) { %>
+        <div class="stake-picker-group">
+          <p class="stake-picker-label"><%= t("nav.companies") %></p>
+          <div class="tpl-picker-list">
+            <% generateCompanies.forEach(function (stake) { %>
+            <label class="check-item">
+              <input type="checkbox" name="stakeholder" value="<%= stake.key %>" data-stake-kind="bedrijf" <%= defaultBulkKind === "bedrijf" ? "checked" : "" %>>
+              <span><%= stake.name %></span>
+            </label>
+            <% }) %>
+          </div>
+        </div>
+        <% } %>
       </div>
       <% } %>
       <p class="hint"><%= t('cases.pickTemplate') %></p>

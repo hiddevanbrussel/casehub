@@ -9,7 +9,7 @@
   });
 
   let reloadList = null;
-  let processBusy = false;
+  let liveBusy = false;
 
   const setPeekCount = (tabId, count) => {
     const tab = document.querySelector(`[data-peek-tab="${tabId}"]`);
@@ -27,20 +27,17 @@
     badge?.remove();
   };
 
-  const refreshPeek = async (hasTasksTab) => {
+  const refreshPeek = async (opts = {}) => {
     const here = new URL(location.href);
     here.searchParams.delete("toast");
-    if (hasTasksTab === false) here.searchParams.delete("peekTab");
-    else if (hasTasksTab) here.searchParams.set("peekTab", "tasks");
+    if (opts.peekTab) here.searchParams.set("peekTab", opts.peekTab);
+    if (opts.hasTasksTab === false) here.searchParams.delete("peekTab");
+    else if (opts.hasTasksTab) here.searchParams.set("peekTab", "tasks");
     if (reloadList) await reloadList(here.href);
     else window.location.replace(here.href);
   };
 
-  const liveProcess = async (form, submitter) => {
-    if (processBusy) return;
-    processBusy = true;
-    const panel = form.closest("[data-peek-panel='tasks']") || document.querySelector("[data-peek-panel='tasks']");
-    panel?.setAttribute("aria-busy", "true");
+  const postLive = async (form, submitter, requestedWith) => {
     const body = new URLSearchParams();
     new FormData(form).forEach((value, key) => {
       if (typeof value === "string") body.append(key, value);
@@ -51,25 +48,34 @@
     } else if (submitter?.name) {
       body.set(submitter.name, submitter.value);
     }
+    const url = new URL(form.getAttribute("action") || form.action, location.origin);
+    url.searchParams.set("live", "1");
+    const res = await fetch(url.href, {
+      method: "POST",
+      body,
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "X-Requested-With": requestedWith,
+      },
+    });
+    const type = String(res.headers.get("content-type") || "");
+    if (!res.ok || !type.includes("application/json")) throw new Error("live");
+    const data = await res.json().catch(() => ({}));
+    if (!data.ok) throw new Error("live");
+    return data;
+  };
+
+  const liveProcess = async (form, submitter) => {
+    if (liveBusy) return;
+    liveBusy = true;
+    const panel = form.closest("[data-peek-panel='tasks']") || document.querySelector("[data-peek-panel='tasks']");
+    panel?.setAttribute("aria-busy", "true");
     try {
-      const url = new URL(form.getAttribute("action") || form.action, location.origin);
-      url.searchParams.set("live", "1");
-      const res = await fetch(url.href, {
-        method: "POST",
-        body,
-        credentials: "same-origin",
-        headers: {
-          Accept: "application/json",
-          "X-Requested-With": "process",
-        },
-      });
-      const type = String(res.headers.get("content-type") || "");
-      if (!res.ok || !type.includes("application/json")) throw new Error("process");
-      const data = await res.json().catch(() => ({}));
-      if (!data.ok) throw new Error("process");
+      const data = await postLive(form, submitter, "process");
       const action = form.querySelector('[name="action"]')?.value || data.action;
       if (action === "decision") {
-        await refreshPeek(Boolean(data.hasTasksTab));
+        await refreshPeek({ hasTasksTab: Boolean(data.hasTasksTab) });
         return;
       }
       if (panel && data.actionsHtml != null) panel.innerHTML = data.actionsHtml;
@@ -77,7 +83,33 @@
     } catch {
       await refreshPeek();
     } finally {
-      processBusy = false;
+      liveBusy = false;
+      panel?.removeAttribute("aria-busy");
+    }
+  };
+
+  const liveDocsDelete = async (form) => {
+    if (liveBusy) return;
+    liveBusy = true;
+    const root = form.closest("[data-docs-root]");
+    const panel = form.closest("[data-peek-panel='docs']") || root;
+    panel?.setAttribute("aria-busy", "true");
+    try {
+      const data = await postLive(form, form.querySelector("[type=submit]"), "docs");
+      if (root && data.docsHtml != null) root.outerHTML = data.docsHtml;
+      setPeekCount("docs", Number(data.docCount) || 0);
+      const gone = form.getAttribute("action") || "";
+      const filePath = gone.replace(/\/verwijderen\/?$/, "");
+      const modal = document.getElementById("pdf-modal");
+      const frame = document.getElementById("pdf-modal-frame");
+      if (modal?.open && filePath && frame?.src.includes(filePath)) {
+        modal.close();
+        if (frame) frame.src = "";
+      }
+    } catch {
+      await refreshPeek({ peekTab: "docs" });
+    } finally {
+      liveBusy = false;
       panel?.removeAttribute("aria-busy");
     }
   };
@@ -96,6 +128,13 @@
   document.addEventListener("submit", (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
+    if (form.hasAttribute("data-docs-live")) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) return;
+      liveDocsDelete(form);
+      return;
+    }
     if (!form.hasAttribute("data-process-live")) return;
     event.preventDefault();
     event.stopPropagation();
@@ -1161,7 +1200,7 @@
     work.addEventListener("submit", (event) => {
       const form = event.target;
       if (!(form instanceof HTMLFormElement)) return;
-      if (form.hasAttribute("data-process-live")) return;
+      if (form.hasAttribute("data-process-live") || form.hasAttribute("data-docs-live")) return;
       if ((form.getAttribute("method") || "get").toLowerCase() !== "get") return;
       event.preventDefault();
       const url = new URL(form.getAttribute("action") || location.href, location.origin);

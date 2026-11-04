@@ -46,6 +46,7 @@ const azure = require("../lib/azure");
 const { setLangCookie } = require("../lib/i18n");
 const { appProfile, isHr, isCases } = require("../lib/profile");
 const processLib = require("../lib/process");
+const { documentRows } = require("../lib/docs");
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -204,11 +205,23 @@ function listRequest(req) {
   };
 }
 
-function wantsProcessPartial(req) {
+function wantsLivePartial(req) {
   const requested = String(req.get("X-Requested-With") || "").toLowerCase();
   const accept = String(req.get("Accept") || "");
   const live = String(req.query.live || req.body.live || "") === "1";
-  return live || requested === "process" || accept.includes("application/json");
+  return live || requested === "process" || requested === "docs" || accept.includes("application/json");
+}
+
+function listFormLocals(body) {
+  return {
+    q: body.filterQ,
+    group: body.filterGroup,
+    status: body.filterStatus,
+    zaaktypeId: body.filterZaaktypeId,
+    prioriteit: body.filterPrioriteit,
+    page: body.filterPage,
+    pageSize: body.filterPageSize,
+  };
 }
 
 function renderView(req, res, view, locals) {
@@ -543,6 +556,39 @@ function recipesForZaak(zaak) {
     return allRecipes.filter((recipe) => type.recipeIds.includes(recipe.itemId));
   }
   return allRecipes;
+}
+
+function caseDocEmptyHint(req, zaak) {
+  if (!documentChannelReady()) return req.t("cases.generateNeedsIntegration");
+  const recipes = recipesForZaak(zaak);
+  if (recipes.length) return req.t("cases.docEmptyHint");
+  const type = zaak?.zaaktypeId ? store.zaaktype(zaak.zaaktypeId) : null;
+  if (type?.recipeIds?.length) return req.t("cases.noTemplatesLinked");
+  return req.t("cases.noTemplates");
+}
+
+function employeeDocEmptyHint(req) {
+  const ctx = employeeDocContext();
+  if (!ctx.createReady) return req.t("cases.generateNeedsIntegration");
+  if (ctx.recipes.length) return req.t("hr.docEmptyHint");
+  return req.t("cases.noTemplates");
+}
+
+async function sendLiveDocs(req, res, owner, basePath, empty) {
+  try {
+    const rows = documentRows(owner, { basePath });
+    const docsHtml = await renderView(req, res, "partials/doc-list", {
+      docRows: rows,
+      fromList: req.body.from === "list",
+      canDelete: empty.canDelete !== false,
+      emptyTitle: empty.title,
+      emptyHint: empty.hint,
+      ...listFormLocals(req.body),
+    });
+    res.json({ ok: true, docsHtml, docCount: rows.length });
+  } catch {
+    res.status(500).json({ ok: false });
+  }
 }
 
 function bodyValues(value) {
@@ -2176,20 +2222,13 @@ function routes() {
       req.user,
       detail
     );
-    if (wantsProcessPartial(req)) {
+    if (wantsLivePartial(req)) {
       try {
         const next = store.zaak(req.params.id);
         const proc = next.process || {};
         const openTasks = (proc.tasks || []).filter((task) => !task.done).length;
         const hasTasksTab = Boolean(proc.enabled && !proc.done);
-        const formLocals = {
-          q: req.body.filterQ,
-          status: req.body.filterStatus,
-          zaaktypeId: req.body.filterZaaktypeId,
-          prioriteit: req.body.filterPrioriteit,
-          page: req.body.filterPage,
-          pageSize: req.body.filterPageSize,
-        };
+        const formLocals = listFormLocals(req.body);
         const actionsHtml = action === "task"
           ? await renderView(req, res, "partials/process-progress", {
             zaak: next,
@@ -2238,7 +2277,14 @@ function routes() {
     res.sendFile(path.resolve(filePath));
   });
 
-  function afterCaseDocumentDelete(req, res) {
+  async function afterCaseDocumentDelete(req, res) {
+    const zaak = store.zaak(req.params.id);
+    if (zaak && wantsLivePartial(req)) {
+      return sendLiveDocs(req, res, zaak, `/zaken/${zaak.id}`, {
+        title: req.t("cases.docEmpty"),
+        hint: caseDocEmptyHint(req, zaak),
+      });
+    }
     if (req.body.from === "list") {
       return toastT(
         req,
@@ -2250,22 +2296,22 @@ function routes() {
     toastT(req, res, zaakFocusPath(req.params.id, { peekTab: "docs" }), "toast.attachmentDeleted");
   }
 
-  r.post("/zaken/:id/bijlagen/:bijlageId/verwijderen", (req, res) => {
+  r.post("/zaken/:id/bijlagen/:bijlageId/verwijderen", async (req, res) => {
     const bijlage = store.bijlage(req.params.bijlageId);
     if (!bijlage || bijlage.zaakId !== req.params.id) {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
     }
     store.deleteBijlage(req.params.bijlageId, req.user);
-    afterCaseDocumentDelete(req, res);
+    await afterCaseDocumentDelete(req, res);
   });
 
-  r.post("/zaken/:id/documenten/:jobId/verwijderen", (req, res) => {
+  r.post("/zaken/:id/documenten/:jobId/verwijderen", async (req, res) => {
     const job = store.documentJob(req.params.jobId);
     if (!job || job.zaakId !== req.params.id) {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
     }
     store.deleteDocumentJob(req.params.jobId, req.user);
-    afterCaseDocumentDelete(req, res);
+    await afterCaseDocumentDelete(req, res);
   });
 
   r.post("/zaken/:id/documenten", async (req, res) => {
@@ -2697,7 +2743,15 @@ function routes() {
     res.sendFile(path.resolve(filePath));
   });
 
-  function afterEmployeeDocumentDelete(req, res) {
+  async function afterEmployeeDocumentDelete(req, res) {
+    const werknemer = store.werknemer(req.params.id);
+    if (werknemer && wantsLivePartial(req)) {
+      return sendLiveDocs(req, res, werknemer, `/werknemers/${werknemer.id}`, {
+        title: req.t("hr.docEmpty"),
+        hint: employeeDocEmptyHint(req),
+        canDelete: true,
+      });
+    }
     if (req.body.from === "list") {
       return toastT(
         req,
@@ -2709,22 +2763,22 @@ function routes() {
     toastT(req, res, `/werknemers/${req.params.id}?tab=documents`, "toast.attachmentDeleted");
   }
 
-  r.post("/werknemers/:id/bijlagen/:bijlageId/verwijderen", employeesWrite, (req, res) => {
+  r.post("/werknemers/:id/bijlagen/:bijlageId/verwijderen", employeesWrite, async (req, res) => {
     const bijlage = store.bijlage(req.params.bijlageId);
     if (!bijlage || bijlage.werknemerId !== req.params.id) {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
     }
     store.deleteBijlage(req.params.bijlageId, req.user);
-    afterEmployeeDocumentDelete(req, res);
+    await afterEmployeeDocumentDelete(req, res);
   });
 
-  r.post("/werknemers/:id/documenten/:jobId/verwijderen", employeesWrite, (req, res) => {
+  r.post("/werknemers/:id/documenten/:jobId/verwijderen", employeesWrite, async (req, res) => {
     const job = store.documentJob(req.params.jobId);
     if (!job || job.werknemerId !== req.params.id) {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
     }
     store.deleteDocumentJob(req.params.jobId, req.user);
-    afterEmployeeDocumentDelete(req, res);
+    await afterEmployeeDocumentDelete(req, res);
   });
 
   r.post("/werknemers/:id/documenten", employeesWrite, async (req, res) => {

@@ -32,6 +32,7 @@
     return "nieuw";
   }
 %>
+<div data-docs-root>
 <% if (!rows.length) { %>
   <div class="doc-empty">
     <p><%= locals.emptyTitle || t("cases.docEmpty") %></p>
@@ -70,7 +71,7 @@
         </a>
       <% } %>
       <% if (canDelete && row.deleteHref) { %>
-        <form method="post" action="<%= row.deleteHref %>" data-confirm="<%= t('cases.confirmDeleteDoc') %>">
+        <form method="post" action="<%= row.deleteHref %>" data-docs-live data-confirm="<%= t('cases.confirmDeleteDoc') %>">
           <% if (fromList) { %><%- include("list-return-fields") %><% } %>
           <button class="icon-btn doc-item-delete" type="submit" aria-label="<%= t('common.delete') %>" title="<%= t('common.delete') %>">
             <%- icon("trash-2") %>
@@ -83,3 +84,4 @@
   <% }) %>
 </ul>
 <% } %>
+</div>

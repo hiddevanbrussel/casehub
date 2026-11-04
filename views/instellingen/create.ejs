@@ -1,48 +1,68 @@
-<p class="back-link"><a href="/instellingen/integraties"><%= t('integrations.back') %></a></p>
-<div class="page-head">
-  <div>
-    <h1><%= t('create.title') %></h1>
-    <p class="lede"><%= t('create.lede') %></p>
-  </div>
-  <span class="badge <%= createReady ? 'badge-afgerond' : 'badge-wacht_op_info' %>"><%= createReady ? t('common.connected') : t('common.notConfigured') %></span>
-</div>
-
+<p class="back-link"><a href="/instellingen/integraties"><%= t("integrations.back") %></a></p>
 <% if (create.lastError) { %><p class="alert"><%= create.lastError %></p><% } %>
-<form class="form" method="post" action="/instellingen/create">
-  <label><%= t('create.baseUrl') %> <input name="baseUrl" required value="<%= create.baseUrl %>"></label>
+<form class="form settings-sheet" method="post" action="/instellingen/create">
+  <div class="settings-sheet-head">
+    <div class="settings-sheet-title">
+      <span class="catalog-tile-ico" aria-hidden="true"><%- icon("file-plus") %></span>
+      <div>
+        <div class="settings-sheet-heading">
+          <h1><%= t("create.title") %></h1>
+          <span class="badge <%= createReady ? "badge-afgerond" : "badge-wacht_op_info" %>"><%= createReady ? t("common.connected") : t("common.notConfigured") %></span>
+        </div>
+        <p class="lede"><%= t("create.lede") %></p>
+      </div>
+    </div>
+  </div>
+  <div class="settings-sheet-body">
+    <label><%= t("create.baseUrl") %>
+      <input name="baseUrl" class="settings-url" required value="<%= create.baseUrl %>" autocomplete="off">
+    </label>
     <div class="form-row form-row-2">
-    <label><%= t('create.clientId') %> <input name="clientId" required value="<%= create.clientId %>" autocomplete="off"></label>
-    <label><%= t('create.clientSecret') %> <input name="clientSecret" type="password" value="" placeholder="<%= create.hasSecret ? '••••••••  (' + t('create.keepSecret') + ')' : '' %>" autocomplete="new-password"></label>
-  </div>
+      <label><%= t("create.clientId") %>
+        <input name="clientId" required value="<%= create.clientId %>" autocomplete="off">
+      </label>
+      <label><%= t("create.clientSecret") %>
+        <input name="clientSecret" type="password" value="" placeholder="<%= create.hasSecret ? "••••••••  (" + t("create.keepSecret") + ")" : "" %>" autocomplete="new-password">
+      </label>
+    </div>
     <div class="form-row form-row-2">
-    <label><%= t('create.unitId') %> <input name="unitId" required value="<%= create.unitId %>"></label>
-    <label><%= t('create.contentSourceId') %> <input name="contentSourceId" required value="<%= create.contentSourceId %>"></label>
+      <label><%= t("create.unitId") %>
+        <input name="unitId" required value="<%= create.unitId %>" autocomplete="off">
+      </label>
+      <label><%= t("create.contentSourceId") %>
+        <input name="contentSourceId" required value="<%= create.contentSourceId %>" autocomplete="off">
+      </label>
+    </div>
+    <label><%= t("create.publicUrl") %>
+      <input name="publicBaseUrl" class="settings-url" value="<%= create.publicBaseUrl %>" placeholder="https://zaakhub.example.nl" autocomplete="off">
+      <span class="hint"><%= t("create.webhookHint") %></span>
+    </label>
+    <label><%= t("create.authDomain") %>
+      <input name="authDomain" value="<%= create.authDomain %>" placeholder="auth.example.com" autocomplete="off">
+      <span class="hint"><%= t("create.authDomainHint") %></span>
+    </label>
+    <div class="settings-note">
+      <% if (webhookExample) { %>
+      <p class="hint"><%= t("create.webhookExample", { url: webhookExample }) %></p>
+      <% } %>
+      <span class="field-caption"><%= t("create.lastWebhook") %></span>
+      <% if (create.lastWebhookAt) { %>
+      <p class="hint"><%= formatDateTime(create.lastWebhookAt) %></p>
+      <p class="hint"><%= t("create.webhookStatus." + (create.lastWebhookStatus || "ok")) %><% if (create.lastWebhookDetail) { %> · <%= create.lastWebhookDetail %><% } %></p>
+      <% if (create.lastWebhookPath) { %><p class="hint mono"><%= create.lastWebhookPath %></p><% } %>
+      <% } else { %>
+      <p class="hint"><%= t("create.lastWebhookNone") %></p>
+      <% } %>
+      <% if (create.lastSyncAt) { %>
+      <span class="field-caption"><%= t("create.lastSync") %></span>
+      <p class="hint"><%= formatDateTime(create.lastSyncAt) %></p>
+      <% } %>
+    </div>
   </div>
-  <label><%= t('create.publicUrl') %>
-    <input name="publicBaseUrl" value="<%= create.publicBaseUrl %>" placeholder="https://zaakhub.example.nl">
-  </label>
-  <p class="hint"><%= t('create.webhookHint') %></p>
-  <% if (webhookExample) { %><p class="hint"><%= t("create.webhookExample", { url: webhookExample }) %></p><% } %>
-  <% if (create.lastWebhookAt) { %>
-  <p class="hint">
-    <%= t("create.lastWebhook") %>
-    <%= formatDateTime(create.lastWebhookAt) %>
-    · <%= t("create.webhookStatus." + (create.lastWebhookStatus || "ok")) %>
-    <% if (create.lastWebhookDetail) { %> · <%= create.lastWebhookDetail %><% } %>
-    <% if (create.lastWebhookPath) { %> · <%= create.lastWebhookPath %><% } %>
-  </p>
-  <% } else { %>
-  <p class="hint"><%= t("create.lastWebhookNone") %></p>
-  <% } %>
-  <label><%= t('create.authDomain') %>
-    <input name="authDomain" value="<%= create.authDomain %>" placeholder="auth.example.com" autocomplete="off">
-  </label>
-  <p class="hint"><%= t('create.authDomainHint') %></p>
-  <div class="form-actions">
-    <button class="btn" type="submit"><%= t('create.save') %></button>
-    <button class="ghost" type="submit" form="create-test"><%= t('integrations.test') %></button>
-    <a class="ghost" href="/templates"><%= t('create.templates', { n: recipeCount }) %></a>
-  </div>
+  <footer class="settings-sheet-foot">
+    <button class="btn" type="submit"><%= t("create.save") %></button>
+    <button class="ghost" type="submit" form="create-test"><%= t("integrations.test") %></button>
+    <a class="ghost" href="/templates"><%= t("create.templates", { n: recipeCount }) %></a>
+  </footer>
 </form>
 <form id="create-test" method="post" action="/instellingen/create/test" hidden></form>
-<% if (create.lastSyncAt) { %><p class="hint"><%= t('create.lastSync') %> <%= formatDateTime(create.lastSyncAt) %></p><% } %>

@@ -2391,10 +2391,15 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
 .settings-sheet-foot {
   flex: none;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 8px;
   padding: 14px 20px;
   border-top: 1px solid var(--line);
   background: var(--surface-2);
+}
+.settings-sheet .form-row-2 {
+  grid-template-columns: 1fr 1fr;
 }
 html[data-theme="dark"] .settings-sheet-head {
   background:

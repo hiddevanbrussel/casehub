@@ -46,6 +46,7 @@
     if (ev.entity === "document" || ev.action === "bijlage") return t("cases.activityDoc", { name: ev.detail || "" });
     if (ev.action === "aangemaakt") return t("cases.activityCreated");
     if (ev.action === "gewijzigd") return t("cases.activityUpdated");
+    if (ev.action === "proces") return ev.detail || t("cases.activityUpdated");
     if (ev.detail) return ev.detail;
     return t("cases.activityUpdated");
   }
@@ -169,7 +170,7 @@
               <span class="queue-when <%= z.overdue ? 'is-overdue' : '' %>"><%= z.deadline ? formatDate(z.deadline) : (z.updatedAt ? formatDate(z.updatedAt) : "") %></span>
             </span>
             <strong class="queue-title" title="<%= z.titel %>"><%= z.titel %></strong>
-            <span class="queue-snippet"><%= preview ? preview + " · " : "" %><%= t("status." + z.status) %></span>
+            <span class="queue-snippet"><%= preview ? preview + " · " : "" %><%= t("status." + z.status) %><% if (z.process && z.process.enabled && z.process.currentName && !z.process.done) { %> · <%= z.process.currentName %><% } else if (z.process && z.process.done) { %> · <%= t("process.done") %><% } %></span>
           </a>
         </div>
         <% }) %>
@@ -477,6 +478,7 @@
           <script type="application/json" data-stake-json><%- JSON.stringify({ persons: personOptions, companies: companyOptions }).replace(/</g, "\\u003c") %></script>
         </section>
       </form>
+      <%- include("../partials/process-progress", { zaak: peekCase }) %>
       <% if (!composing) { %>
       <div class="peek-tabs peek-view" role="tablist" aria-label="<%= peekCase.titel %>">
         <button type="button" class="<%= activePeekTab === "holders" ? "is-active" : "" %>" role="tab" id="peek-tab-holders" aria-controls="peek-panel-holders" aria-selected="<%= activePeekTab === "holders" ? "true" : "false" %>" tabindex="<%= activePeekTab === "holders" ? "0" : "-1" %>" data-peek-tab="holders">

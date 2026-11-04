@@ -45,6 +45,7 @@ const stufDcr = require("../lib/stuf-dcr");
 const azure = require("../lib/azure");
 const { setLangCookie } = require("../lib/i18n");
 const { appProfile, isHr, isCases } = require("../lib/profile");
+const processLib = require("../lib/process");
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -2117,6 +2118,49 @@ function routes() {
     toastT(req, res, zaakFocusPath(zaak.id), "toast.caseSaved");
   });
 
+  r.post("/zaken/:id/process", (req, res) => {
+    const zaak = store.zaak(req.params.id);
+    if (!zaak) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
+    const type = zaak.zaaktypeId ? store.zaaktype(zaak.zaaktypeId) : null;
+    const working = {
+      processStepId: zaak.processStepId,
+      processDoneTasks: [...(zaak.processDoneTasks || [])],
+      processDone: Boolean(zaak.processDone),
+      status: zaak.status,
+    };
+    const action = String(req.body.action || "");
+    let detail = zaak.zaaknummer;
+    if (action === "task") {
+      const result = processLib.applyTask(working, type, String(req.body.taskId || ""), req.body.done === "1");
+      if (result.ok) {
+        detail = result.done
+          ? req.t("process.activityTaskOn", { name: result.task.name })
+          : req.t("process.activityTaskOff", { name: result.task.name });
+      }
+    } else if (action === "decision") {
+      const result = processLib.applyDecision(working, type, String(req.body.decisionId || ""));
+      if (result.ok) {
+        detail = result.finished
+          ? req.t("process.activityDone")
+          : req.t("process.activityStep", { name: result.to.name });
+      }
+    }
+    store.saveCaseProcess(
+      zaak.id,
+      {
+        processStepId: working.processStepId,
+        processDoneTasks: working.processDoneTasks,
+        processDone: working.processDone,
+      },
+      req.user,
+      detail
+    );
+    if (req.body.from === "list") {
+      return toastT(req, res, zakenListPath({ ...req.body, filterFocus: zaak.id }), "toast.caseSaved");
+    }
+    toastT(req, res, zaakFocusPath(zaak.id), "toast.caseSaved");
+  });
+
   r.post("/zaken/:id/verwijderen", (req, res) => {
     store.deleteZaak(req.params.id, req.user);
     toastT(req, res, "/zaken", "toast.caseDeleted");
@@ -2900,6 +2944,7 @@ function routes() {
           naam: req.body.naam,
           leadTimeDays: req.body.leadTimeDays,
           recipeIds: ids(req.body.recipeIds),
+          processSteps: processLib.parseForm(req.body, []),
         },
         req.user
       );
@@ -2907,7 +2952,10 @@ function routes() {
     } catch (err) {
       res.status(400).render("instellingen/zaaktype-form", {
         title: req.t("caseTypes.newTitle"),
-        zaaktype: req.body,
+        zaaktype: {
+          ...req.body,
+          processSteps: processLib.parseForm(req.body, []),
+        },
         recipes: store.recipes(),
         error: formError(req, err),
       });
@@ -2925,6 +2973,7 @@ function routes() {
   });
 
   r.post("/instellingen/zaaktypen/:id", requireRole("admin"), (req, res) => {
+    const current = store.zaaktype(req.params.id);
     try {
       store.saveZaaktype(
         {
@@ -2932,6 +2981,7 @@ function routes() {
           naam: req.body.naam,
           leadTimeDays: req.body.leadTimeDays,
           recipeIds: ids(req.body.recipeIds),
+          processSteps: processLib.parseForm(req.body, current?.processSteps),
         },
         req.user
       );
@@ -2939,7 +2989,11 @@ function routes() {
     } catch (err) {
       res.status(400).render("instellingen/zaaktype-form", {
         title: req.t("caseTypes.editTitle"),
-        zaaktype: { ...req.body, id: req.params.id },
+        zaaktype: {
+          ...req.body,
+          id: req.params.id,
+          processSteps: processLib.parseForm(req.body, current?.processSteps),
+        },
         recipes: store.recipes(),
         error: formError(req, err),
       });

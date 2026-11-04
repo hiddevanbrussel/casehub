@@ -25,7 +25,9 @@
       <div class="catalog-tile-title">
         <a href="/instellingen/zaaktypen/<%= type.id %>"><%= type.naam %></a>
       </div>
-      <% if (type.templateNames.length) { %>
+      <% if (type.processStepCount) { %>
+      <p class="catalog-tile-meta"><%= t("process.stepCount", { n: type.processStepCount }) %></p>
+      <% } else if (type.templateNames.length) { %>
       <p class="catalog-tile-meta" title="<%= templatesText %>"><%= templatesText %></p>
       <% } else { %>
       <p class="catalog-tile-meta"><%= type.leadTimeDays ? t("common.days", { n: type.leadTimeDays }) : t("common.none") %></p>

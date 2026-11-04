@@ -629,6 +629,121 @@
     updateCount();
   });
 
+  document.querySelectorAll("[data-process-builder]").forEach((root) => {
+    const stepsBox = root.querySelector("[data-process-steps]");
+    const empty = root.querySelector("[data-process-empty]");
+    const stepTpl = root.querySelector("[data-process-step-tpl]");
+    const decisionTpl = root.querySelector("[data-process-decision-tpl]");
+    if (!stepsBox || !stepTpl || !decisionTpl) return;
+
+    const escapeHtml = (value) => String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/"/g, "&quot;");
+
+    const stepEls = () => [...stepsBox.querySelectorAll("[data-process-step]")];
+
+    const fillDestinations = (select, index, selected) => {
+      const nextLabel = root.getAttribute("data-i18n-next") || "Next step";
+      const endLabel = root.getAttribute("data-i18n-end") || "Finish process";
+      const current = selected || select.value || "__next__";
+      const options = [
+        `<option value="__next__">${escapeHtml(nextLabel)}</option>`,
+        `<option value="__end__">${escapeHtml(endLabel)}</option>`,
+      ];
+      stepEls().forEach((step, i) => {
+        if (i === index) return;
+        const name = step.querySelector("[data-step-name]")?.value.trim() || String(i + 1);
+        options.push(`<option value="${i}">${escapeHtml(name)}</option>`);
+      });
+      select.innerHTML = options.join("");
+      if ([...select.options].some((option) => option.value === current)) select.value = current;
+      else select.value = "__next__";
+    };
+
+    const reindex = () => {
+      const steps = stepEls();
+      if (empty) empty.hidden = steps.length > 0;
+      steps.forEach((step, i) => {
+        const title = step.querySelector(".process-step-head strong");
+        if (title) {
+          const label = title.getAttribute("data-step-label") || title.textContent.replace(/\s+\d+$/, "").trim();
+          title.textContent = `${label} ${i + 1}`;
+        }
+        const idInput = step.querySelector("[data-step-id]");
+        const nameInput = step.querySelector("[data-step-name]");
+        const tasksInput = step.querySelector("[data-step-tasks]");
+        if (idInput) idInput.name = `steps[${i}][id]`;
+        if (nameInput) nameInput.name = `steps[${i}][name]`;
+        if (tasksInput) tasksInput.name = `steps[${i}][tasks]`;
+        [...step.querySelectorAll("[data-process-decision]")].forEach((row, j) => {
+          const decId = row.querySelector("[data-dec-id]");
+          const decLabel = row.querySelector("[data-dec-label]");
+          const decTo = row.querySelector("[data-dec-to]");
+          if (decId) decId.name = `steps[${i}][decisions][${j}][id]`;
+          if (decLabel) decLabel.name = `steps[${i}][decisions][${j}][label]`;
+          if (decTo) {
+            decTo.name = `steps[${i}][decisions][${j}][to]`;
+            fillDestinations(decTo, i, decTo.value);
+          }
+        });
+      });
+    };
+
+    root.addEventListener("click", (event) => {
+      const addStep = event.target.closest("[data-process-add-step]");
+      if (addStep) {
+        const node = stepTpl.content.firstElementChild.cloneNode(true);
+        stepsBox.append(node);
+        reindex();
+        node.querySelector("[data-step-name]")?.focus();
+        return;
+      }
+      const addDecision = event.target.closest("[data-process-add-decision]");
+      if (addDecision) {
+        const step = addDecision.closest("[data-process-step]");
+        const box = step?.querySelector("[data-process-decisions]");
+        if (!box) return;
+        box.append(decisionTpl.content.firstElementChild.cloneNode(true));
+        reindex();
+        return;
+      }
+      const removeStep = event.target.closest("[data-process-remove-step]");
+      if (removeStep) {
+        removeStep.closest("[data-process-step]")?.remove();
+        reindex();
+        return;
+      }
+      const removeDecision = event.target.closest("[data-process-remove-decision]");
+      if (removeDecision) {
+        removeDecision.closest("[data-process-decision]")?.remove();
+        reindex();
+        return;
+      }
+      const up = event.target.closest("[data-process-up]");
+      if (up) {
+        const step = up.closest("[data-process-step]");
+        const prev = step?.previousElementSibling;
+        if (step && prev) stepsBox.insertBefore(step, prev);
+        reindex();
+        return;
+      }
+      const down = event.target.closest("[data-process-down]");
+      if (down) {
+        const step = down.closest("[data-process-step]");
+        const next = step?.nextElementSibling;
+        if (step && next) stepsBox.insertBefore(next, step);
+        reindex();
+      }
+    });
+
+    root.addEventListener("input", (event) => {
+      if (event.target.matches("[data-step-name]")) reindex();
+    });
+
+    reindex();
+  });
+
   const generateModal = document.getElementById("generate-modal");
   if (generateModal) {
     const generateFilter = generateModal.querySelector("[data-generate-filter]");

@@ -1,0 +1,55 @@
+<% const proc = zaak && zaak.process; %>
+<% if (proc && proc.enabled) { %>
+<section class="process-progress peek-view" aria-label="<%= t('process.title') %>">
+  <header class="process-progress-head">
+    <h3><%= t("process.title") %></h3>
+    <p>
+      <% if (proc.done) { %>
+        <%= t("process.done") %>
+      <% } else { %>
+        <%= t("process.of", { current: proc.currentIndex + 1, total: proc.steps.length }) %>
+        · <%= proc.currentName %>
+      <% } %>
+    </p>
+  </header>
+  <ol class="process-rail">
+    <% proc.steps.forEach(function (step) { %>
+      <li class="is-<%= step.state %>">
+        <span class="process-rail-dot" aria-hidden="true"></span>
+        <span class="process-rail-name"><%= step.name %></span>
+      </li>
+    <% }) %>
+  </ol>
+  <% if (!proc.done && proc.tasks.length) { %>
+    <h4><%= t("process.tasksHere") %></h4>
+    <ul class="process-tasks">
+      <% proc.tasks.forEach(function (task) { %>
+        <li>
+          <form method="post" action="/zaken/<%= zaak.id %>/process">
+            <%- include("process-return-fields", { zaak: zaak }) %>
+            <input type="hidden" name="action" value="task">
+            <input type="hidden" name="taskId" value="<%= task.id %>">
+            <label class="process-task<%= task.done ? ' is-done' : '' %>">
+              <input type="checkbox" name="done" value="1" data-auto-submit <%= task.done ? "checked" : "" %>>
+              <span><%= task.name %></span>
+            </label>
+          </form>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+  <% if (!proc.done && proc.decisions.length) { %>
+    <form class="process-decisions" method="post" action="/zaken/<%= zaak.id %>/process">
+      <%- include("process-return-fields", { zaak: zaak }) %>
+      <input type="hidden" name="action" value="decision">
+      <% proc.decisions.forEach(function (decision, dIndex) { %>
+        <% const kind = decision.kind || "goto"; %>
+        <% const label = decision.label || (kind === "end" ? t("process.finish") : t("process.continue")); %>
+        <button type="submit" name="decisionId" value="<%= decision.id %>" class="<%= dIndex === 0 ? "btn" : "ghost" %>">
+          <%= label %>
+        </button>
+      <% }) %>
+    </form>
+  <% } %>
+</section>
+<% } %>

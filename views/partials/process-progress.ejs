@@ -24,32 +24,55 @@
 <% } %>
 <% if (part === "actions" || part === "all") { %>
   <% if (!proc.done && (proc.tasks.length || proc.decisions.length)) { %>
+  <%
+    const openTasks = proc.tasks.filter(function (task) { return !task.done; });
+    const doneTasks = proc.tasks.filter(function (task) { return task.done; });
+    const taskGroups = [];
+    if (openTasks.length) taskGroups.push({ label: null, tasks: openTasks });
+    if (doneTasks.length) {
+      taskGroups.push({
+        label: openTasks.length ? t("process.completedGroup") : null,
+        tasks: doneTasks,
+      });
+    }
+    const tasksBlocking = openTasks.length > 0;
+  %>
   <section class="process-actions" aria-label="<%= t('process.tasks') %>">
-    <% if (proc.tasks.length) { %>
+    <header class="process-actions-head">
+      <h3><%= proc.currentName %></h3>
+      <% if (proc.tasks.length) { %>
+        <p class="process-actions-count"><%= t("process.of", { current: doneTasks.length, total: proc.tasks.length }) %></p>
+      <% } %>
+    </header>
+    <% taskGroups.forEach(function (group) { %>
+      <% if (group.label) { %>
+        <h4 class="process-tasks-done-label"><%= group.label %></h4>
+      <% } %>
       <ul class="process-tasks">
-        <% proc.tasks.forEach(function (task) { %>
+        <% group.tasks.forEach(function (task) { %>
           <li>
             <form method="post" action="/zaken/<%= zaak.id %>/process">
               <%- include("process-return-fields", { zaak: zaak }) %>
               <input type="hidden" name="action" value="task">
               <input type="hidden" name="taskId" value="<%= task.id %>">
               <label class="process-task<%= task.done ? ' is-done' : '' %>">
-                <input type="checkbox" name="done" value="1" data-auto-submit <%= task.done ? "checked" : "" %>>
-                <span><%= task.name %></span>
+                <input class="process-task-check" type="checkbox" name="done" value="1" data-auto-submit <%= task.done ? "checked" : "" %>>
+                <span class="process-task-name"><%= task.name %></span>
               </label>
             </form>
           </li>
         <% }) %>
       </ul>
-    <% } %>
+    <% }) %>
     <% if (proc.decisions.length) { %>
       <form class="process-decisions" method="post" action="/zaken/<%= zaak.id %>/process">
         <%- include("process-return-fields", { zaak: zaak }) %>
         <input type="hidden" name="action" value="decision">
+        <p class="process-decisions-label"><%= t("process.decisions") %></p>
         <% proc.decisions.forEach(function (decision, dIndex) { %>
           <% const kind = decision.kind || "goto"; %>
           <% const label = decision.label || (kind === "end" ? t("process.finish") : t("process.continue")); %>
-          <button type="submit" name="decisionId" value="<%= decision.id %>" class="<%= dIndex === 0 ? "btn" : "ghost" %>">
+          <button type="submit" name="decisionId" value="<%= decision.id %>" class="<%= dIndex === 0 && !tasksBlocking ? "btn" : "ghost" %>">
             <%= label %>
           </button>
         <% }) %>

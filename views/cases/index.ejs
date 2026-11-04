@@ -487,17 +487,17 @@
       <div class="peek-tabs peek-view" role="tablist" aria-label="<%= peekCase.titel %>">
         <% if (hasTasksTab) { %>
         <button type="button" class="<%= activePeekTab === "tasks" ? "is-active" : "" %>" role="tab" id="peek-tab-tasks" aria-controls="peek-panel-tasks" aria-selected="<%= activePeekTab === "tasks" ? "true" : "false" %>" tabindex="<%= activePeekTab === "tasks" ? "0" : "-1" %>" data-peek-tab="tasks">
-          <%= t("process.tasks") %><% if (peekOpenTasks) { %> (<%= peekOpenTasks %>)<% } %>
+          <%= t("process.tasks") %><% if (peekOpenTasks) { %><span class="peek-count"><%= peekOpenTasks %></span><% } %>
         </button>
         <% } %>
         <button type="button" class="<%= activePeekTab === "holders" ? "is-active" : "" %>" role="tab" id="peek-tab-holders" aria-controls="peek-panel-holders" aria-selected="<%= activePeekTab === "holders" ? "true" : "false" %>" tabindex="<%= activePeekTab === "holders" ? "0" : "-1" %>" data-peek-tab="holders">
-          <%= t("cases.stakeholders") %><% if (peekHolderCount) { %> (<%= peekHolderCount %>)<% } %>
+          <%= t("cases.stakeholders") %><% if (peekHolderCount) { %><span class="peek-count"><%= peekHolderCount %></span><% } %>
         </button>
         <button type="button" class="<%= activePeekTab === "activity" ? "is-active" : "" %>" role="tab" id="peek-tab-activity" aria-controls="peek-panel-activity" aria-selected="<%= activePeekTab === "activity" ? "true" : "false" %>" tabindex="<%= activePeekTab === "activity" ? "0" : "-1" %>" data-peek-tab="activity">
           <%= t("cases.recentActivity") %>
         </button>
         <button type="button" class="<%= activePeekTab === "docs" ? "is-active" : "" %>" role="tab" id="peek-tab-docs" aria-controls="peek-panel-docs" aria-selected="<%= activePeekTab === "docs" ? "true" : "false" %>" tabindex="<%= activePeekTab === "docs" ? "0" : "-1" %>" data-peek-tab="docs">
-          <%= t("cases.tabDocuments") %><% if (peekDocRows.length) { %> (<%= peekDocRows.length %>)<% } %>
+          <%= t("cases.tabDocuments") %><% if (peekDocRows.length) { %><span class="peek-count"><%= peekDocRows.length %></span><% } %>
         </button>
       </div>
       <% if (hasTasksTab) { %>

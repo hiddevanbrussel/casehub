@@ -247,10 +247,10 @@
       <% if (!composing) { %>
       <div class="peek-tabs peek-view" role="tablist" aria-label="<%= peekCompany.handelsnaam %>">
         <button type="button" class="<%= activePeekTab === "contacts" ? "is-active" : "" %>" role="tab" id="peek-tab-contacts" aria-controls="peek-panel-contacts" aria-selected="<%= activePeekTab === "contacts" ? "true" : "false" %>" tabindex="<%= activePeekTab === "contacts" ? "0" : "-1" %>" data-peek-tab="contacts">
-          <%= t("companies.contacts") %><% if (peekPersonRows.length) { %> (<%= peekPersonRows.length %>)<% } %>
+          <%= t("companies.contacts") %><% if (peekPersonRows.length) { %><span class="peek-count"><%= peekPersonRows.length %></span><% } %>
         </button>
         <button type="button" class="<%= activePeekTab === "cases" ? "is-active" : "" %>" role="tab" id="peek-tab-cases" aria-controls="peek-panel-cases" aria-selected="<%= activePeekTab === "cases" ? "true" : "false" %>" tabindex="<%= activePeekTab === "cases" ? "0" : "-1" %>" data-peek-tab="cases">
-          <%= t("companies.linkedCases") %><% if (peekCaseRows.length) { %> (<%= peekCaseRows.length %>)<% } %>
+          <%= t("companies.linkedCases") %><% if (peekCaseRows.length) { %><span class="peek-count"><%= peekCaseRows.length %></span><% } %>
         </button>
       </div>
       <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-contacts" aria-labelledby="peek-tab-contacts" data-peek-panel="contacts"<% if (activePeekTab !== "contacts") { %> hidden<% } %>>

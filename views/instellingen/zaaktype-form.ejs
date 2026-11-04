@@ -1,147 +1,170 @@
+<%
+  const type = zaaktype || {};
+  const steps = type.processSteps || [];
+  const tabs = [
+    { id: "general", label: t("caseTypes.tabGeneral") },
+    { id: "process", label: t("process.title") },
+  ];
+  const wantedTab = typeof zaaktypeTab !== "undefined" ? zaaktypeTab : "general";
+  const activeTab = tabs.some(function (tab) { return tab.id === wantedTab; }) ? wantedTab : "general";
+  function destValue(step, decision, allSteps, index) {
+    if (!decision) return "__next__";
+    if (decision.toStepId === "") return "__end__";
+    const target = allSteps.findIndex(function (item) { return item.id === decision.toStepId; });
+    if (target === -1 || target === index + 1) return "__next__";
+    return String(target);
+  }
+%>
 <p class="back-link"><a href="/instellingen/zaaktypen"><%= t('caseTypes.back') %></a></p>
 <div class="page-head">
   <div>
-    <h1><%= zaaktype && zaaktype.id ? t('caseTypes.editTitle') : t('caseTypes.newTitle') %></h1>
+    <h1><%= type.id ? t('caseTypes.editTitle') : t('caseTypes.newTitle') %></h1>
     <p class="lede"><%= t('caseTypes.formLede') %></p>
   </div>
 </div>
 
 <% if (typeof error !== "undefined" && error) { %><p class="alert"><%= error %></p><% } %>
-<% const type = zaaktype || {} %>
-<form class="form" method="post" action="<%= type.id ? '/instellingen/zaaktypen/' + type.id : '/instellingen/zaaktypen' %>">
-  <label><%= t('caseTypes.name') %>
-    <input name="naam" required value="<%= type.naam || '' %>">
-  </label>
-  <label><%= t('caseTypes.leadDays') %>
-    <input type="number" name="leadTimeDays" min="0" step="1" value="<%= type.leadTimeDays ?? 28 %>">
-  </label>
-  <fieldset class="check-set">
-    <legend><%= t('caseTypes.templates') %></legend>
-    <% if (!recipes.length) { %>
-      <p class="hint"><%= t('caseTypes.noTemplates') %> <a href="/templates"><%= t('templates.title') %></a>.</p>
-    <% } else { %>
-      <p class="hint"><%= t('caseTypes.templatesHint') %></p>
-      <div class="tpl-picker" data-template-picker>
-        <div class="tpl-picker-bar">
-          <input type="search" data-tpl-filter placeholder="<%= t('caseTypes.search') %>" autocomplete="off">
-          <button class="ghost" type="button" data-tpl-all><%= t('caseTypes.selectAll') %></button>
-          <button class="ghost" type="button" data-tpl-none><%= t('caseTypes.clear') %></button>
-          <span class="tpl-picker-count" data-tpl-count></span>
-        </div>
-        <div class="tpl-picker-list">
-          <% recipes.forEach(function (recipe) { %>
-            <label class="check-item">
-              <input type="checkbox" name="recipeIds" value="<%= recipe.itemId %>" <%= (type.recipeIds || []).includes(recipe.itemId) ? "checked" : "" %>>
-              <span><%= recipe.name %> <small class="tpl-type"><%= recipe.recipeType || "" %></small></span>
-            </label>
-          <% }) %>
-        </div>
-      </div>
-    <% } %>
-  </fieldset>
-  <%
-    const steps = type.processSteps || [];
-    function destValue(step, decision, allSteps, index) {
-      if (!decision) return "__next__";
-      if (decision.toStepId === "") return "__end__";
-      const target = allSteps.findIndex(function (item) { return item.id === decision.toStepId; });
-      if (target === -1 || target === index + 1) return "__next__";
-      return String(target);
-    }
-  %>
-  <fieldset class="process-builder" data-process-builder data-i18n-next="<%= t('process.toNext') %>" data-i18n-end="<%= t('process.toEnd') %>">
-    <legend><%= t("process.title") %></legend>
-    <p class="hint"><%= t("process.lede") %></p>
-    <input type="hidden" name="processConfigured" value="1">
-    <div data-process-steps>
-      <% steps.forEach(function (step, index) { %>
-      <article class="process-step" data-process-step>
-        <header class="process-step-head">
-          <strong data-step-label="<%= t('process.stepName') %>"><%= t("process.stepName") %> <%= index + 1 %></strong>
-          <div class="process-step-tools">
-            <button type="button" class="ghost" data-process-up><%= t("process.moveUp") %></button>
-            <button type="button" class="ghost" data-process-down><%= t("process.moveDown") %></button>
-            <button type="button" class="ghost" data-process-remove-step><%= t("process.removeStep") %></button>
+<form class="form type-form" method="post" action="<%= type.id ? '/instellingen/zaaktypen/' + type.id : '/instellingen/zaaktypen' %>" data-form-tabs>
+  <input type="hidden" name="zaaktypeTab" value="<%= activeTab %>" data-form-tab-value>
+  <div class="settings-tabs" role="tablist" aria-label="<%= type.id ? t('caseTypes.editTitle') : t('caseTypes.newTitle') %>">
+    <% tabs.forEach(function (tab) { %>
+    <% const on = tab.id === activeTab; %>
+    <button type="button" class="<%= on ? "is-active" : "" %>" role="tab" id="type-tab-<%= tab.id %>" aria-controls="type-panel-<%= tab.id %>" aria-selected="<%= on ? "true" : "false" %>" tabindex="<%= on ? "0" : "-1" %>" data-form-tab="<%= tab.id %>">
+      <%= tab.label %>
+    </button>
+    <% }) %>
+  </div>
+
+  <section class="settings-panel" role="tabpanel" id="type-panel-general" aria-labelledby="type-tab-general" data-form-panel="general"<% if (activeTab !== "general") { %> hidden<% } %>>
+    <div class="form-row form-row-2">
+      <label><%= t('caseTypes.name') %>
+        <input name="naam" required value="<%= type.naam || '' %>">
+      </label>
+      <label><%= t('caseTypes.leadDays') %>
+        <input type="number" name="leadTimeDays" min="0" step="1" value="<%= type.leadTimeDays ?? 28 %>">
+      </label>
+    </div>
+    <fieldset class="check-set">
+      <legend><%= t('caseTypes.templates') %></legend>
+      <% if (!recipes.length) { %>
+        <p class="hint"><%= t('caseTypes.noTemplates') %> <a href="/templates"><%= t('templates.title') %></a>.</p>
+      <% } else { %>
+        <p class="hint"><%= t('caseTypes.templatesHint') %></p>
+        <div class="tpl-picker" data-template-picker>
+          <div class="tpl-picker-bar">
+            <input type="search" data-tpl-filter placeholder="<%= t('caseTypes.search') %>" autocomplete="off">
+            <button class="ghost" type="button" data-tpl-all><%= t('caseTypes.selectAll') %></button>
+            <button class="ghost" type="button" data-tpl-none><%= t('caseTypes.clear') %></button>
+            <span class="tpl-picker-count" data-tpl-count></span>
           </div>
-        </header>
-        <input type="hidden" name="steps[<%= index %>][id]" value="<%= step.id %>" data-step-id>
-        <label><%= t("process.stepName") %>
-          <input name="steps[<%= index %>][name]" value="<%= step.name %>" placeholder="<%= t('process.stepNamePh') %>" required data-step-name>
-        </label>
-        <label><%= t("process.tasks") %>
-          <span class="hint"><%= t("process.tasksHint") %></span>
-          <textarea name="steps[<%= index %>][tasks]" rows="3" placeholder="<%= t('process.tasksPh') %>" data-step-tasks><%= (step.tasks || []).map(function (task) { return task.name; }).join("\n") %></textarea>
-        </label>
-        <div class="process-decisions-edit">
-          <p><%= t("process.decisions") %></p>
-          <p class="hint"><%= t("process.decisionsHint") %></p>
-          <div data-process-decisions>
-            <% (step.decisions || []).forEach(function (decision, dIndex) { %>
-            <div class="process-decision-row" data-process-decision>
-              <input type="hidden" name="steps[<%= index %>][decisions][<%= dIndex %>][id]" value="<%= decision.id %>" data-dec-id>
-              <label><%= t("process.decisionLabel") %>
-                <input name="steps[<%= index %>][decisions][<%= dIndex %>][label]" value="<%= decision.label %>" placeholder="<%= t('process.decisionLabelPh') %>" data-dec-label>
+          <div class="tpl-picker-list">
+            <% recipes.forEach(function (recipe) { %>
+              <label class="check-item">
+                <input type="checkbox" name="recipeIds" value="<%= recipe.itemId %>" <%= (type.recipeIds || []).includes(recipe.itemId) ? "checked" : "" %>>
+                <span><%= recipe.name %> <small class="tpl-type"><%= recipe.recipeType || "" %></small></span>
               </label>
-              <label><%= t("process.toStep") %>
-                <select name="steps[<%= index %>][decisions][<%= dIndex %>][to]" data-dec-to>
-                  <option value="__next__" <%= destValue(step, decision, steps, index) === "__next__" ? "selected" : "" %>><%= t("process.toNext") %></option>
-                  <option value="__end__" <%= destValue(step, decision, steps, index) === "__end__" ? "selected" : "" %>><%= t("process.toEnd") %></option>
-                  <% steps.forEach(function (other, otherIndex) { %>
-                    <% if (otherIndex === index) return; %>
-                    <option value="<%= otherIndex %>" <%= destValue(step, decision, steps, index) === String(otherIndex) ? "selected" : "" %>><%= other.name %></option>
-                  <% }) %>
-                </select>
-              </label>
-              <button type="button" class="ghost" data-process-remove-decision><%= t("process.removeDecision") %></button>
-            </div>
             <% }) %>
           </div>
-          <button type="button" class="ghost" data-process-add-decision><%= t("process.addDecision") %></button>
         </div>
-      </article>
-      <% }) %>
-    </div>
-    <p class="process-empty" data-process-empty <%= steps.length ? "hidden" : "" %>><%= t("process.empty") %></p>
-    <button type="button" class="ghost" data-process-add-step><%= t("process.addStep") %></button>
-    <template data-process-step-tpl>
-      <article class="process-step" data-process-step>
-        <header class="process-step-head">
-          <strong data-step-label="<%= t('process.stepName') %>"><%= t("process.stepName") %></strong>
-          <div class="process-step-tools">
-            <button type="button" class="ghost" data-process-up><%= t("process.moveUp") %></button>
-            <button type="button" class="ghost" data-process-down><%= t("process.moveDown") %></button>
-            <button type="button" class="ghost" data-process-remove-step><%= t("process.removeStep") %></button>
+      <% } %>
+    </fieldset>
+  </section>
+
+  <section class="settings-panel" role="tabpanel" id="type-panel-process" aria-labelledby="type-tab-process" data-form-panel="process"<% if (activeTab !== "process") { %> hidden<% } %>>
+    <fieldset class="process-builder" data-process-builder data-i18n-next="<%= t('process.toNext') %>" data-i18n-end="<%= t('process.toEnd') %>">
+      <p class="hint"><%= t("process.lede") %></p>
+      <input type="hidden" name="processConfigured" value="1">
+      <div data-process-steps>
+        <% steps.forEach(function (step, index) { %>
+        <article class="process-step" data-process-step>
+          <header class="process-step-head">
+            <strong data-step-label="<%= t('process.stepName') %>"><%= t("process.stepName") %> <%= index + 1 %></strong>
+            <div class="process-step-tools">
+              <button type="button" class="ghost" data-process-up><%= t("process.moveUp") %></button>
+              <button type="button" class="ghost" data-process-down><%= t("process.moveDown") %></button>
+              <button type="button" class="ghost" data-process-remove-step><%= t("process.removeStep") %></button>
+            </div>
+          </header>
+          <input type="hidden" name="steps[<%= index %>][id]" value="<%= step.id %>" data-step-id>
+          <label><%= t("process.stepName") %>
+            <input name="steps[<%= index %>][name]" value="<%= step.name %>" placeholder="<%= t('process.stepNamePh') %>" required data-step-name>
+          </label>
+          <label><%= t("process.tasks") %>
+            <span class="hint"><%= t("process.tasksHint") %></span>
+            <textarea name="steps[<%= index %>][tasks]" rows="3" placeholder="<%= t('process.tasksPh') %>" data-step-tasks><%= (step.tasks || []).map(function (task) { return task.name; }).join("\n") %></textarea>
+          </label>
+          <div class="process-decisions-edit">
+            <p><%= t("process.decisions") %></p>
+            <p class="hint"><%= t("process.decisionsHint") %></p>
+            <div data-process-decisions>
+              <% (step.decisions || []).forEach(function (decision, dIndex) { %>
+              <div class="process-decision-row" data-process-decision>
+                <input type="hidden" name="steps[<%= index %>][decisions][<%= dIndex %>][id]" value="<%= decision.id %>" data-dec-id>
+                <label><%= t("process.decisionLabel") %>
+                  <input name="steps[<%= index %>][decisions][<%= dIndex %>][label]" value="<%= decision.label %>" placeholder="<%= t('process.decisionLabelPh') %>" data-dec-label>
+                </label>
+                <label><%= t("process.toStep") %>
+                  <select name="steps[<%= index %>][decisions][<%= dIndex %>][to]" data-dec-to>
+                    <option value="__next__" <%= destValue(step, decision, steps, index) === "__next__" ? "selected" : "" %>><%= t("process.toNext") %></option>
+                    <option value="__end__" <%= destValue(step, decision, steps, index) === "__end__" ? "selected" : "" %>><%= t("process.toEnd") %></option>
+                    <% steps.forEach(function (other, otherIndex) { %>
+                      <% if (otherIndex === index) return; %>
+                      <option value="<%= otherIndex %>" <%= destValue(step, decision, steps, index) === String(otherIndex) ? "selected" : "" %>><%= other.name %></option>
+                    <% }) %>
+                  </select>
+                </label>
+                <button type="button" class="ghost" data-process-remove-decision><%= t("process.removeDecision") %></button>
+              </div>
+              <% }) %>
+            </div>
+            <button type="button" class="ghost" data-process-add-decision><%= t("process.addDecision") %></button>
           </div>
-        </header>
-        <input type="hidden" name="steps[0][id]" value="" data-step-id>
-        <label><%= t("process.stepName") %>
-          <input name="steps[0][name]" value="" placeholder="<%= t('process.stepNamePh') %>" required data-step-name>
-        </label>
-        <label><%= t("process.tasks") %>
-          <span class="hint"><%= t("process.tasksHint") %></span>
-          <textarea name="steps[0][tasks]" rows="3" placeholder="<%= t('process.tasksPh') %>" data-step-tasks></textarea>
-        </label>
-        <div class="process-decisions-edit">
-          <p><%= t("process.decisions") %></p>
-          <p class="hint"><%= t("process.decisionsHint") %></p>
-          <div data-process-decisions></div>
-          <button type="button" class="ghost" data-process-add-decision><%= t("process.addDecision") %></button>
-        </div>
-      </article>
-    </template>
-    <template data-process-decision-tpl>
-      <div class="process-decision-row" data-process-decision>
-        <input type="hidden" name="steps[0][decisions][0][id]" value="" data-dec-id>
-        <label><%= t("process.decisionLabel") %>
-          <input name="steps[0][decisions][0][label]" value="" placeholder="<%= t('process.decisionLabelPh') %>" data-dec-label>
-        </label>
-        <label><%= t("process.toStep") %>
-          <select name="steps[0][decisions][0][to]" data-dec-to></select>
-        </label>
-        <button type="button" class="ghost" data-process-remove-decision><%= t("process.removeDecision") %></button>
+        </article>
+        <% }) %>
       </div>
-    </template>
-  </fieldset>
+      <p class="process-empty" data-process-empty <%= steps.length ? "hidden" : "" %>><%= t("process.empty") %></p>
+      <button type="button" class="ghost" data-process-add-step><%= t("process.addStep") %></button>
+      <template data-process-step-tpl>
+        <article class="process-step" data-process-step>
+          <header class="process-step-head">
+            <strong data-step-label="<%= t('process.stepName') %>"><%= t("process.stepName") %></strong>
+            <div class="process-step-tools">
+              <button type="button" class="ghost" data-process-up><%= t("process.moveUp") %></button>
+              <button type="button" class="ghost" data-process-down><%= t("process.moveDown") %></button>
+              <button type="button" class="ghost" data-process-remove-step><%= t("process.removeStep") %></button>
+            </div>
+          </header>
+          <input type="hidden" name="steps[0][id]" value="" data-step-id>
+          <label><%= t("process.stepName") %>
+            <input name="steps[0][name]" value="" placeholder="<%= t('process.stepNamePh') %>" required data-step-name>
+          </label>
+          <label><%= t("process.tasks") %>
+            <span class="hint"><%= t("process.tasksHint") %></span>
+            <textarea name="steps[0][tasks]" rows="3" placeholder="<%= t('process.tasksPh') %>" data-step-tasks></textarea>
+          </label>
+          <div class="process-decisions-edit">
+            <p><%= t("process.decisions") %></p>
+            <p class="hint"><%= t("process.decisionsHint") %></p>
+            <div data-process-decisions></div>
+            <button type="button" class="ghost" data-process-add-decision><%= t("process.addDecision") %></button>
+          </div>
+        </article>
+      </template>
+      <template data-process-decision-tpl>
+        <div class="process-decision-row" data-process-decision>
+          <input type="hidden" name="steps[0][decisions][0][id]" value="" data-dec-id>
+          <label><%= t("process.decisionLabel") %>
+            <input name="steps[0][decisions][0][label]" value="" placeholder="<%= t('process.decisionLabelPh') %>" data-dec-label>
+          </label>
+          <label><%= t("process.toStep") %>
+            <select name="steps[0][decisions][0][to]" data-dec-to></select>
+          </label>
+          <button type="button" class="ghost" data-process-remove-decision><%= t("process.removeDecision") %></button>
+        </div>
+      </template>
+    </fieldset>
+  </section>
+
   <div class="form-actions">
     <button class="btn" type="submit"><%= t('common.save') %></button>
     <% if (type.id) { %>

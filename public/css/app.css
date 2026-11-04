@@ -1192,9 +1192,20 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
 .process-builder {
   border: 0;
   padding: 0;
-  margin: 8px 0 0;
+  margin: 0;
   display: grid;
   gap: 12px;
+}
+.type-form { gap: 0; }
+.type-form .settings-tabs { margin: 0 0 18px; }
+.type-form .form-actions {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.type-form .process-step:first-child {
+  border-top: 0;
+  padding-top: 0;
 }
 .process-builder legend {
   font-weight: 700;
@@ -1218,6 +1229,11 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
 .process-decisions-edit {
   display: grid;
   gap: 8px;
+}
+.process-decisions-edit > .ghost,
+.process-builder > .ghost {
+  justify-self: start;
+  width: auto;
 }
 .process-decisions-edit > p { margin: 0; font-weight: 700; font-size: 13px; }
 .process-decision-row {

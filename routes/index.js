@@ -412,6 +412,10 @@ function peekTabFromCaseTab(tab) {
   return "";
 }
 
+function zaaktypeTabOf(src) {
+  return String(src?.zaaktypeTab || src?.tab || "") === "process" ? "process" : "general";
+}
+
 function zakenListPath(src) {
   const params = new URLSearchParams();
   const map = {
@@ -2934,6 +2938,7 @@ function routes() {
       title: req.t("caseTypes.newTitle"),
       zaaktype: null,
       recipes: store.recipes(),
+      zaaktypeTab: zaaktypeTabOf(req.query),
     });
   });
 
@@ -2957,6 +2962,7 @@ function routes() {
           processSteps: processLib.parseForm(req.body, []),
         },
         recipes: store.recipes(),
+        zaaktypeTab: zaaktypeTabOf(req.body),
         error: formError(req, err),
       });
     }
@@ -2969,6 +2975,7 @@ function routes() {
       title: zaaktype.naam,
       zaaktype,
       recipes: store.recipes(),
+      zaaktypeTab: zaaktypeTabOf(req.query),
     });
   });
 
@@ -2995,6 +3002,7 @@ function routes() {
           processSteps: processLib.parseForm(req.body, current?.processSteps),
         },
         recipes: store.recipes(),
+        zaaktypeTab: zaaktypeTabOf(req.body),
         error: formError(req, err),
       });
     }

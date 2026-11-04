@@ -43,6 +43,10 @@
         activate(next.getAttribute("data-form-tab"));
       });
     });
+    root.addEventListener("invalid", (event) => {
+      const panel = event.target.closest("[data-form-panel]");
+      if (panel?.hidden) activate(panel.getAttribute("data-form-panel"));
+    }, true);
     root.addEventListener("submit", () => {
       const invalid = root.querySelector(":invalid");
       if (!invalid) return;

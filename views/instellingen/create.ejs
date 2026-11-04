@@ -1,6 +1,14 @@
+<%
+  const tabs = [
+    { id: "connection", label: t("create.tabConnection") },
+    { id: "webhooks", label: t("create.tabWebhooks") },
+  ];
+  const activeTab = tabs.some(function (tab) { return tab.id === createTab; }) ? createTab : "connection";
+%>
 <p class="back-link"><a href="/instellingen/integraties"><%= t("integrations.back") %></a></p>
 <% if (create.lastError) { %><p class="alert"><%= create.lastError %></p><% } %>
-<form class="form settings-sheet" method="post" action="/instellingen/create">
+<form class="form settings-sheet" method="post" action="/instellingen/create" data-form-tabs>
+  <input type="hidden" name="createTab" value="<%= activeTab %>" data-form-tab-value>
   <div class="settings-sheet-head">
     <div class="settings-sheet-title">
       <span class="catalog-tile-ico" aria-hidden="true"><%- icon("file-plus") %></span>
@@ -12,8 +20,18 @@
         <p class="lede"><%= t("create.lede") %></p>
       </div>
     </div>
+    <div class="settings-tabs" role="tablist" aria-label="<%= t("create.title") %>">
+      <% tabs.forEach(function (tab) { %>
+      <% const on = tab.id === activeTab; %>
+      <button type="button" class="<%= on ? "is-active" : "" %>" role="tab" id="create-tab-<%= tab.id %>" aria-controls="create-panel-<%= tab.id %>" aria-selected="<%= on ? "true" : "false" %>" tabindex="<%= on ? "0" : "-1" %>" data-form-tab="<%= tab.id %>">
+        <%= tab.label %>
+      </button>
+      <% }) %>
+    </div>
   </div>
   <div class="settings-sheet-body">
+
+  <section class="settings-panel" role="tabpanel" id="create-panel-connection" aria-labelledby="create-tab-connection" data-form-panel="connection"<% if (activeTab !== "connection") { %> hidden<% } %>>
     <label><%= t("create.baseUrl") %>
       <input name="baseUrl" class="settings-url" required value="<%= create.baseUrl %>" autocomplete="off">
     </label>
@@ -33,6 +51,9 @@
         <input name="contentSourceId" required value="<%= create.contentSourceId %>" autocomplete="off">
       </label>
     </div>
+  </section>
+
+  <section class="settings-panel" role="tabpanel" id="create-panel-webhooks" aria-labelledby="create-tab-webhooks" data-form-panel="webhooks"<% if (activeTab !== "webhooks") { %> hidden<% } %>>
     <label><%= t("create.publicUrl") %>
       <input name="publicBaseUrl" class="settings-url" value="<%= create.publicBaseUrl %>" placeholder="https://zaakhub.example.nl" autocomplete="off">
       <span class="hint"><%= t("create.webhookHint") %></span>
@@ -58,6 +79,8 @@
       <p class="hint"><%= formatDateTime(create.lastSyncAt) %></p>
       <% } %>
     </div>
+  </section>
+
   </div>
   <footer class="settings-sheet-foot">
     <button class="btn" type="submit"><%= t("create.save") %></button>

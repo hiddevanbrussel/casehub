@@ -2979,9 +2979,11 @@ function routes() {
   r.get("/instellingen/integraties/create", requireRole("admin"), (req, res) => {
     const settings = create.createSettings(store);
     const origin = create.publicOrigin(req, settings);
+    const wanted = String(req.query.tab || "");
     res.render("instellingen/create", {
       title: req.t("create.title"),
       create: settings,
+      createTab: wanted === "webhooks" ? "webhooks" : "connection",
       createReady: create.configured(settings),
       recipeCount: store.recipes().length,
       webhookExample: origin ? `${origin}/api/create/webhook/${settings.slug || "workspace"}/…` : "",

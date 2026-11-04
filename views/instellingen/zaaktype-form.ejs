@@ -7,6 +7,7 @@
   ];
   const wantedTab = typeof zaaktypeTab !== "undefined" ? zaaktypeTab : "general";
   const activeTab = tabs.some(function (tab) { return tab.id === wantedTab; }) ? wantedTab : "general";
+  const title = type.id ? t("caseTypes.editTitle") : t("caseTypes.newTitle");
   function destValue(step, decision, allSteps, index) {
     if (!decision) return "__next__";
     if (decision.toStepId === "") return "__end__";
@@ -16,24 +17,29 @@
   }
 %>
 <p class="back-link"><a href="/instellingen/zaaktypen"><%= t('caseTypes.back') %></a></p>
-<div class="page-head">
-  <div>
-    <h1><%= type.id ? t('caseTypes.editTitle') : t('caseTypes.newTitle') %></h1>
-    <p class="lede"><%= t('caseTypes.formLede') %></p>
-  </div>
-</div>
-
 <% if (typeof error !== "undefined" && error) { %><p class="alert"><%= error %></p><% } %>
-<form class="form type-form" method="post" action="<%= type.id ? '/instellingen/zaaktypen/' + type.id : '/instellingen/zaaktypen' %>" data-form-tabs>
+<form class="form settings-sheet is-wide type-form" method="post" action="<%= type.id ? '/instellingen/zaaktypen/' + type.id : '/instellingen/zaaktypen' %>" data-form-tabs>
   <input type="hidden" name="zaaktypeTab" value="<%= activeTab %>" data-form-tab-value>
-  <div class="settings-tabs" role="tablist" aria-label="<%= type.id ? t('caseTypes.editTitle') : t('caseTypes.newTitle') %>">
-    <% tabs.forEach(function (tab) { %>
-    <% const on = tab.id === activeTab; %>
-    <button type="button" class="<%= on ? "is-active" : "" %>" role="tab" id="type-tab-<%= tab.id %>" aria-controls="type-panel-<%= tab.id %>" aria-selected="<%= on ? "true" : "false" %>" tabindex="<%= on ? "0" : "-1" %>" data-form-tab="<%= tab.id %>">
-      <%= tab.label %>
-    </button>
-    <% }) %>
+  <div class="settings-sheet-head">
+    <div class="settings-sheet-title">
+      <span class="catalog-tile-ico" aria-hidden="true"><%- icon("layers") %></span>
+      <div>
+        <div class="settings-sheet-heading">
+          <h1><%= title %></h1>
+        </div>
+        <p class="lede"><%= t('caseTypes.formLede') %></p>
+      </div>
+    </div>
+    <div class="settings-tabs" role="tablist" aria-label="<%= title %>">
+      <% tabs.forEach(function (tab) { %>
+      <% const on = tab.id === activeTab; %>
+      <button type="button" class="<%= on ? "is-active" : "" %>" role="tab" id="type-tab-<%= tab.id %>" aria-controls="type-panel-<%= tab.id %>" aria-selected="<%= on ? "true" : "false" %>" tabindex="<%= on ? "0" : "-1" %>" data-form-tab="<%= tab.id %>">
+        <%= tab.label %>
+      </button>
+      <% }) %>
+    </div>
   </div>
+  <div class="settings-sheet-body">
 
   <section class="settings-panel" role="tabpanel" id="type-panel-general" aria-labelledby="type-tab-general" data-form-panel="general"<% if (activeTab !== "general") { %> hidden<% } %>>
     <div class="form-row form-row-2">
@@ -165,12 +171,13 @@
     </fieldset>
   </section>
 
-  <div class="form-actions">
+  </div>
+  <footer class="settings-sheet-foot">
     <button class="btn" type="submit"><%= t('common.save') %></button>
     <% if (type.id) { %>
       <button class="danger" type="submit" form="delete-type" data-confirm="<%= t('caseTypes.confirmDelete') %>"><%= t('common.delete') %></button>
     <% } %>
-  </div>
+  </footer>
 </form>
 <% if (type.id) { %>
 <form id="delete-type" method="post" action="/instellingen/zaaktypen/<%= type.id %>/verwijderen" data-confirm="<%= t('caseTypes.confirmDelete') %>" hidden></form>

@@ -397,7 +397,7 @@ html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 .content.is-settings > .catalog-page {
   max-width: 960px;
 }
-.content.is-settings:has(.settings-sheet) > * {
+.content.is-settings:has(.settings-sheet:not(.is-wide)) > * {
   max-width: 540px;
 }
 .settings-stack { display: grid; gap: 16px; }
@@ -1173,16 +1173,18 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   display: grid;
   gap: 12px;
 }
-.type-form { gap: 0; }
-.type-form .settings-tabs { margin: 0 0 18px; }
-.type-form .form-actions {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-}
 .type-form .process-step:first-child {
   border-top: 0;
   padding-top: 0;
+}
+.settings-sheet.is-wide .settings-sheet-body {
+  overflow-wrap: break-word;
+}
+.settings-sheet .check-set legend {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 .process-builder legend {
   font-weight: 700;

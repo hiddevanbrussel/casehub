@@ -16,7 +16,7 @@ const { currentUser, canWriteMaster, isAdmin, isGlobalAdmin } = require("./lib/a
 const { i18nMiddleware } = require("./lib/i18n");
 const { icon } = require("./lib/icon");
 const { documentRows, formatFileSize } = require("./lib/docs");
-const { themeMiddleware } = require("./lib/theme");
+const { themeMiddleware, parseChrome } = require("./lib/theme");
 const { isHr, isCases, appProfile } = require("./lib/profile");
 const { tourPayload } = require("./lib/tour");
 const { routes } = require("./routes");
@@ -63,6 +63,7 @@ app.use((req, res, next) => {
     res.locals.isGlobalAdmin = isGlobalAdmin(user);
     res.locals.canWriteEmployees = isHr(meta) ? canWriteMaster(user) : isAdmin(user);
     res.locals.quickStatusChange = meta.quickStatusChange !== false;
+    res.locals.chrome = parseChrome(meta.chrome);
     res.locals.toast = req.query.toast || "";
     res.locals.path = req.path;
     res.locals.formatDate = (value) => formatDate(value, req.lang);

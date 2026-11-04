@@ -45,6 +45,7 @@ const stufDcr = require("../lib/stuf-dcr");
 const azure = require("../lib/azure");
 const { setLangCookie } = require("../lib/i18n");
 const { appProfile, isHr, isCases } = require("../lib/profile");
+const { parseChrome } = require("../lib/theme");
 const processLib = require("../lib/process");
 const { documentRows } = require("../lib/docs");
 
@@ -3001,7 +3002,12 @@ function routes() {
   });
 
   r.get("/instellingen/algemeen", requireRole("admin"), (req, res) => {
-    res.render("instellingen/algemeen", { title: req.t("settings.generalTitle"), meta: store.meta() });
+    const meta = store.meta();
+    res.render("instellingen/algemeen", {
+      title: req.t("settings.generalTitle"),
+      meta,
+      chrome: parseChrome(meta.chrome),
+    });
   });
 
   r.post("/instellingen", requireRole("admin"), (req, res) => {
@@ -3014,6 +3020,7 @@ function routes() {
       zaakPrefix: String(req.body.zaakPrefix || "ZH").trim().toUpperCase().slice(0, 6),
       appProfile: appProfile({ appProfile: req.body.appProfile }),
       personeelPrefix: String(req.body.personeelPrefix || "P").trim().toUpperCase().slice(0, 6) || "P",
+      chrome: parseChrome(req.body.chrome),
     };
     if (Object.prototype.hasOwnProperty.call(req.body, "quickStatusChange")) {
       patch.quickStatusChange = leaseFlag(req.body.quickStatusChange);

@@ -8,6 +8,37 @@
 
 <form class="form settings-form" method="post" action="/instellingen/algemeen">
   <section class="form-card">
+    <h2><%= t("settings.themeSection") %></h2>
+    <p class="hint"><%= t("settings.themeHint") %></p>
+    <div class="chrome-picker" data-chrome-picker role="radiogroup" aria-label="<%= t("settings.themeSection") %>">
+      <label class="chrome-option">
+        <input class="visually-hidden" type="radio" name="chrome" value="paper" <%= locals.chrome !== "sage" ? "checked" : "" %>>
+        <span class="chrome-preview is-paper" aria-hidden="true">
+          <span class="chrome-preview-side"></span>
+          <span class="chrome-preview-main">
+            <span class="chrome-preview-bar"></span>
+            <span class="chrome-preview-card"></span>
+          </span>
+        </span>
+        <strong><%= t("settings.themePaper") %></strong>
+        <small><%= t("settings.themePaperHint") %></small>
+      </label>
+      <label class="chrome-option">
+        <input class="visually-hidden" type="radio" name="chrome" value="sage" <%= locals.chrome === "sage" ? "checked" : "" %>>
+        <span class="chrome-preview is-sage" aria-hidden="true">
+          <span class="chrome-preview-side"></span>
+          <span class="chrome-preview-main">
+            <span class="chrome-preview-bar"></span>
+            <span class="chrome-preview-card"></span>
+          </span>
+        </span>
+        <strong><%= t("settings.themeSage") %></strong>
+        <small><%= t("settings.themeSageHint") %></small>
+      </label>
+    </div>
+  </section>
+
+  <section class="form-card">
     <h2><%= t("settings.orgSection") %></h2>
     <div class="form-grid">
       <label class="span-all"><%= t("settings.orgName") %>

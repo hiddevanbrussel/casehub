@@ -8,6 +8,13 @@
     document.querySelector(".overview-filters")?.classList.toggle("is-open");
   });
 
+  document.querySelector("[data-chrome-picker]")?.addEventListener("change", (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.name !== "chrome") return;
+    if (input.value === "sage") document.documentElement.setAttribute("data-chrome", "sage");
+    else document.documentElement.removeAttribute("data-chrome");
+  });
+
   let reloadList = null;
   let liveBusy = false;
 

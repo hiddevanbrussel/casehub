@@ -7,25 +7,28 @@
   const activeTab = tabs.some(function (tab) { return tab.id === stufTab; }) ? stufTab : "connection";
 %>
 <p class="back-link"><a href="/instellingen/integraties"><%= t("integrations.back") %></a></p>
-<div class="page-head">
-  <div>
-    <h1><%= t("stuf.title") %></h1>
-    <p class="lede"><%= t("stuf.lede") %></p>
-  </div>
-  <span class="badge <%= stufReady ? "badge-afgerond" : "badge-wacht_op_info" %>"><%= stufReady ? t("common.connected") : t("common.notConfigured") %></span>
-</div>
-
 <% if (stuf.lastError) { %><p class="alert"><%= stuf.lastError %></p><% } %>
-<form class="form" method="post" action="/instellingen/stuf-dcr" enctype="multipart/form-data" data-form-tabs>
+<form class="form settings-sheet" method="post" action="/instellingen/stuf-dcr" enctype="multipart/form-data" data-form-tabs>
   <input type="hidden" name="stufTab" value="<%= activeTab %>" data-form-tab-value>
-  <div class="settings-tabs" role="tablist" aria-label="<%= t("stuf.title") %>">
-    <% tabs.forEach(function (tab) { %>
-    <% const on = tab.id === activeTab; %>
-    <button type="button" class="<%= on ? "is-active" : "" %>" role="tab" id="stuf-tab-<%= tab.id %>" aria-controls="stuf-panel-<%= tab.id %>" aria-selected="<%= on ? "true" : "false" %>" tabindex="<%= on ? "0" : "-1" %>" data-form-tab="<%= tab.id %>">
-      <%= tab.label %>
-    </button>
-    <% }) %>
+  <div class="settings-sheet-head">
+    <div class="settings-sheet-title">
+      <span class="catalog-tile-ico" aria-hidden="true"><%- icon("file-output") %></span>
+      <div>
+        <h1><%= t("stuf.title") %></h1>
+        <p class="lede"><%= t("stuf.lede") %></p>
+      </div>
+      <span class="badge <%= stufReady ? "badge-afgerond" : "badge-wacht_op_info" %>"><%= stufReady ? t("common.connected") : t("common.notConfigured") %></span>
+    </div>
+    <div class="settings-tabs" role="tablist" aria-label="<%= t("stuf.title") %>">
+      <% tabs.forEach(function (tab) { %>
+      <% const on = tab.id === activeTab; %>
+      <button type="button" class="<%= on ? "is-active" : "" %>" role="tab" id="stuf-tab-<%= tab.id %>" aria-controls="stuf-panel-<%= tab.id %>" aria-selected="<%= on ? "true" : "false" %>" tabindex="<%= on ? "0" : "-1" %>" data-form-tab="<%= tab.id %>">
+        <%= tab.label %>
+      </button>
+      <% }) %>
+    </div>
   </div>
+  <div class="settings-sheet-body">
 
   <section class="settings-panel" role="tabpanel" id="stuf-panel-connection" aria-labelledby="stuf-tab-connection" data-form-panel="connection"<% if (activeTab !== "connection") { %> hidden<% } %>>
     <label><%= t("stuf.dcaUrl") %>
@@ -118,5 +121,6 @@
 
   <div class="form-actions">
     <button class="btn" type="submit"><%= t("stuf.save") %></button>
+  </div>
   </div>
 </form>

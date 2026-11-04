@@ -2299,6 +2299,49 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   font-weight: 700;
 }
 .form-section .mono { word-break: break-all; }
+.form.settings-sheet {
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.settings-sheet-head {
+  padding: 18px 20px 0;
+  background:
+    radial-gradient(90% 140% at 100% -20%, color-mix(in srgb, var(--accent-bright) 48%, transparent), transparent 58%),
+    linear-gradient(165deg, #d7efe7 0%, var(--surface-2) 72%);
+}
+.settings-sheet-title {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+.settings-sheet-title h1 {
+  margin: 0;
+  font-size: 1.45rem;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+}
+.settings-sheet-title .lede {
+  margin: 6px 0 0;
+  max-width: 46ch;
+}
+.settings-sheet-title .badge { margin-top: 4px; }
+.settings-sheet-body {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+.settings-sheet .form-actions { margin-top: 4px; }
+html[data-theme="dark"] .settings-sheet-head {
+  background:
+    radial-gradient(90% 140% at 100% -20%, color-mix(in srgb, var(--accent-bright) 22%, transparent), transparent 58%),
+    linear-gradient(165deg, #14352c 0%, var(--surface-2) 72%);
+}
 .settings-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -2306,6 +2349,10 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   margin: 0 0 4px;
   padding: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+.settings-sheet .settings-tabs {
+  margin: 0;
+  border-bottom-color: color-mix(in srgb, var(--line) 50%, transparent);
 }
 .settings-tabs button {
   appearance: none;

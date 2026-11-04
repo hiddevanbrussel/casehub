@@ -51,7 +51,7 @@
       <ul class="process-tasks">
         <% group.tasks.forEach(function (task) { %>
           <li>
-            <form method="post" action="/zaken/<%= zaak.id %>/process">
+            <form method="post" action="/zaken/<%= zaak.id %>/process" data-process-live>
               <%- include("process-return-fields", { zaak: zaak }) %>
               <input type="hidden" name="action" value="task">
               <input type="hidden" name="taskId" value="<%= task.id %>">
@@ -65,7 +65,7 @@
       </ul>
     <% }) %>
     <% if (proc.decisions.length) { %>
-      <form class="process-decisions" method="post" action="/zaken/<%= zaak.id %>/process">
+      <form class="process-decisions" method="post" action="/zaken/<%= zaak.id %>/process" data-process-live>
         <%- include("process-return-fields", { zaak: zaak }) %>
         <input type="hidden" name="action" value="decision">
         <p class="process-decisions-label"><%= t("process.decisions") %></p>

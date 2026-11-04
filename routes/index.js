@@ -204,6 +204,22 @@ function listRequest(req) {
   };
 }
 
+function wantsProcessPartial(req) {
+  const requested = String(req.get("X-Requested-With") || "").toLowerCase();
+  const accept = String(req.get("Accept") || "");
+  const live = String(req.query.live || req.body.live || "") === "1";
+  return live || requested === "process" || accept.includes("application/json");
+}
+
+function renderView(req, res, view, locals) {
+  return new Promise((resolve, reject) => {
+    req.app.render(view, { ...res.locals, layout: false, ...locals }, (err, html) => {
+      if (err) reject(err);
+      else resolve(html || "");
+    });
+  });
+}
+
 function nawListPath(base, src) {
   const params = new URLSearchParams();
   const map = {
@@ -2123,7 +2139,7 @@ function routes() {
     toastT(req, res, zaakFocusPath(zaak.id), "toast.caseSaved");
   });
 
-  r.post("/zaken/:id/process", (req, res) => {
+  r.post("/zaken/:id/process", async (req, res) => {
     const zaak = store.zaak(req.params.id);
     if (!zaak) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
     const type = zaak.zaaktypeId ? store.zaaktype(zaak.zaaktypeId) : null;
@@ -2160,6 +2176,40 @@ function routes() {
       req.user,
       detail
     );
+    if (wantsProcessPartial(req)) {
+      try {
+        const next = store.zaak(req.params.id);
+        const proc = next.process || {};
+        const openTasks = (proc.tasks || []).filter((task) => !task.done).length;
+        const hasTasksTab = Boolean(proc.enabled && !proc.done);
+        const formLocals = {
+          q: req.body.filterQ,
+          status: req.body.filterStatus,
+          zaaktypeId: req.body.filterZaaktypeId,
+          prioriteit: req.body.filterPrioriteit,
+          page: req.body.filterPage,
+          pageSize: req.body.filterPageSize,
+        };
+        const actionsHtml = action === "task"
+          ? await renderView(req, res, "partials/process-progress", {
+            zaak: next,
+            processPart: "actions",
+            ...formLocals,
+          })
+          : "";
+        return res.json({
+          ok: true,
+          action,
+          actionsHtml,
+          openTasks,
+          hasTasksTab,
+          currentName: proc.currentName || "",
+          done: Boolean(proc.done),
+        });
+      } catch {
+        return res.status(500).json({ ok: false });
+      }
+    }
     if (req.body.from === "list") {
       return toastT(req, res, zakenListPath({ ...req.body, filterFocus: zaak.id }), "toast.caseSaved");
     }

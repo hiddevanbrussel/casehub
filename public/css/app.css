@@ -1139,6 +1139,10 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   gap: 4px;
 }
 .peek-panel .process-actions { margin: 0; }
+.peek-panel[data-peek-panel="tasks"][aria-busy="true"] {
+  pointer-events: none;
+  opacity: 0.72;
+}
 .process-actions-head {
   display: flex;
   align-items: baseline;

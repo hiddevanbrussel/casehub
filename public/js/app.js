@@ -8,10 +8,99 @@
     document.querySelector(".overview-filters")?.classList.toggle("is-open");
   });
 
+  let reloadList = null;
+  let processBusy = false;
+
+  const setPeekCount = (tabId, count) => {
+    const tab = document.querySelector(`[data-peek-tab="${tabId}"]`);
+    if (!tab) return;
+    let badge = tab.querySelector(".peek-count");
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "peek-count";
+        tab.appendChild(badge);
+      }
+      badge.textContent = String(count);
+      return;
+    }
+    badge?.remove();
+  };
+
+  const refreshPeek = async (hasTasksTab) => {
+    const here = new URL(location.href);
+    here.searchParams.delete("toast");
+    if (hasTasksTab === false) here.searchParams.delete("peekTab");
+    else if (hasTasksTab) here.searchParams.set("peekTab", "tasks");
+    if (reloadList) await reloadList(here.href);
+    else window.location.replace(here.href);
+  };
+
+  const liveProcess = async (form, submitter) => {
+    if (processBusy) return;
+    processBusy = true;
+    const panel = form.closest("[data-peek-panel='tasks']") || document.querySelector("[data-peek-panel='tasks']");
+    panel?.setAttribute("aria-busy", "true");
+    const body = new URLSearchParams();
+    new FormData(form).forEach((value, key) => {
+      if (typeof value === "string") body.append(key, value);
+    });
+    if (submitter instanceof HTMLInputElement && submitter.type === "checkbox" && submitter.name) {
+      if (submitter.checked) body.set(submitter.name, submitter.value);
+      else body.delete(submitter.name);
+    } else if (submitter?.name) {
+      body.set(submitter.name, submitter.value);
+    }
+    try {
+      const url = new URL(form.getAttribute("action") || form.action, location.origin);
+      url.searchParams.set("live", "1");
+      const res = await fetch(url.href, {
+        method: "POST",
+        body,
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "process",
+        },
+      });
+      const type = String(res.headers.get("content-type") || "");
+      if (!res.ok || !type.includes("application/json")) throw new Error("process");
+      const data = await res.json().catch(() => ({}));
+      if (!data.ok) throw new Error("process");
+      const action = form.querySelector('[name="action"]')?.value || data.action;
+      if (action === "decision") {
+        await refreshPeek(Boolean(data.hasTasksTab));
+        return;
+      }
+      if (panel && data.actionsHtml != null) panel.innerHTML = data.actionsHtml;
+      setPeekCount("tasks", Number(data.openTasks) || 0);
+    } catch {
+      await refreshPeek();
+    } finally {
+      processBusy = false;
+      panel?.removeAttribute("aria-busy");
+    }
+  };
+
   document.addEventListener("change", (event) => {
     const el = event.target.closest("[data-auto-submit]");
-    if (el?.form) el.form.requestSubmit();
+    if (!el?.form) return;
+    if (el.form.hasAttribute("data-process-live")) {
+      event.stopPropagation();
+      liveProcess(el.form, el);
+      return;
+    }
+    el.form.requestSubmit();
   });
+
+  document.addEventListener("submit", (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (!form.hasAttribute("data-process-live")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    liveProcess(form, event.submitter);
+  }, true);
 
   const bindFormTabs = (root) => {
     const tabs = [...root.querySelectorAll("[data-form-tab]")];
@@ -1067,9 +1156,12 @@
       loadList(url.href);
     });
 
+    reloadList = loadList;
+
     work.addEventListener("submit", (event) => {
       const form = event.target;
       if (!(form instanceof HTMLFormElement)) return;
+      if (form.hasAttribute("data-process-live")) return;
       if ((form.getAttribute("method") || "get").toLowerCase() !== "get") return;
       event.preventDefault();
       const url = new URL(form.getAttribute("action") || location.href, location.origin);

@@ -1080,92 +1080,69 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   font-size: 15px;
   max-width: none;
 }
-.list-peek.is-editing .process-progress { display: none; }
+.list-peek.is-editing .process-progress,
+.list-peek.is-editing .process-actions { display: none; }
 .process-progress {
-  margin: 16px 24px 0;
-  padding: 14px 0 4px;
-  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  display: grid;
-  gap: 12px;
-}
-.process-progress-head {
+  margin: 0;
+  padding: 18px 24px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
 }
-.process-progress-head h3 {
+.process-progress h3 {
   margin: 0;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
-.process-progress-head p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
-}
-.process-progress h4 {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
-}
-.process-rail {
+.process-track {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  gap: 0;
-  overflow-x: auto;
-}
-.process-rail li {
-  position: relative;
-  flex: 1 1 0;
-  min-width: 88px;
   display: grid;
-  justify-items: start;
-  gap: 6px;
-  padding-right: 12px;
+  grid-template-columns: repeat(var(--process-steps, 3), minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
 }
-.process-rail li + li::before {
-  content: "";
-  position: absolute;
-  left: -12px;
-  right: calc(100% - 7px);
-  top: 7px;
-  height: 2px;
-  background: var(--line);
+.process-track li {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  justify-items: stretch;
 }
-.process-rail li.is-done + li::before,
-.process-rail li.is-current + li.is-todo::before {
-  background: color-mix(in srgb, var(--accent) 55%, var(--line));
+.process-track-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 65%, var(--surface));
 }
-.process-rail-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid var(--line);
-  background: var(--surface);
-  position: relative;
-  z-index: 1;
-}
-.process-rail li.is-done .process-rail-dot {
-  border-color: var(--accent);
+.process-track li.is-done .process-track-bar {
   background: var(--accent);
 }
-.process-rail li.is-current .process-rail-dot {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-soft);
+.process-track li.is-current .process-track-bar {
+  background: var(--open);
 }
-.process-rail-name {
+.process-track-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.process-actions {
+  margin: 16px 24px 0;
+  display: grid;
+  gap: 12px;
+}
+.process-actions h4 {
+  margin: 0;
   font-size: 12px;
   font-weight: 700;
   color: var(--muted);
-}
-.process-rail li.is-current .process-rail-name,
-.process-rail li.is-done .process-rail-name {
-  color: var(--text);
 }
 .process-tasks {
   list-style: none;

@@ -397,6 +397,7 @@
             </div>
           </div>
         </dl>
+        <%- include("../partials/process-progress", { zaak: peekCase, processPart: "track" }) %>
         <div class="peek-fields peek-edit">
           <label><%= t("cases.caseId") %>
             <input class="is-readonly" value="<%= composing ? t('cases.caseIdSoon') : peekCase.zaaknummer %>" readonly>
@@ -478,7 +479,7 @@
           <script type="application/json" data-stake-json><%- JSON.stringify({ persons: personOptions, companies: companyOptions }).replace(/</g, "\\u003c") %></script>
         </section>
       </form>
-      <%- include("../partials/process-progress", { zaak: peekCase }) %>
+      <%- include("../partials/process-progress", { zaak: peekCase, processPart: "actions" }) %>
       <% if (!composing) { %>
       <div class="peek-tabs peek-view" role="tablist" aria-label="<%= peekCase.titel %>">
         <button type="button" class="<%= activePeekTab === "holders" ? "is-active" : "" %>" role="tab" id="peek-tab-holders" aria-controls="peek-panel-holders" aria-selected="<%= activePeekTab === "holders" ? "true" : "false" %>" tabindex="<%= activePeekTab === "holders" ? "0" : "-1" %>" data-peek-tab="holders">

@@ -18,7 +18,7 @@
 %>
 <p class="back-link"><a href="/instellingen/zaaktypen"><%= t('caseTypes.back') %></a></p>
 <% if (typeof error !== "undefined" && error) { %><p class="alert"><%= error %></p><% } %>
-<form class="form settings-sheet is-wide type-form" method="post" action="<%= type.id ? '/instellingen/zaaktypen/' + type.id : '/instellingen/zaaktypen' %>" data-form-tabs>
+<form class="form settings-sheet type-form" method="post" action="<%= type.id ? '/instellingen/zaaktypen/' + type.id : '/instellingen/zaaktypen' %>" data-form-tabs>
   <input type="hidden" name="zaaktypeTab" value="<%= activeTab %>" data-form-tab-value>
   <div class="settings-sheet-head">
     <div class="settings-sheet-title">
@@ -80,7 +80,7 @@
     <fieldset class="process-builder" data-process-builder data-i18n-next="<%= t('process.toNext') %>" data-i18n-end="<%= t('process.toEnd') %>">
       <p class="hint"><%= t("process.lede") %></p>
       <input type="hidden" name="processConfigured" value="1">
-      <div data-process-steps>
+      <div class="process-steps" data-process-steps>
         <% steps.forEach(function (step, index) { %>
         <article class="process-step" data-process-step>
           <header class="process-step-head">

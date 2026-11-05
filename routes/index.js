@@ -7,6 +7,7 @@ const {
   store,
   workspaces,
   workspace,
+  resolveStufWorkspace,
   openTenant,
   runWithStore,
   setWorkspaceCookie,
@@ -1639,13 +1640,19 @@ function routes() {
     return stufConfirm(res, stuf, parsed, found.job);
   }
 
-  r.get("/api/stuf-dcr/:slug", (req, res) => stufEndpointInfo(req, res, req.params.slug));
+  r.get("/api/stuf-dcr/:slug", (req, res) => {
+    const item = resolveStufWorkspace(req.params.slug, req.store);
+    stufEndpointInfo(req, res, item?.slug || req.params.slug);
+  });
   r.get("/api/stuf-dcr", (req, res) => stufEndpointInfo(req, res, req.store?.slug || ""));
 
   r.post("/api/stuf-dcr/:slug", async (req, res) => {
     try {
-      const tenant = workspace(req.params.slug) ? openTenant(req.params.slug) : null;
-      if (!tenant) return sendSoap(res, stufDcr.buildFault("Onbekende werkruimte"), 404);
+      const item = resolveStufWorkspace(req.params.slug, req.store);
+      const tenant = item ? openTenant(item.slug) : null;
+      if (item && slugify(req.params.slug) !== item.slug) {
+        console.log(`stuf-dcr workspace ${req.params.slug} -> ${item.slug}`);
+      }
       await handleStufInbound(req, res, tenant);
     } catch (err) {
       console.error(err);

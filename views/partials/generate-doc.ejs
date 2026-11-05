@@ -12,10 +12,16 @@
   const bulkCompanies = generateCompanies.length > 1;
   const showStakePicker = bulkPeople || bulkCompanies;
   const defaultBulkKind = bulkPeople ? "persoon" : (bulkCompanies ? "bedrijf" : "");
+  const stufOn = Boolean(typeof stufReady !== "undefined" && stufReady);
+  const createOn = Boolean(typeof createEnabled !== "undefined" && createEnabled);
+  const defaultMode = stufOn && !createOn ? "interactive" : "generate";
+  const recipeList = Array.isArray(recipes) ? recipes : [];
 %>
 <% if (!locals.hideButtons) { %>
+<% if (createOn && recipeList.length) { %>
 <button class="btn<%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="generate" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateDoc') %></button>
-<button class="ghost<%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="interactive" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateInteractive') %></button>
+<% } %>
+<button class="<%= createOn && recipeList.length ? 'ghost' : 'btn' %><%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="interactive" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateInteractive') %></button>
 <% } %>
 <% if (canGenerate) { %>
 <dialog class="edit-modal generate-modal" id="generate-modal">
@@ -25,7 +31,7 @@
       <button type="button" class="icon-btn" data-modal-close aria-label="<%= t('common.close') %>"><%- icon("x") %></button>
     </div>
     <div class="modal-body">
-      <input type="hidden" name="mode" value="generate" data-generate-mode>
+      <input type="hidden" name="mode" value="<%= defaultMode %>" data-generate-mode>
       <% if (locals.fromList) { %><%- include("list-return-fields") %><% } %>
       <% if (showStakePicker) { %>
       <p class="hint" data-generate-hint="batch"><%= t("cases.generateBatchHint") %></p>
@@ -59,26 +65,34 @@
         <% } %>
       </div>
       <% } %>
+      <% if (recipeList.length) { %>
       <p class="hint"><%= t('cases.pickTemplate') %></p>
       <div class="tpl-picker" data-generate-picker>
-        <% if (recipes.length > 6) { %>
+        <% if (recipeList.length > 6) { %>
         <div class="tpl-picker-bar">
           <input type="search" data-generate-filter placeholder="<%= t('templates.search') %>" autocomplete="off">
         </div>
         <% } %>
         <div class="tpl-picker-list">
-          <% recipes.forEach(function (recipe, index) { %>
+          <% recipeList.forEach(function (recipe, index) { %>
           <label class="check-item">
-            <input type="radio" name="recipeId" value="<%= recipe.itemId %>" <%= index === 0 ? "checked" : "" %> required>
+            <input type="radio" name="recipeId" value="<%= recipe.itemId %>" <%= index === 0 ? "checked" : "" %> <%= stufOn ? "" : "required" %>>
             <span><%= recipe.name %> <small class="tpl-type"><%= recipe.recipeType || "" %></small></span>
           </label>
           <% }) %>
         </div>
       </div>
+      <% } %>
+      <% if (stufOn) { %>
+      <p class="hint"><%= t("stuf.templateIdHint") %></p>
+      <label><%= t("stuf.templateId") %>
+        <input name="stufTemplateId" <%= recipeList.length ? "" : "required" %> placeholder="1859ef9a-7331-42a0-a9b6-05547ce91452" autocomplete="off">
+      </label>
+      <% } %>
     </div>
     <footer class="modal-foot">
       <button type="button" class="ghost" data-modal-close><%= t('common.cancel') %></button>
-      <button class="btn" type="submit" data-generate-submit><%= t('cases.generateDoc') %></button>
+      <button class="btn" type="submit" data-generate-submit><%= defaultMode === "interactive" ? t("cases.generateInteractive") : t("cases.generateDoc") %></button>
     </footer>
   </form>
 </dialog>

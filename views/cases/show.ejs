@@ -1,5 +1,8 @@
 <%
-  const canGenerate = Boolean(createReady && recipes.length);
+  const stufOn = Boolean(typeof stufReady !== "undefined" && stufReady);
+  const createOn = Boolean(typeof createEnabled !== "undefined" && createEnabled);
+  const canGenerate = Boolean(createReady && (recipes.length || stufOn));
+  const generateMode = stufOn && !createOn ? "interactive" : "generate";
   const persons = zaak.personen || [];
   const companies = zaak.bedrijven || [];
   const events = typeof activity !== "undefined" ? activity : [];
@@ -64,7 +67,9 @@
           <%- icon("ellipsis") %>
         </summary>
         <div class="menu-dots-list">
+          <% if (createOn && recipes.length) { %>
           <button type="button" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>><%= t("cases.generateDoc") %></button>
+          <% } %>
           <button type="button" data-generate-open="interactive" <%= canGenerate ? "" : "disabled" %>><%= t("cases.generateInteractive") %></button>
           <form method="post" action="/zaken/<%= zaak.id %>/verwijderen" data-confirm="<%= t('cases.confirmDelete') %>">
             <button class="danger-text" type="submit"><%= t("common.delete") %></button>
@@ -151,7 +156,7 @@
           <% } %>
         </header>
         <%- include("../partials/doc-list", { docRows: docRows, compact: true, canDelete: false, emptyTitle: t("dash.noDocs") }) %>
-        <button type="button" class="case-add" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>>
+        <button type="button" class="case-add" data-generate-open="<%= generateMode %>" <%= canGenerate ? "" : "disabled" %>>
           <%- icon("plus") %>
           <%= t("cases.addDocument") %>
         </button>
@@ -215,7 +220,7 @@
   <section class="case-panel">
     <header class="case-panel-head">
       <h2><%= t("cases.tabDocuments") %></h2>
-      <button type="button" class="linkish" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>><%= t("cases.addDocument") %></button>
+      <button type="button" class="linkish" data-generate-open="<%= generateMode %>" <%= canGenerate ? "" : "disabled" %>><%= t("cases.addDocument") %></button>
     </header>
     <%- include("../partials/doc-list", {
       docRows: docRows,

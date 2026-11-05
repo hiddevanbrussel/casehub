@@ -55,6 +55,45 @@
     </div>
   </section>
 
+  <% const org = meta.org && typeof meta.org === "object" ? meta.org : {}; %>
+  <section class="form-card">
+    <h2><%= t("settings.companySection") %></h2>
+    <p class="hint"><%= t("settings.companyHint") %></p>
+    <div class="form-grid form-grid-2">
+      <label class="span-all"><%= t("settings.orgLegalName") %>
+        <input name="org[naam]" value="<%= org.naam || "" %>" placeholder="<%= meta.orgName %>">
+        <span class="hint"><%= t("settings.orgLegalNameHint") %></span>
+      </label>
+      <label><%= t("companies.kvk") %>
+        <input name="org[kvk]" value="<%= org.kvk || "" %>">
+      </label>
+      <label><%= t("settings.orgBtw") %>
+        <input name="org[btw]" value="<%= org.btw || "" %>">
+      </label>
+      <label><%= t("companies.email") %>
+        <input type="email" name="org[email]" value="<%= org.email || "" %>">
+      </label>
+      <label><%= t("companies.phone") %>
+        <input name="org[telefoon]" value="<%= org.telefoon || "" %>">
+      </label>
+      <label class="span-all"><%= t("settings.orgWebsite") %>
+        <input name="org[website]" value="<%= org.website || "" %>" placeholder="https://">
+      </label>
+      <label class="span-all"><%= t("companies.address") %>
+        <input name="org[adres]" value="<%= org.adres || "" %>">
+      </label>
+      <label><%= t("companies.postcode") %>
+        <input name="org[postcode]" value="<%= org.postcode || "" %>">
+      </label>
+      <label><%= t("companies.place") %>
+        <input name="org[plaats]" value="<%= org.plaats || "" %>">
+      </label>
+      <label class="span-all"><%= t("persons.country") %>
+        <input name="org[land]" value="<%= org.land || "" %>">
+      </label>
+    </div>
+  </section>
+
   <section class="form-card">
     <h2><%= t("settings.numberingSection") %></h2>
     <div class="form-grid<%= isCases && isHr ? " form-grid-2" : "" %>">

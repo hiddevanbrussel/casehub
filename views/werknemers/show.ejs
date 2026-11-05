@@ -1,5 +1,8 @@
 <%
-  const canGenerate = Boolean(createReady && recipes.length);
+  const stufOn = Boolean(typeof stufReady !== "undefined" && stufReady);
+  const createOn = Boolean(typeof createEnabled !== "undefined" && createEnabled);
+  const canGenerate = Boolean(createReady && (recipes.length || stufOn));
+  const generateMode = stufOn && !createOn ? "interactive" : "generate";
   const tabId = tab === "documents" || tab === "cases" ? tab : "details";
   const aanhefLabel = werknemer.aanhef === "heer" ? t("hr.heer") : (werknemer.aanhef === "mevrouw" ? t("hr.mevrouw") : (werknemer.aanhef || "—"));
   const v = function (value) { return value || "—"; };
@@ -214,7 +217,7 @@
         <%= t('cases.tabDocuments') %>
       </h2>
       <% if (canWrite) { %>
-      <button type="button" class="linkish" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>><%= t("cases.addDocument") %></button>
+      <button type="button" class="linkish" data-generate-open="<%= generateMode %>" <%= canGenerate ? "" : "disabled" %>><%= t("cases.addDocument") %></button>
       <% } %>
     </header>
     <%- include("../partials/doc-list", {

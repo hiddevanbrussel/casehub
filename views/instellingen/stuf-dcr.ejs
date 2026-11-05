@@ -33,6 +33,9 @@
   <div class="settings-sheet-body">
 
   <section class="settings-panel" role="tabpanel" id="stuf-panel-connection" aria-labelledby="stuf-tab-connection" data-form-panel="connection"<% if (activeTab !== "connection") { %> hidden<% } %>>
+    <div class="settings-note">
+      <p class="hint"><%= t("stuf.howTo") %></p>
+    </div>
     <label><%= t("stuf.dcaUrl") %>
       <input name="dcaUrl" class="settings-url" required value="<%= stuf.dcaUrl %>" placeholder="https://create.example.nl/stuf/dcr" autocomplete="off">
       <span class="hint"><%= t("stuf.dcaUrlHint") %></span>
@@ -43,6 +46,10 @@
     <label><%= t("stuf.publicUrl") %>
       <input name="publicBaseUrl" class="settings-url" value="<%= stuf.publicBaseUrl %>" placeholder="https://zaakhub.example.nl" autocomplete="off">
       <span class="hint"><%= t("stuf.publicUrlHint") %></span>
+    </label>
+    <label><%= t("stuf.templates") %>
+      <textarea name="templatesText" class="settings-url" rows="5" placeholder="1859ef9a-7331-42a0-a9b6-05547ce91452 | Welkomstbrief" autocomplete="off"><%= typeof stufTemplatesText !== "undefined" ? stufTemplatesText : "" %></textarea>
+      <span class="hint"><%= t("stuf.templatesHint") %></span>
     </label>
     <div class="settings-note">
       <span class="field-caption"><%= t("stuf.callback") %></span>

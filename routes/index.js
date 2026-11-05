@@ -516,13 +516,34 @@ function visibleRecipes() {
   return store.recipes().filter((recipe) => !recipe.hideFromUserView);
 }
 
+function stufRecipes() {
+  return (stufDcr.stufSettings(store).templates || [])
+    .filter((item) => item && item.itemId)
+    .map((item) => ({ itemId: item.itemId, name: item.name || item.itemId, recipeType: "StUF-DCR" }));
+}
+
 function documentChannelReady() {
   return create.enabled(create.createSettings(store)) || stufDcr.enabled(stufDcr.stufSettings(store));
 }
 
+function resolveRecipe(recipeId, { interactive = false } = {}) {
+  const id = String(recipeId || "").trim();
+  if (!id) return null;
+  const stored = store.recipe(id);
+  if (stored) return stored;
+  const listed = stufRecipes().find((item) => item.itemId === id);
+  if (listed) return listed;
+  if (interactive && stufDcr.enabled(stufDcr.stufSettings(store))) {
+    return { itemId: id, name: id };
+  }
+  return null;
+}
+
 function employeeDocContext() {
   if (!isHr(store.meta())) return { recipes: [], createReady: false };
-  return { recipes: visibleRecipes(), createReady: documentChannelReady() };
+  const allRecipes = visibleRecipes();
+  const extra = stufRecipes().filter((item) => !allRecipes.some((recipe) => recipe.itemId === item.itemId));
+  return { recipes: allRecipes.concat(extra), createReady: documentChannelReady() };
 }
 
 function draftZaak() {
@@ -551,18 +572,21 @@ function draftZaak() {
 
 function recipesForZaak(zaak) {
   const allRecipes = visibleRecipes();
-  if (!zaak) return [];
+  const extra = stufRecipes().filter((item) => !allRecipes.some((recipe) => recipe.itemId === item.itemId));
+  const combined = extra.concat(allRecipes);
+  if (!zaak) return combined;
   const type = zaak.zaaktypeId ? store.zaaktype(zaak.zaaktypeId) : null;
   if (type?.recipeIds?.length) {
-    return allRecipes.filter((recipe) => type.recipeIds.includes(recipe.itemId));
+    const linked = combined.filter((recipe) => type.recipeIds.includes(recipe.itemId));
+    return linked.length ? linked : extra;
   }
-  return allRecipes;
+  return combined;
 }
 
 function caseDocEmptyHint(req, zaak) {
   if (!documentChannelReady()) return req.t("cases.generateNeedsIntegration");
   const recipes = recipesForZaak(zaak);
-  if (recipes.length) return req.t("cases.docEmptyHint");
+  if (recipes.length || stufDcr.enabled(stufDcr.stufSettings(store))) return req.t("cases.docEmptyHint");
   const type = zaak?.zaaktypeId ? store.zaaktype(zaak.zaaktypeId) : null;
   if (type?.recipeIds?.length) return req.t("cases.noTemplatesLinked");
   return req.t("cases.noTemplates");
@@ -571,7 +595,7 @@ function caseDocEmptyHint(req, zaak) {
 function employeeDocEmptyHint(req) {
   const ctx = employeeDocContext();
   if (!ctx.createReady) return req.t("cases.generateNeedsIntegration");
-  if (ctx.recipes.length) return req.t("hr.docEmptyHint");
+  if (ctx.recipes.length || stufDcr.enabled(stufDcr.stufSettings(store))) return req.t("hr.docEmptyHint");
   return req.t("cases.noTemplates");
 }
 
@@ -775,7 +799,7 @@ async function startStufOwnerDocument(req, res, { owner, recipe, settings, stuf,
     party,
     data: payload,
     actor: req.user,
-    org: { orgName: store.meta().orgName || "", slug: store.slug || stuf.slug || "" },
+    org: { ...create.orgFields(store.meta()), orgName: store.meta().orgName || "", slug: store.slug || stuf.slug || "" },
     referentienummer,
   });
   store.log(
@@ -948,11 +972,11 @@ async function generateBatchOwnerDocuments(req, res, { owner, recipe, settings, 
 }
 
 async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl, backUrl, targets }) {
-  const recipe = store.recipe(req.body.recipeId);
-  if (!recipe) return generateReply(req, res, { next: backUrl, message: req.t("toast.pickTemplate") });
   const settings = create.createSettings(store);
   const stuf = stufDcr.stufSettings(store);
   const interactive = String(req.body.mode || "") === "interactive";
+  const recipe = resolveRecipe(String(req.body.stufTemplateId || "").trim() || req.body.recipeId, { interactive });
+  if (!recipe) return generateReply(req, res, { next: backUrl, message: req.t("toast.pickTemplate") });
   if (!(interactive && stufDcr.enabled(stuf)) && !create.enabled(settings)) {
     return generateReply(req, res, { next: backUrl, message: req.t("toast.createOff") });
   }
@@ -2324,12 +2348,12 @@ function routes() {
     const recipeName = (recipe && recipe.name) || "document";
     const targets = create.sameKindTargets(create.pickStakeholders(zaak, bodyValues(req.body.stakeholder))).map((stake) => ({
       ...stake,
-      data: create.prefillData(zaak, recipe || {}, { persoon: stake.persoon, bedrijf: stake.bedrijf }),
+      data: create.prefillData(zaak, recipe || {}, { persoon: stake.persoon, bedrijf: stake.bedrijf }, store.meta()),
       fileName: `${recipeName}-${zaak.zaaknummer}${stake.name ? `-${stake.name}` : ""}.pdf`,
     }));
     await generateOwnerDocument(req, res, {
       owner: { zaakId: zaak.id },
-      data: targets[0]?.data || create.prefillData(zaak, recipe || {}),
+      data: targets[0]?.data || create.prefillData(zaak, recipe || {}, {}, store.meta()),
       fileName: targets[0]?.fileName || `${recipeName}-${zaak.zaaknummer}.pdf`,
       targets,
       docsUrl: fromList ? listBack : zaakFocusPath(zaak.id, { peekTab: "docs" }),
@@ -2791,7 +2815,7 @@ function routes() {
     const fileName = `${(recipe && recipe.name) || "document"}-${werknemer.personeelsnummer || werknemer.naam}.pdf`;
     await generateOwnerDocument(req, res, {
       owner: { werknemerId: werknemer.id },
-      data: create.prefillEmployee(werknemer, recipe || {}),
+      data: create.prefillEmployee(werknemer, recipe || {}, store.meta()),
       fileName,
       docsUrl: fromList ? listBack : `/werknemers/${werknemer.id}?tab=documents`,
       backUrl: fromList ? listBack : `/werknemers/${werknemer.id}`,
@@ -3021,6 +3045,7 @@ function routes() {
       appProfile: appProfile({ appProfile: req.body.appProfile }),
       personeelPrefix: String(req.body.personeelPrefix || "P").trim().toUpperCase().slice(0, 6) || "P",
       chrome: parseChrome(req.body.chrome),
+      org: create.parseOrgInput(req.body.org),
     };
     if (Object.prototype.hasOwnProperty.call(req.body, "quickStatusChange")) {
       patch.quickStatusChange = leaseFlag(req.body.quickStatusChange);
@@ -3192,6 +3217,7 @@ function routes() {
       stuf,
       stufTab: wanted === "identity" || wanted === "certs" ? wanted : "connection",
       stufReady: stufDcr.configured(stuf),
+      stufTemplatesText: stufDcr.templatesText(stuf.templates),
       stufCallback: stufDcr.publicCallbackUrl(stufDcr.publicOrigin(req, store), stuf.slug),
     });
   });

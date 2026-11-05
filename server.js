@@ -19,6 +19,8 @@ const { documentRows, formatFileSize } = require("./lib/docs");
 const { themeMiddleware, parseChrome } = require("./lib/theme");
 const { isHr, isCases, appProfile } = require("./lib/profile");
 const { tourPayload } = require("./lib/tour");
+const create = require("./lib/create");
+const stufDcr = require("./lib/stuf-dcr");
 const { routes } = require("./routes");
 
 if (["1", "true", "yes"].includes(String(process.env.SEED_DEMO || "").toLowerCase())) {
@@ -64,6 +66,8 @@ app.use((req, res, next) => {
     res.locals.canWriteEmployees = isHr(meta) ? canWriteMaster(user) : isAdmin(user);
     res.locals.quickStatusChange = meta.quickStatusChange !== false;
     res.locals.chrome = parseChrome(meta.chrome);
+    res.locals.createEnabled = req.store ? create.enabled(create.createSettings(req.store)) : false;
+    res.locals.stufReady = req.store ? stufDcr.enabled(stufDcr.stufSettings(req.store)) : false;
     res.locals.toast = req.query.toast || "";
     res.locals.path = req.path;
     res.locals.formatDate = (value) => formatDate(value, req.lang);

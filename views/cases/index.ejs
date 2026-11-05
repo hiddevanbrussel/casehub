@@ -298,9 +298,11 @@
       <% const requestedPeekTab = typeof peekTab !== "undefined" ? peekTab : "holders"; %>
       <% const activePeekTab = requestedPeekTab === "tasks" && !hasTasksTab ? "holders" : requestedPeekTab; %>
       <% const peekRecipes = typeof recipes !== "undefined" ? recipes : []; %>
-      <% const peekCanGenerate = Boolean(typeof createReady !== "undefined" && createReady && peekRecipes.length); %>
+      <% const peekStufOn = Boolean(typeof stufReady !== "undefined" && stufReady);
+      const peekCreateOn = Boolean(typeof createEnabled !== "undefined" && createEnabled);
+      const peekCanGenerate = Boolean(typeof createReady !== "undefined" && createReady && (peekRecipes.length || peekStufOn)); %>
       <% const peekGenerateHint = (typeof createReady !== "undefined" && createReady)
-        ? (typeof templatesLinked !== "undefined" && templatesLinked ? t("cases.noTemplatesLinked") : t("cases.noTemplates"))
+        ? (peekRecipes.length || peekStufOn ? t("cases.docEmptyHint") : (typeof templatesLinked !== "undefined" && templatesLinked ? t("cases.noTemplatesLinked") : t("cases.noTemplates")))
         : t("cases.generateNeedsIntegration"); %>
       <% const peekStart = (peekCase.startdatum || peekCase.createdAt || "").slice(0, 10); %>
       <% const personOptions = (typeof personen !== "undefined" ? personen : []).map(function (p) {
@@ -336,7 +338,7 @@
             </label>
           </form>
           <% } %>
-          <button type="button" class="btn peek-create-doc" data-generate-open="generate" <%= peekCanGenerate ? "" : "disabled" %><% if (!peekCanGenerate) { %> title="<%= peekGenerateHint %>"<% } %>>
+          <button type="button" class="btn peek-create-doc" data-generate-open="<%= peekStufOn && !peekCreateOn ? "interactive" : "generate" %>" <%= peekCanGenerate ? "" : "disabled" %><% if (!peekCanGenerate) { %> title="<%= peekGenerateHint %>"<% } %>>
             <%- icon("file-plus") %>
             <%= t("cases.createDoc") %>
           </button>

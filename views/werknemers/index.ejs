@@ -147,8 +147,12 @@
       </div>
     <% } else { %>
       <% const peekRecipes = typeof recipes !== "undefined" ? recipes : []; %>
-      <% const peekCanGenerate = Boolean(isHr && typeof createReady !== "undefined" && createReady && peekRecipes.length); %>
-      <% const peekGenerateHint = (typeof createReady !== "undefined" && createReady) ? t("cases.noTemplates") : t("cases.generateNeedsIntegration"); %>
+      <% const peekStufOn = Boolean(typeof stufReady !== "undefined" && stufReady);
+      const peekCreateOn = Boolean(typeof createEnabled !== "undefined" && createEnabled);
+      const peekCanGenerate = Boolean(isHr && typeof createReady !== "undefined" && createReady && (peekRecipes.length || peekStufOn)); %>
+      <% const peekGenerateHint = (typeof createReady !== "undefined" && createReady)
+        ? (peekRecipes.length || peekStufOn ? t("hr.docEmptyHint") : t("cases.noTemplates"))
+        : t("cases.generateNeedsIntegration"); %>
       <% if (canEditPeek && !composing) { %>
       <div class="peek-bar peek-view">
         <div class="peek-actions">
@@ -157,7 +161,7 @@
             <%= t("common.edit") %>
           </button>
           <% if (isHr) { %>
-          <button type="button" class="btn peek-create-doc" data-generate-open="generate" <%= peekCanGenerate ? "" : "disabled" %><% if (!peekCanGenerate) { %> title="<%= peekGenerateHint %>"<% } %>>
+          <button type="button" class="btn peek-create-doc" data-generate-open="<%= peekStufOn && !peekCreateOn ? "interactive" : "generate" %>" <%= peekCanGenerate ? "" : "disabled" %><% if (!peekCanGenerate) { %> title="<%= peekGenerateHint %>"<% } %>>
             <%- icon("file-plus") %>
             <%= t("cases.createDoc") %>
           </button>

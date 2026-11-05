@@ -338,10 +338,23 @@
             </label>
           </form>
           <% } %>
-          <button type="button" class="btn peek-create-doc" data-generate-open="<%= peekStufOn && !peekCreateOn ? "interactive" : "generate" %>" <%= peekCanGenerate ? "" : "disabled" %><% if (!peekCanGenerate) { %> title="<%= peekGenerateHint %>"<% } %>>
+          <% if (peekCreateOn && peekRecipes.length) { %>
+          <button type="button" class="btn peek-create-doc" data-generate-open="generate" <%= peekCanGenerate ? "" : "disabled" %><% if (!peekCanGenerate) { %> title="<%= peekGenerateHint %>"<% } %>>
             <%- icon("file-plus") %>
             <%= t("cases.createDoc") %>
           </button>
+          <% } %>
+          <% if (peekStufOn) { %>
+          <button type="button" class="<%= peekCreateOn && peekRecipes.length ? "ghost peek-create-stuf" : "btn peek-create-doc" %>" data-generate-open="interactive" <%= peekCanGenerate ? "" : "disabled" %><% if (!peekCanGenerate) { %> title="<%= peekGenerateHint %>"<% } %>>
+            <%- icon("file-output") %>
+            <%= t("cases.generateInteractive") %>
+          </button>
+          <% } else if (!(peekCreateOn && peekRecipes.length)) { %>
+          <button type="button" class="btn peek-create-doc" data-generate-open="generate" disabled title="<%= peekGenerateHint %>">
+            <%- icon("file-plus") %>
+            <%= t("cases.createDoc") %>
+          </button>
+          <% } %>
         </div>
       </div>
       <% } %>

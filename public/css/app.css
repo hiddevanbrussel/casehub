@@ -943,6 +943,15 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   outline-offset: 2px;
 }
 .peek-bar .peek-create-doc:disabled:hover { filter: none; }
+.peek-bar .peek-create-stuf {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 6px;
+}
+.peek-bar .peek-create-stuf .ico { width: 15px; height: 15px; }
 .list-peek .peek-edit { display: none; }
 .list-peek.is-editing .peek-view { display: none; }
 .list-peek.is-editing .peek-bar.peek-edit { display: flex; justify-content: flex-end; }

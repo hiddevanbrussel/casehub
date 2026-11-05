@@ -21,7 +21,9 @@
 <% if (createOn && recipeList.length) { %>
 <button class="btn<%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="generate" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateDoc') %></button>
 <% } %>
+<% if (stufOn) { %>
 <button class="<%= createOn && recipeList.length ? 'ghost' : 'btn' %><%= canGenerate ? '' : ' is-disabled' %>" type="button" data-generate-open="interactive" <%= canGenerate ? '' : 'disabled' %>><%= t('cases.generateInteractive') %></button>
+<% } %>
 <% } %>
 <% if (canGenerate) { %>
 <dialog class="edit-modal generate-modal" id="generate-modal">

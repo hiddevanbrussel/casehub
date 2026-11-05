@@ -70,7 +70,9 @@
           <% if (createOn && recipes.length) { %>
           <button type="button" data-generate-open="generate" <%= canGenerate ? "" : "disabled" %>><%= t("cases.generateDoc") %></button>
           <% } %>
+          <% if (stufOn) { %>
           <button type="button" data-generate-open="interactive" <%= canGenerate ? "" : "disabled" %>><%= t("cases.generateInteractive") %></button>
+          <% } %>
           <form method="post" action="/zaken/<%= zaak.id %>/verwijderen" data-confirm="<%= t('cases.confirmDelete') %>">
             <button class="danger-text" type="submit"><%= t("common.delete") %></button>
           </form>

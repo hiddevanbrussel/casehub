@@ -3212,13 +3212,15 @@ function routes() {
   r.get("/instellingen/integraties/stuf-dcr", requireRole("admin"), (req, res) => {
     const stuf = stufDcr.stufSettings(store);
     const wanted = String(req.query.tab || "");
+    const origin = stufDcr.publicOrigin(req, store);
     res.render("instellingen/stuf-dcr", {
       title: req.t("stuf.title"),
       stuf,
       stufTab: wanted === "identity" || wanted === "certs" ? wanted : "connection",
       stufReady: stufDcr.configured(stuf),
       stufTemplatesText: stufDcr.templatesText(stuf.templates),
-      stufCallback: stufDcr.publicCallbackUrl(stufDcr.publicOrigin(req, store), stuf.slug),
+      stufCallback: stufDcr.publicCallbackUrl(origin, stuf.slug),
+      stufCallbackIssues: stufDcr.callbackIssues(origin, stuf, create.createSettings(store)),
     });
   });
 

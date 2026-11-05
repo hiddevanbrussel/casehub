@@ -56,6 +56,9 @@
       <% if (stufCallback) { %>
       <p class="hint mono"><%= stufCallback %></p>
       <p class="hint"><%= t("stuf.callbackHint") %></p>
+      <% const issues = typeof stufCallbackIssues !== "undefined" ? stufCallbackIssues : []; %>
+      <% if (issues.indexOf("local") !== -1) { %><p class="alert"><%= t("stuf.callbackLocalHint") %></p><% } %>
+      <% if (issues.indexOf("dca") !== -1) { %><p class="alert"><%= t("stuf.callbackDcaHint") %></p><% } %>
       <% } %>
       <span class="field-caption"><%= t("stuf.lastResult") %></span>
       <% if (stuf.lastResultAt) { %>

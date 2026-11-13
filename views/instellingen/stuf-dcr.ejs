@@ -83,10 +83,12 @@
     </div>
     <div class="form-row form-row-2">
       <label><%= t("stuf.zenderAdministratie") %> <input name="zenderAdministratie" value="<%= stuf.zenderAdministratie %>" autocomplete="off"></label>
-      <label><%= t("stuf.zenderGebruiker") %>
-        <input name="zenderGebruiker" value="<%= stuf.zenderGebruiker %>" placeholder="<%= user && user.email ? user.email : "" %>" autocomplete="off">
-        <span class="hint"><%= t("stuf.zenderGebruikerHint") %></span>
-      </label>
+      <div class="settings-field">
+        <label><%= t("stuf.zenderGebruiker") %>
+          <input name="zenderGebruiker" value="<%= stuf.zenderGebruiker %>" placeholder="<%= user && user.email ? user.email : "" %>" autocomplete="off">
+        </label>
+        <p class="hint"><%= t("stuf.zenderGebruikerHint") %></p>
+      </div>
     </div>
   </section>
 

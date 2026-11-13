@@ -49,6 +49,26 @@
     document.querySelector(".overview-filters")?.classList.toggle("is-open");
   });
 
+  const tzSelect = document.querySelector("[data-tz-select]");
+  const tzNow = document.querySelector("[data-tz-now]");
+  if (tzSelect && tzNow) {
+    const showTzNow = () => {
+      try {
+        tzNow.textContent = new Intl.DateTimeFormat(document.documentElement.lang || "en-GB", {
+          timeZone: tzSelect.value,
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).format(new Date());
+      } catch {
+        tzNow.textContent = "—";
+      }
+    };
+    tzSelect.addEventListener("change", showTzNow);
+    window.setInterval(showTzNow, 10000);
+    showTzNow();
+  }
+
   document.querySelector("[data-chrome-picker]")?.addEventListener("change", (event) => {
     const input = event.target;
     if (!(input instanceof HTMLInputElement) || input.name !== "chrome") return;

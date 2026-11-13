@@ -52,6 +52,17 @@
         </select>
         <span class="hint"><%= t("settings.profileHint") %></span>
       </label>
+      <label class="span-all"><%= t("settings.timeZone") %>
+        <select name="timeZone" data-tz-select>
+          <% timeZoneOptions.forEach(function (zone) { %>
+          <option value="<%= zone %>" <%= zone === timeZone ? "selected" : "" %>><%= zone.replace(/_/g, " ") %></option>
+          <% }) %>
+        </select>
+        <span class="hint">
+          <%= t("settings.timeZoneHint") %>
+          <%= t("settings.timeZoneNow") %> <strong data-tz-now><%= formatTime(new Date().toISOString()) %></strong>
+        </span>
+      </label>
     </div>
   </section>
 
@@ -100,7 +111,7 @@
       <% if (isCases) { %>
       <label><%= t("settings.prefix") %>
         <input name="zaakPrefix" required maxlength="6" value="<%= meta.zaakPrefix %>">
-        <span class="hint"><%= t("settings.nextNumber") %> <span class="mono"><%= meta.zaakPrefix %>-<%= new Date().getFullYear() %>-<%= String(meta.nextZaakSeq).padStart(4, "0") %></span></span>
+        <span class="hint"><%= t("settings.nextNumber") %> <span class="mono"><%= meta.zaakPrefix %>-<%= ymdToday().slice(0, 4) %>-<%= String(meta.nextZaakSeq).padStart(4, "0") %></span></span>
       </label>
       <% } else { %>
       <input type="hidden" name="zaakPrefix" value="<%= meta.zaakPrefix %>">

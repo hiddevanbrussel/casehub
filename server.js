@@ -11,7 +11,7 @@ const {
   workspace,
   workspaces,
 } = require("./lib/db");
-const { formatDate, formatDateLong, formatDateTime, formatDateTimeShort, formatTime, dayBucket, fullName } = require("./lib/format");
+const { formatDate, formatDateLong, formatDateTime, formatDateTimeShort, formatTime, dayBucket, fullName, parseTimeZone, ymdToday } = require("./lib/format");
 const { currentUser, canWriteMaster, isAdmin, isGlobalAdmin } = require("./lib/auth");
 const { i18nMiddleware } = require("./lib/i18n");
 const { icon } = require("./lib/icon");
@@ -70,12 +70,16 @@ app.use((req, res, next) => {
     res.locals.stufReady = req.store ? stufDcr.enabled(stufDcr.stufSettings(req.store)) : false;
     res.locals.toast = req.query.toast || "";
     res.locals.path = req.path;
-    res.locals.formatDate = (value) => formatDate(value, req.lang);
-    res.locals.formatDateLong = (value) => formatDateLong(value, req.lang);
-    res.locals.formatDateTime = (value) => formatDateTime(value, req.lang);
-    res.locals.formatDateTimeShort = (value) => formatDateTimeShort(value, req.lang);
-    res.locals.formatTime = (value) => formatTime(value, req.lang);
-    res.locals.dayBucket = dayBucket;
+    const tz = parseTimeZone(meta.timeZone);
+    req.timeZone = tz;
+    res.locals.timeZone = tz;
+    res.locals.ymdToday = () => ymdToday(tz);
+    res.locals.formatDate = (value) => formatDate(value, req.lang, tz);
+    res.locals.formatDateLong = (value) => formatDateLong(value, req.lang, tz);
+    res.locals.formatDateTime = (value) => formatDateTime(value, req.lang, tz);
+    res.locals.formatDateTimeShort = (value) => formatDateTimeShort(value, req.lang, tz);
+    res.locals.formatTime = (value) => formatTime(value, req.lang, tz);
+    res.locals.dayBucket = (value) => dayBucket(value, tz);
     res.locals.fullName = fullName;
     res.locals.navActive = (prefix) => (req.path === prefix || req.path.startsWith(`${prefix}/`) ? "is-active" : "");
     res.locals.icon = icon;

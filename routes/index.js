@@ -38,7 +38,7 @@ const {
   isGlobalAdminEmail,
 } = require("../lib/db");
 const { verifyPassword } = require("../lib/crypto");
-const { STATUSSEN, PRIORITEITEN, ROLLEN, OVERVIEW_GROUPS, PERSON_GROUPS, COMPANY_GROUPS, parseView, includesQ, slugFile, firstName, ymdToday, nowIso } = require("../lib/format");
+const { STATUSSEN, PRIORITEITEN, ROLLEN, OVERVIEW_GROUPS, PERSON_GROUPS, COMPANY_GROUPS, parseView, includesQ, slugFile, firstName, ymdToday, nowIso, parseTimeZone, timeZones } = require("../lib/format");
 const { currentUser, requireAuth, requireRole, requireGlobalAdmin, setSessionCookie, clearSessionCookie, canWriteMaster, isAdmin, isGlobalAdmin } = require("../lib/auth");
 const config = require("../config");
 const create = require("../lib/create");
@@ -556,7 +556,7 @@ function draftZaak() {
     zaaktypeId: "",
     zaaktype: "",
     referentie: "",
-    startdatum: ymdToday(),
+    startdatum: ymdToday(store.meta()?.timeZone),
     status: "nieuw",
     prioriteit: "normaal",
     deadline: "",
@@ -3065,6 +3065,7 @@ function routes() {
       title: req.t("settings.generalTitle"),
       meta,
       chrome: parseChrome(meta.chrome),
+      timeZoneOptions: timeZones(),
     });
   });
 
@@ -3079,6 +3080,7 @@ function routes() {
       appProfile: appProfile({ appProfile: req.body.appProfile }),
       personeelPrefix: String(req.body.personeelPrefix || "P").trim().toUpperCase().slice(0, 6) || "P",
       chrome: parseChrome(req.body.chrome),
+      timeZone: parseTimeZone(req.body.timeZone),
       org: create.parseOrgInput(req.body.org),
     };
     if (Object.prototype.hasOwnProperty.call(req.body, "quickStatusChange")) {

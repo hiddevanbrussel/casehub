@@ -1,6 +1,6 @@
 <%
   const z = zaak || {};
-  const today = new Date().toISOString().slice(0, 10);
+  const today = ymdToday();
   const leadStart = (z.startdatum || z.createdAt || "").slice(0, 10) || today;
   const selectedPersonen = z.personen || [];
   const selectedBedrijven = z.bedrijven || [];

@@ -190,17 +190,36 @@ svg.ico {
 }
 .boot-brand .brand-mark,
 .boot-brand .brand-mark svg {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
+}
+.boot-brand .brand-mark {
+  position: relative;
+  transform-origin: center;
+}
+.boot-brand .brand-mark::before {
+  content: "";
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%);
+  opacity: 0;
 }
 @media (prefers-reduced-motion: no-preference) {
   .boot.is-on .brand-mark {
-    animation: boot-pulse 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    animation: boot-pulse 1.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+  .boot.is-on .brand-mark::before {
+    animation: boot-halo 1.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   }
 }
 @keyframes boot-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
+  0%, 100% { transform: scale(1); opacity: 0.75; }
+  50% { transform: scale(1.14); opacity: 1; }
+}
+@keyframes boot-halo {
+  0%, 100% { transform: scale(0.85); opacity: 0; }
+  50% { transform: scale(1.1); opacity: 1; }
 }
 .sidebar .btn-block {
   border-radius: 12px;

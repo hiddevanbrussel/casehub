@@ -981,6 +981,9 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
   if (!(interactive && stufDcr.enabled(stuf)) && !create.enabled(settings)) {
     return generateReply(req, res, { next: backUrl, message: req.t("toast.createOff") });
   }
+  if (interactive && Array.isArray(targets) && targets.length > 1) {
+    return generateReply(req, res, { next: backUrl, message: req.t("toast.interactiveOneTarget") });
+  }
   const batchTargets = !interactive && Array.isArray(targets) && targets.length > 1 ? targets : null;
   if (batchTargets) {
     return generateBatchOwnerDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl });

@@ -3143,6 +3143,13 @@ html[data-theme="dark"] .login-body.has-hero .login-card {
   overflow: auto;
 }
 .generate-modal .hint { margin: 0; }
+.generate-modal .hint.is-error {
+  color: var(--danger);
+  font-weight: 650;
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  border-radius: 8px;
+  padding: 8px 10px;
+}
 .generate-modal .tpl-picker { margin: 0; }
 .generate-modal .form .tpl-picker .check-item { cursor: pointer; }
 .generate-modal .stake-picker { margin-bottom: 12px; }

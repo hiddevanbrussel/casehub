@@ -4,6 +4,47 @@
     else window.location.href = href;
   };
 
+  const CREATE_RETURN_KEY = "caseflow:createReturn";
+
+  const markCreateReturn = () => {
+    try {
+      sessionStorage.setItem(CREATE_RETURN_KEY, "1");
+    } catch {
+      /* private mode */
+    }
+  };
+
+  const takeCreateReturn = () => {
+    try {
+      if (sessionStorage.getItem(CREATE_RETURN_KEY) !== "1") return false;
+      sessionStorage.removeItem(CREATE_RETURN_KEY);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Create and Xential finish in their own tab, so reload once the user is back here.
+  if (takeCreateReturn()) {
+    const watch = new AbortController();
+    const opts = { signal: watch.signal };
+    let left = !document.hasFocus() || document.visibilityState === "hidden";
+    const leave = () => {
+      left = true;
+    };
+    const back = () => {
+      if (!left) return;
+      watch.abort();
+      window.location.reload();
+    };
+    window.addEventListener("blur", leave, opts);
+    window.addEventListener("focus", back, opts);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") leave();
+      else back();
+    }, opts);
+  }
+
   document.querySelector("[data-filter-toggle]")?.addEventListener("click", () => {
     document.querySelector(".overview-filters")?.classList.toggle("is-open");
   });
@@ -906,21 +947,31 @@
         : (i18n.generateDoc || "Generate document");
     };
 
+    const interactiveHint = generateModal.querySelector('[data-generate-hint="interactive"]');
+    const checkedStakes = () =>
+      [...generateModal.querySelectorAll("[data-generate-stakeholders] input[type=checkbox]")]
+        .filter((box) => box.checked);
+    const tooManyForInteractive = () => modeInput?.value === "interactive" && checkedStakes().length > 1;
+
     const syncBatchHint = () => {
       const interactive = modeInput?.value === "interactive";
       batchHints.forEach((el) => {
         el.hidden = interactive ? el.dataset.generateHint !== "interactive" : el.dataset.generateHint !== "batch";
       });
+      if (!tooManyForInteractive()) interactiveHint?.classList.remove("is-error");
     };
 
     generateModal.querySelector("[data-generate-stakeholders]")?.addEventListener("change", (event) => {
       const input = event.target;
-      if (!(input instanceof HTMLInputElement) || input.type !== "checkbox" || !input.checked) return;
-      const kind = input.getAttribute("data-stake-kind");
-      if (!kind) return;
-      generateModal.querySelectorAll("[data-generate-stakeholders] input[data-stake-kind]").forEach((box) => {
-        if (box.getAttribute("data-stake-kind") !== kind) box.checked = false;
-      });
+      if (input instanceof HTMLInputElement && input.type === "checkbox" && input.checked) {
+        const kind = input.getAttribute("data-stake-kind");
+        if (kind) {
+          generateModal.querySelectorAll("[data-generate-stakeholders] input[data-stake-kind]").forEach((box) => {
+            if (box.getAttribute("data-stake-kind") !== kind) box.checked = false;
+          });
+        }
+      }
+      syncBatchHint();
     });
 
     const setGenerateBusy = (busy) => {
@@ -968,6 +1019,11 @@
     generateForm?.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (generateModal.dataset.busy === "1") return;
+      if (tooManyForInteractive()) {
+        interactiveHint?.classList.add("is-error");
+        interactiveHint?.scrollIntoView({ block: "nearest" });
+        return;
+      }
       const i18n = window.I18N || {};
       const label = i18n.generating || "Generating…";
       setGenerateBusy(true);
@@ -985,6 +1041,7 @@
         });
         const data = await res.json().catch(() => ({}));
         if (data.open) {
+          markCreateReturn();
           if (tab) tab.location.replace(data.open);
           else window.open(data.open, "_blank");
         } else if (tab) {

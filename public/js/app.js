@@ -162,6 +162,40 @@
     }
   };
 
+  // Create and StUF-DCR deliver documents by callback, so keep an open list in step.
+  const DOCS_POLL_MS = 15000;
+
+  const liveDocsRoot = () => {
+    const root = document.querySelector("[data-docs-root][data-docs-live-url]");
+    if (!root || !root.offsetParent) return null;
+    return root;
+  };
+
+  const pollDocs = async () => {
+    if (liveBusy || document.visibilityState === "hidden") return;
+    const root = liveDocsRoot();
+    if (!root || root.contains(document.activeElement)) return;
+    if (document.querySelector("dialog[open]")) return;
+    try {
+      const res = await fetch(root.dataset.docsLiveUrl, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json", "X-Requested-With": "docs" },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.ok || data.docsHtml == null) return;
+      if (liveDocsRoot() !== root) return;
+      const next = new DOMParser().parseFromString(data.docsHtml, "text/html").querySelector("[data-docs-root]");
+      if (!next || next.innerHTML === root.innerHTML) return;
+      root.innerHTML = next.innerHTML;
+      setPeekCount("docs", Number(data.docCount) || 0);
+    } catch {
+      /* offline or navigating away */
+    }
+  };
+
+  window.setInterval(pollDocs, DOCS_POLL_MS);
+
   document.addEventListener("change", (event) => {
     const el = event.target.closest("[data-auto-submit]");
     if (!el?.form) return;

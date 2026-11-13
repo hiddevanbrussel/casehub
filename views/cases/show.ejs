@@ -226,6 +226,7 @@
     </header>
     <%- include("../partials/doc-list", {
       docRows: docRows,
+      liveBase: "/zaken/" + zaak.id + "/documenten/live",
       emptyTitle: t("cases.docEmpty"),
       emptyHint: canGenerate ? t("cases.docEmptyHint") : t("cases.generateNeedsIntegration"),
     }) %>

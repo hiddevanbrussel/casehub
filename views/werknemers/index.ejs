@@ -347,6 +347,7 @@
           docRows: peekDocRows,
           fromList: true,
           canDelete: canWrite,
+          liveBase: "/werknemers/" + peekEmp.id + "/documenten/live",
           emptyTitle: t("hr.docEmpty"),
           emptyHint: peekCanGenerate ? t("hr.docEmptyHint") : peekGenerateHint,
         }) %>

@@ -602,14 +602,16 @@ function employeeDocEmptyHint(req) {
 
 async function sendLiveDocs(req, res, owner, basePath, empty) {
   try {
+    const src = req.method === "GET" ? req.query : req.body;
     const rows = documentRows(owner, { basePath });
     const docsHtml = await renderView(req, res, "partials/doc-list", {
       docRows: rows,
-      fromList: req.body.from === "list",
+      fromList: src.from === "list",
+      liveBase: empty.liveBase,
       canDelete: empty.canDelete !== false,
       emptyTitle: empty.title,
       emptyHint: empty.hint,
-      ...listFormLocals(req.body),
+      ...listFormLocals(src),
     });
     res.json({ ok: true, docsHtml, docCount: rows.length });
   } catch {
@@ -2312,13 +2314,24 @@ function routes() {
     res.sendFile(path.resolve(filePath));
   });
 
+  function caseDocLive(req, res, zaak) {
+    return sendLiveDocs(req, res, zaak, `/zaken/${zaak.id}`, {
+      title: req.t("cases.docEmpty"),
+      hint: caseDocEmptyHint(req, zaak),
+      liveBase: `/zaken/${zaak.id}/documenten/live`,
+    });
+  }
+
+  r.get("/zaken/:id/documenten/live", async (req, res) => {
+    const zaak = store.zaak(req.params.id);
+    if (!zaak) return res.status(404).json({ ok: false });
+    await caseDocLive(req, res, zaak);
+  });
+
   async function afterCaseDocumentDelete(req, res) {
     const zaak = store.zaak(req.params.id);
     if (zaak && wantsLivePartial(req)) {
-      return sendLiveDocs(req, res, zaak, `/zaken/${zaak.id}`, {
-        title: req.t("cases.docEmpty"),
-        hint: caseDocEmptyHint(req, zaak),
-      });
+      return caseDocLive(req, res, zaak);
     }
     if (req.body.from === "list") {
       return toastT(
@@ -2778,14 +2791,25 @@ function routes() {
     res.sendFile(path.resolve(filePath));
   });
 
+  function employeeDocLive(req, res, werknemer) {
+    return sendLiveDocs(req, res, werknemer, `/werknemers/${werknemer.id}`, {
+      title: req.t("hr.docEmpty"),
+      hint: employeeDocEmptyHint(req),
+      canDelete: true,
+      liveBase: `/werknemers/${werknemer.id}/documenten/live`,
+    });
+  }
+
+  r.get("/werknemers/:id/documenten/live", employeesRead, async (req, res) => {
+    const werknemer = store.werknemer(req.params.id);
+    if (!werknemer) return res.status(404).json({ ok: false });
+    await employeeDocLive(req, res, werknemer);
+  });
+
   async function afterEmployeeDocumentDelete(req, res) {
     const werknemer = store.werknemer(req.params.id);
     if (werknemer && wantsLivePartial(req)) {
-      return sendLiveDocs(req, res, werknemer, `/werknemers/${werknemer.id}`, {
-        title: req.t("hr.docEmpty"),
-        hint: employeeDocEmptyHint(req),
-        canDelete: true,
-      });
+      return employeeDocLive(req, res, werknemer);
     }
     if (req.body.from === "list") {
       return toastT(

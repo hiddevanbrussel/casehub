@@ -31,8 +31,25 @@
     if (code === "webhook") return "in_behandeling";
     return "nieuw";
   }
+  // Documents arrive asynchronously via Create and StUF-DCR, so this list polls itself.
+  let liveUrl = "";
+  if (locals.liveBase) {
+    const liveParams = new URLSearchParams();
+    if (fromList) {
+      liveParams.set("from", "list");
+      if (typeof q !== "undefined" && q) liveParams.set("filterQ", q);
+      if (typeof group !== "undefined" && group) liveParams.set("filterGroup", group);
+      if (typeof status !== "undefined" && status) liveParams.set("filterStatus", status);
+      if (typeof zaaktypeId !== "undefined" && zaaktypeId) liveParams.set("filterZaaktypeId", zaaktypeId);
+      if (typeof prioriteit !== "undefined" && prioriteit) liveParams.set("filterPrioriteit", prioriteit);
+      if (typeof page !== "undefined" && Number(page) !== 1) liveParams.set("filterPage", page);
+      if (typeof pageSize !== "undefined" && Number(pageSize) !== 10) liveParams.set("filterPageSize", pageSize);
+    }
+    const liveQs = liveParams.toString();
+    liveUrl = liveQs ? `${liveBase}?${liveQs}` : liveBase;
+  }
 %>
-<div data-docs-root>
+<div data-docs-root<% if (liveUrl) { %> data-docs-live-url="<%= liveUrl %>"<% } %>>
 <% if (!rows.length) { %>
   <div class="doc-empty">
     <p><%= locals.emptyTitle || t("cases.docEmpty") %></p>

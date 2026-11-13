@@ -558,6 +558,7 @@
         <%- include("../partials/doc-list", {
           docRows: peekDocRows,
           fromList: true,
+          liveBase: "/zaken/" + peekCase.id + "/documenten/live",
           emptyTitle: t("cases.docEmpty"),
           emptyHint: peekCanGenerate ? t("cases.docEmptyHint") : peekGenerateHint,
         }) %>

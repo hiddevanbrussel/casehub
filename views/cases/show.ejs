@@ -235,6 +235,7 @@
     <%- include("../partials/doc-list", {
       docRows: docRows,
       liveBase: "/zaken/" + zaak.id + "/documenten/live",
+      clearHref: "/zaken/" + zaak.id + "/documenten/verwijderen",
       emptyTitle: t("cases.docEmpty"),
       emptyHint: canGenerate ? t("cases.docEmptyHint") : t("cases.generateNeedsIntegration"),
     }) %>

@@ -224,6 +224,7 @@
       docRows: documentRows(werknemer, { basePath: "/werknemers/" + werknemer.id }),
       canDelete: Boolean(typeof canWrite !== "undefined" && canWrite),
       liveBase: "/werknemers/" + werknemer.id + "/documenten/live",
+      clearHref: "/werknemers/" + werknemer.id + "/documenten/verwijderen",
       emptyTitle: t("hr.docEmpty"),
       emptyHint: canGenerate ? t("hr.docEmptyHint") : t("cases.generateNeedsIntegration"),
     }) %>

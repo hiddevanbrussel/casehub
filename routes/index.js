@@ -638,6 +638,7 @@ async function sendLiveDocs(req, res, owner, basePath, empty) {
       docRows: rows,
       fromList: src.from === "list",
       liveBase: empty.liveBase,
+      clearHref: `${basePath}/documenten/verwijderen`,
       canDelete: empty.canDelete !== false,
       emptyTitle: empty.title,
       emptyHint: empty.hint,
@@ -2494,6 +2495,13 @@ function routes() {
     await afterCaseDocumentChange(req, res, "toast.attachmentDeleted");
   });
 
+  r.post("/zaken/:id/documenten/verwijderen", async (req, res) => {
+    const zaak = store.zaak(req.params.id);
+    if (!zaak) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
+    const { total } = store.deleteDocuments({ zaakId: zaak.id }, req.user);
+    await afterCaseDocumentChange(req, res, "toast.documentsDeleted", { n: countLabel(req, total) });
+  });
+
   r.post("/zaken/:id/documenten/:jobId/verwijderen", async (req, res) => {
     const job = store.documentJob(req.params.jobId);
     if (!job || job.zaakId !== req.params.id) {
@@ -2980,6 +2988,13 @@ function routes() {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
     }
     store.deleteBijlage(req.params.bijlageId, req.user);
+    await afterEmployeeDocumentDelete(req, res);
+  });
+
+  r.post("/werknemers/:id/documenten/verwijderen", employeesWrite, async (req, res) => {
+    const werknemer = store.werknemer(req.params.id);
+    if (!werknemer) return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundEmployee") });
+    store.deleteDocuments({ werknemerId: werknemer.id }, req.user);
     await afterEmployeeDocumentDelete(req, res);
   });
 

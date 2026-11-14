@@ -101,5 +101,11 @@
   </li>
   <% }) %>
 </ul>
+<% if (canDelete && locals.clearHref && rows.length > 1) { %>
+<form class="doc-clear" method="post" action="<%= clearHref %>" data-docs-live data-confirm="<%= t('cases.confirmDeleteAllDocs', { n: rows.length }) %>">
+  <% if (fromList) { %><%- include("list-return-fields") %><% } %>
+  <button class="linkish danger-text" type="submit"><%= t("cases.deleteAllDocs", { n: rows.length }) %></button>
+</form>
+<% } %>
 <% } %>
 </div>

@@ -2289,6 +2289,8 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   font-size: 13px;
   line-height: 1.45;
 }
+.doc-clear { display: flex; justify-content: flex-end; padding-top: 10px; }
+.doc-clear button { font-size: 13px; font-weight: 650; }
 .doc-empty { padding: 8px 0 4px; }
 .doc-empty p { margin: 0; color: var(--muted); }
 .doc-empty-hint { margin-top: 6px !important; max-width: 42ch; font-size: 13px; line-height: 1.45; }

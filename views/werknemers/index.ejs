@@ -348,6 +348,7 @@
           fromList: true,
           canDelete: canWrite,
           liveBase: "/werknemers/" + peekEmp.id + "/documenten/live",
+          clearHref: "/werknemers/" + peekEmp.id + "/documenten/verwijderen",
           emptyTitle: t("hr.docEmpty"),
           emptyHint: peekCanGenerate ? t("hr.docEmptyHint") : peekGenerateHint,
         }) %>

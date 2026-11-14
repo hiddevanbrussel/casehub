@@ -571,6 +571,7 @@
           docRows: peekDocRows,
           fromList: true,
           liveBase: "/zaken/" + peekCase.id + "/documenten/live",
+          clearHref: "/zaken/" + peekCase.id + "/documenten/verwijderen",
           emptyTitle: t("cases.docEmpty"),
           emptyHint: peekCanGenerate ? t("cases.docEmptyHint") : peekGenerateHint,
         }) %>

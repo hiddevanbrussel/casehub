@@ -64,6 +64,28 @@ const upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 },
 });
 
+const IMAGE_MIME = /^image\/(jpeg|png|gif|webp)$/i;
+
+const imageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, _file, cb) => {
+      const dir = path.join((req.store && req.store.dataDir) || config.dataDir, "uploads");
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (_req, file, cb) => {
+      cb(null, `${Date.now()}-${slugFile(file.originalname)}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (IMAGE_MIME.test(file.mimetype || "")) return cb(null, true);
+    const err = new Error("image type");
+    err.code = "IMAGE_TYPE";
+    cb(err);
+  },
+});
+
 const certUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 512 * 1024 },
@@ -882,7 +904,7 @@ async function generateBatchOwnerDocuments(req, res, { owner, recipe, settings, 
       body: {
         count: entries.length,
         names: targets.map((item) => item.name).filter(Boolean),
-        data: create.clipJson(entries[0]?.target?.data),
+        data: create.clipJson(create.auditRequest({ body: entries[0]?.target?.data }).body),
       },
     }
   );
@@ -1025,7 +1047,7 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
     "document",
     job.id,
     `${recipe.name} · ${request.method} ${request.path}`,
-    request
+    create.auditRequest(request)
   );
   try {
     if (interactive) {
@@ -1074,7 +1096,7 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
           "document",
           job.id,
           `${recipe.name} · ${fallback.method} ${fallback.path} · na ontbrekend veld`,
-          fallback
+          create.auditRequest(fallback)
         );
         const prepared = await create.prepareGenerate(settings, {
           recipeId: recipe.itemId,
@@ -2297,8 +2319,27 @@ function routes() {
     toastT(req, res, "/zaken", "toast.caseDeleted");
   });
 
-  r.post("/zaken/:id/bijlagen", (_req, res) => {
-    res.status(404).render("fout", { title: res.locals.t("error.notFound"), message: res.locals.t("error.notFoundPage") });
+  r.post("/zaken/:id/bijlagen", (req, res) => {
+    const zaak = store.zaak(req.params.id);
+    if (!zaak) {
+      return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
+    }
+    // Multer resumes outside the per-request store context, so re-enter it here.
+    imageUpload.array("afbeeldingen")(req, res, (err) => {
+      runWithStore(req.store, async () => {
+        if (err) {
+          const key = err.code === "LIMIT_FILE_SIZE" ? "toast.imageTooBig" : "toast.imageType";
+          return toastT(req, res, caseDocsPath(req, zaak.id), key);
+        }
+        const files = req.files || [];
+        if (!files.length) return toastT(req, res, caseDocsPath(req, zaak.id), "toast.imageNone");
+        files.forEach((file) => store.addBijlage({ zaakId: zaak.id }, file, req.user));
+        await afterCaseDocumentChange(req, res, "toast.imagesAdded", { n: files.length });
+      }).catch((error) => {
+        console.error(error);
+        toast(res, caseDocsPath(req, zaak.id), req.t("error.server"));
+      });
+    });
   });
 
   r.get("/zaken/:id/bijlagen/:bijlageId", (req, res) => {
@@ -2306,10 +2347,11 @@ function routes() {
     if (!bijlage || bijlage.zaakId !== req.params.id) return res.status(404).send(req.t("error.notFound"));
     const filePath = uploadsFile(req, bijlage.stored);
     const isPdf = /pdf/i.test(bijlage.mime || "") || /\.pdf$/i.test(bijlage.naam || "");
-    if (req.query.download === "1" || !isPdf) {
+    const isImage = IMAGE_MIME.test(bijlage.mime || "");
+    if (req.query.download === "1" || !(isPdf || isImage)) {
       return res.download(filePath, bijlage.naam);
     }
-    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Type", isPdf ? "application/pdf" : bijlage.mime);
     res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(bijlage.naam)}`);
     res.sendFile(path.resolve(filePath));
   });
@@ -2328,20 +2370,20 @@ function routes() {
     await caseDocLive(req, res, zaak);
   });
 
-  async function afterCaseDocumentDelete(req, res) {
+  function caseDocsPath(req, id) {
+    if (req.body.from === "list") {
+      return zakenListPath({ ...req.body, filterFocus: id, filterPeekTab: "docs" });
+    }
+    if (req.body.from === "case") return `/zaken/${id}?tab=documents`;
+    return zaakFocusPath(id, { peekTab: "docs" });
+  }
+
+  async function afterCaseDocumentChange(req, res, key, vars) {
     const zaak = store.zaak(req.params.id);
     if (zaak && wantsLivePartial(req)) {
       return caseDocLive(req, res, zaak);
     }
-    if (req.body.from === "list") {
-      return toastT(
-        req,
-        res,
-        zakenListPath({ ...req.body, filterFocus: req.params.id, filterPeekTab: "docs" }),
-        "toast.attachmentDeleted"
-      );
-    }
-    toastT(req, res, zaakFocusPath(req.params.id, { peekTab: "docs" }), "toast.attachmentDeleted");
+    toastT(req, res, caseDocsPath(req, req.params.id), key, vars);
   }
 
   r.post("/zaken/:id/bijlagen/:bijlageId/verwijderen", async (req, res) => {
@@ -2350,7 +2392,7 @@ function routes() {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
     }
     store.deleteBijlage(req.params.bijlageId, req.user);
-    await afterCaseDocumentDelete(req, res);
+    await afterCaseDocumentChange(req, res, "toast.attachmentDeleted");
   });
 
   r.post("/zaken/:id/documenten/:jobId/verwijderen", async (req, res) => {
@@ -2359,7 +2401,7 @@ function routes() {
       return res.status(404).render("fout", { title: req.t("error.notFound"), message: req.t("error.notFoundCase") });
     }
     store.deleteDocumentJob(req.params.jobId, req.user);
-    await afterCaseDocumentDelete(req, res);
+    await afterCaseDocumentChange(req, res, "toast.attachmentDeleted");
   });
 
   r.post("/zaken/:id/documenten", async (req, res) => {
@@ -2371,12 +2413,14 @@ function routes() {
     const recipeName = (recipe && recipe.name) || "document";
     const targets = create.sameKindTargets(create.pickStakeholders(zaak, bodyValues(req.body.stakeholder))).map((stake) => ({
       ...stake,
-      data: create.prefillData(zaak, recipe || {}, { persoon: stake.persoon, bedrijf: stake.bedrijf }, store.meta()),
+      data: create.prefillData(zaak, recipe || {}, { persoon: stake.persoon, bedrijf: stake.bedrijf }, store.meta(), {
+        dataDir: req.store?.dataDir,
+      }),
       fileName: `${recipeName}-${zaak.zaaknummer}${stake.name ? `-${stake.name}` : ""}.pdf`,
     }));
     await generateOwnerDocument(req, res, {
       owner: { zaakId: zaak.id },
-      data: targets[0]?.data || create.prefillData(zaak, recipe || {}, {}, store.meta()),
+      data: targets[0]?.data || create.prefillData(zaak, recipe || {}, {}, store.meta(), { dataDir: req.store?.dataDir }),
       fileName: targets[0]?.fileName || `${recipeName}-${zaak.zaaknummer}.pdf`,
       targets,
       docsUrl: fromList ? listBack : zaakFocusPath(zaak.id, { peekTab: "docs" }),

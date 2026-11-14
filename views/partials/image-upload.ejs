@@ -1,0 +1,13 @@
+<form class="doc-upload" method="post" action="<%= action %>" enctype="multipart/form-data" data-image-upload>
+  <% if (locals.fromList) { %>
+    <%- include("list-return-fields") %>
+  <% } else { %>
+    <input type="hidden" name="from" value="case">
+  <% } %>
+  <input class="visually-hidden" type="file" name="afbeeldingen" accept="image/jpeg,image/png,image/gif,image/webp" multiple data-image-input>
+  <button class="ghost doc-upload-btn" type="button" data-image-pick>
+    <%- icon("image") %>
+    <%= t("cases.addImage") %>
+  </button>
+  <span class="hint doc-upload-hint"><%= t("cases.addImageHint") %></span>
+</form>

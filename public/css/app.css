@@ -2269,6 +2269,26 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
 }
 .doc-item-delete { color: var(--muted); }
 .doc-item-delete:hover { color: var(--danger); background: var(--hover); }
+.doc-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.doc-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.doc-upload-hint {
+  margin: 0;
+  max-width: 44ch;
+  font-size: 13px;
+  line-height: 1.45;
+}
 .doc-empty { padding: 8px 0 4px; }
 .doc-empty p { margin: 0; color: var(--muted); }
 .doc-empty-hint { margin-top: 6px !important; max-width: 42ch; font-size: 13px; line-height: 1.45; }

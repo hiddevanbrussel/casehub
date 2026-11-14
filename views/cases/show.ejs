@@ -230,6 +230,7 @@
       emptyTitle: t("cases.docEmpty"),
       emptyHint: canGenerate ? t("cases.docEmptyHint") : t("cases.generateNeedsIntegration"),
     }) %>
+    <%- include("../partials/image-upload", { action: "/zaken/" + zaak.id + "/bijlagen" }) %>
   </section>
   <% } else { %>
   <section class="case-panel">

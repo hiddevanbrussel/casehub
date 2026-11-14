@@ -562,6 +562,7 @@
           emptyTitle: t("cases.docEmpty"),
           emptyHint: peekCanGenerate ? t("cases.docEmptyHint") : peekGenerateHint,
         }) %>
+        <%- include("../partials/image-upload", { action: "/zaken/" + peekCase.id + "/bijlagen", fromList: true }) %>
       </section>
       <%- include("../partials/generate-doc", {
         action: "/zaken/" + peekCase.id + "/documenten",

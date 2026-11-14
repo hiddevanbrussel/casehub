@@ -49,6 +49,23 @@
     document.querySelector(".overview-filters")?.classList.toggle("is-open");
   });
 
+  // The peek panel is re-rendered while browsing, so these listeners are delegated.
+  document.addEventListener("click", (event) => {
+    const pick = event.target.closest?.("[data-image-pick]");
+    if (!pick) return;
+    pick.closest("form[data-image-upload]")?.querySelector("[data-image-input]")?.click();
+  });
+
+  document.addEventListener("change", (event) => {
+    const input = event.target;
+    if (!input.matches?.("[data-image-input]") || !input.files?.length) return;
+    const form = input.closest("form[data-image-upload]");
+    if (!form) return;
+    const pick = form.querySelector("[data-image-pick]");
+    if (pick) pick.disabled = true;
+    form.submit();
+  });
+
   const tzSelect = document.querySelector("[data-tz-select]");
   const tzNow = document.querySelector("[data-tz-now]");
   if (tzSelect && tzNow) {

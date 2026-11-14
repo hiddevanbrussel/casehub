@@ -3,6 +3,7 @@ data/db.json
 data/platform.json
 data/tenants/
 data/uploads/
+tmp-bulk/
 .env
 *.log
 .DS_Store

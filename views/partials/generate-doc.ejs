@@ -29,6 +29,9 @@
     { kind: "persoon", label: t("nav.persons"), items: generatePeople, many: manyPeople, allLabel: t("cases.generateEveryone", { n: generatePeople.length.toLocaleString(generateLang) }) },
     { kind: "bedrijf", label: t("nav.companies"), items: generateCompanies, many: manyCompanies, allLabel: t("cases.generateEveryCompany", { n: generateCompanies.length.toLocaleString(generateLang) }) },
   ].filter(function (group) { return group.items.length > 0; });
+  const chunkSize = locals.batchChunkSize || 500;
+  const showLimitField = locals.generateLimitField !== false;
+  const showChunkField = locals.generateChunkField !== false;
   const stufOn = Boolean(typeof stufReady !== "undefined" && stufReady);
   const createOn = Boolean(typeof createEnabled !== "undefined" && createEnabled);
   const defaultMode = stufOn && !createOn ? "interactive" : "generate";
@@ -104,14 +107,24 @@
           </div>
         </div>
         <% }) %>
-        <% if (manyPeople || manyCompanies) { %>
-        <p class="hint"><%= t("cases.generateChunkHint", { size: locals.batchChunkSize || 500 }) %></p>
+        <% if (showLimitField || showChunkField) { %>
+        <div class="gen-fields" data-generate-fields hidden>
+          <% if (showLimitField) { %>
+          <label class="gen-field">
+            <span class="gen-field-label"><%= t("cases.generateLimit") %></span>
+            <input type="number" name="limit" min="1" step="1" inputmode="numeric" placeholder="<%= t('cases.generateLimitAll') %>" data-generate-limit autocomplete="off">
+            <span class="hint"><%= t("cases.generateLimitHint") %></span>
+          </label>
+          <% } %>
+          <% if (showChunkField) { %>
+          <label class="gen-field">
+            <span class="gen-field-label"><%= t("cases.generateChunk") %></span>
+            <input type="number" name="chunkSize" min="1" max="5000" step="1" inputmode="numeric" value="<%= chunkSize %>" data-generate-chunk autocomplete="off">
+          </label>
+          <% } %>
+        </div>
         <% } %>
-        <label class="gen-limit" data-generate-limit-row hidden>
-          <span class="gen-limit-label"><%= t("cases.generateLimit") %></span>
-          <input type="number" name="limit" min="1" step="1" inputmode="numeric" placeholder="<%= t('cases.generateLimitAll') %>" data-generate-limit autocomplete="off">
-          <span class="hint"><%= t("cases.generateLimitHint") %></span>
-        </label>
+        <p class="hint" data-generate-chunk-hint data-chunk-default="<%= chunkSize %>" data-chunk-template="<%= t('cases.generateChunkHint', { size: '{size}' }) %>" hidden></p>
       </section>
       <% } %>
       <% if (recipeList.length) { %>

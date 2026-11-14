@@ -1056,8 +1056,10 @@
     const stakeTabs = [...generateModal.querySelectorAll("[data-stake-tab]")];
     const stakePanels = [...generateModal.querySelectorAll("[data-stake-panel]")];
     const stakeCount = generateModal.querySelector("[data-stake-count]");
-    const limitRow = generateModal.querySelector("[data-generate-limit-row]");
+    const fieldsRow = generateModal.querySelector("[data-generate-fields]");
     const limitInput = generateModal.querySelector("[data-generate-limit]");
+    const chunkInput = generateModal.querySelector("[data-generate-chunk]");
+    const chunkHint = generateModal.querySelector("[data-generate-chunk-hint]");
     const activePanel = () => stakePanels.find((panel) => !panel.hidden) || stakePanels[0] || null;
     const panelBoxes = (panel) => [...(panel?.querySelectorAll("input[name=stakeholder]") || [])];
     const checkedStakes = () => panelBoxes(activePanel()).filter((box) => box.checked);
@@ -1097,8 +1099,21 @@
           .replace("{n}", picked.toLocaleString(lang))
           .replace("{total}", total.toLocaleString(lang));
       }
-      // The cap only means something once the run covers more than one recipient.
-      if (limitRow) limitRow.hidden = total < 2 || modeInput?.value === "interactive";
+      // A cap and a block size only mean something once the run covers more than one recipient.
+      const single = total < 2 || modeInput?.value === "interactive";
+      if (fieldsRow) {
+        fieldsRow.hidden = single;
+        if (single && limitInput) limitInput.value = "";
+      }
+      if (chunkHint) {
+        const size = Math.floor(Number(chunkInput?.value) || 0) || Number(chunkHint.dataset.chunkDefault) || 0;
+        const willSplit = !single && size > 0 && checkedStakeCount() > size;
+        chunkHint.hidden = !willSplit;
+        if (willSplit) {
+          chunkHint.textContent = (chunkHint.dataset.chunkTemplate || "")
+            .replace("{size}", size.toLocaleString(document.documentElement.lang || "nl"));
+        }
+      }
       if (submit && generateModal.dataset.busy !== "1") submit.textContent = submitLabel(modeInput?.value);
     };
 
@@ -1163,6 +1178,7 @@
     });
 
     limitInput?.addEventListener("input", syncBatchHint);
+    chunkInput?.addEventListener("input", syncBatchHint);
 
     const setGenerateBusy = (busy) => {
       const i18n = window.I18N || {};

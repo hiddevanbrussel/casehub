@@ -69,6 +69,13 @@ const IMAGE_MIME = /^image\/(jpeg|png|gif|webp)$/i;
 
 // Above this many recipients a run is split into blocks instead of one Create request.
 const BATCH_CHUNK_SIZE = 500;
+const BATCH_CHUNK_MAX = 5000;
+
+function parseChunkSize(value, fallback = BATCH_CHUNK_SIZE) {
+  const size = Math.floor(Number(Array.isArray(value) ? value[value.length - 1] : value));
+  if (!Number.isFinite(size) || size < 1) return fallback;
+  return Math.min(size, BATCH_CHUNK_MAX);
+}
 
 const imageUpload = multer({
   storage: multer.diskStorage({
@@ -907,14 +914,15 @@ function chunkList(list, size) {
 
 // Thousands of recipients go to Create block by block, in the background, with one
 // job row per block so the documents tab shows how far the run is.
-async function generateChunkedDocuments(req, res, { owner, recipe, settings, targets, docsUrl }) {
+async function generateChunkedDocuments(req, res, { owner, recipe, settings, targets, docsUrl, chunkSize }) {
   try {
     await create.getToken(settings);
   } catch (err) {
     store.patchCreate({ lastError: err.message });
     return generateReply(req, res, { next: docsUrl, message: `Create: ${err.message}` });
   }
-  const chunks = chunkList(targets, BATCH_CHUNK_SIZE);
+  const size = parseChunkSize(chunkSize);
+  const chunks = chunkList(targets, size);
   const jobs = store.addDocumentJobs(
     chunks.map((part, index) => ({
       zaakId: owner.zaakId || "",
@@ -942,7 +950,7 @@ async function generateChunkedDocuments(req, res, { owner, recipe, settings, tar
       ...sample,
       body: {
         count: targets.length,
-        chunkSize: BATCH_CHUNK_SIZE,
+        chunkSize: size,
         data: create.clipJson(create.auditRequest({ body: targets[0].data }).body),
       },
     }
@@ -1119,8 +1127,9 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
   }
   const batchTargets = !interactive && Array.isArray(targets) && targets.length > 1 ? targets : null;
   if (batchTargets) {
-    return batchTargets.length > BATCH_CHUNK_SIZE
-      ? generateChunkedDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl })
+    const chunkSize = parseChunkSize(req.body.chunkSize, parseChunkSize(store.meta().batchChunkSize));
+    return batchTargets.length > chunkSize
+      ? generateChunkedDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl, chunkSize })
       : generateBatchOwnerDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl });
   }
   const target = Array.isArray(targets) && targets[0] ? targets[0] : null;
@@ -2036,7 +2045,10 @@ function routes() {
   r.use(requireAuth);
 
   r.use((req, res, next) => {
-    res.locals.batchChunkSize = BATCH_CHUNK_SIZE;
+    const meta = res.locals.meta || {};
+    res.locals.batchChunkSize = parseChunkSize(meta.batchChunkSize);
+    res.locals.generateLimitField = meta.generateLimitField !== false;
+    res.locals.generateChunkField = meta.generateChunkField !== false;
     next();
   });
 
@@ -3296,6 +3308,15 @@ function routes() {
     };
     if (Object.prototype.hasOwnProperty.call(req.body, "quickStatusChange")) {
       patch.quickStatusChange = leaseFlag(req.body.quickStatusChange);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "generateLimitField")) {
+      patch.generateLimitField = leaseFlag(req.body.generateLimitField);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "generateChunkField")) {
+      patch.generateChunkField = leaseFlag(req.body.generateChunkField);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "batchChunkSize")) {
+      patch.batchChunkSize = parseChunkSize(req.body.batchChunkSize);
     }
     store.saveMeta(patch, req.user);
     if (req.store?.slug) updateWorkspace(req.store.slug, { name: patch.orgName });

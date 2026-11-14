@@ -141,6 +141,32 @@
   </section>
   <% } %>
 
+  <section class="form-card">
+    <h2><%= t("settings.docGenSection") %></h2>
+    <div class="form-grid">
+      <label class="span-all"><%= t("settings.genChunkSize") %>
+        <input type="number" name="batchChunkSize" min="1" max="5000" step="1" required value="<%= batchChunkSize %>">
+        <span class="hint"><%= t("settings.genChunkSizeHint") %></span>
+      </label>
+    </div>
+    <label class="set-toggle">
+      <span>
+        <strong><%= t("settings.genLimitField") %></strong>
+        <small><%= t("settings.genLimitFieldHint") %></small>
+      </span>
+      <input type="hidden" name="generateLimitField" value="0">
+      <input type="checkbox" name="generateLimitField" value="1" <%= meta.generateLimitField !== false ? "checked" : "" %>>
+    </label>
+    <label class="set-toggle">
+      <span>
+        <strong><%= t("settings.genChunkField") %></strong>
+        <small><%= t("settings.genChunkFieldHint") %></small>
+      </span>
+      <input type="hidden" name="generateChunkField" value="0">
+      <input type="checkbox" name="generateChunkField" value="1" <%= meta.generateChunkField !== false ? "checked" : "" %>>
+    </label>
+  </section>
+
   <div class="form-actions">
     <button class="btn" type="submit"><%= t("settings.save") %></button>
   </div>

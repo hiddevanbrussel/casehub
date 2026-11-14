@@ -2289,6 +2289,20 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   font-size: 13px;
   line-height: 1.45;
 }
+.doc-pager {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-top: 10px; color: var(--muted); font-size: 12px; font-weight: 600;
+}
+.doc-pager .pager-nav {
+  min-width: 32px; height: 32px; padding: 0 8px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--text);
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+.doc-pager .pager-nav:hover:not([disabled]) { background: var(--hover); }
+.doc-pager .pager-nav[disabled] { opacity: 0.35; cursor: default; }
+.doc-pager .doc-pager-at { min-width: 96px; color: var(--muted); }
 .doc-clear { display: flex; justify-content: flex-end; padding-top: 10px; }
 .doc-clear button { font-size: 13px; font-weight: 650; }
 .doc-empty { padding: 8px 0 4px; }

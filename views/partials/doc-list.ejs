@@ -3,7 +3,12 @@
   const compact = Boolean(locals.compact);
   const fromList = Boolean(locals.fromList);
   const canDelete = locals.canDelete !== false;
-  const shown = compact ? rows.slice(0, 4) : rows;
+  // A batch run can leave hundreds of rows behind, so the full list walks per page.
+  const docPageSize = 10;
+  const docPages = Math.max(1, Math.ceil(rows.length / docPageSize));
+  const docPage = compact ? 1 : Math.min(docPages, Math.max(1, Number(locals.docPage) || 1));
+  const docStart = (docPage - 1) * docPageSize;
+  const shown = compact ? rows.slice(0, 4) : rows.slice(docStart, docStart + docPageSize);
   function whenLabel(iso) {
     if (!iso) return "";
     const bucket = dayBucket(iso);
@@ -46,6 +51,7 @@
       if (typeof page !== "undefined" && Number(page) !== 1) liveParams.set("filterPage", page);
       if (typeof pageSize !== "undefined" && Number(pageSize) !== 10) liveParams.set("filterPageSize", pageSize);
     }
+    if (docPage > 1) liveParams.set("docPage", docPage);
     const liveQs = liveParams.toString();
     liveUrl = liveQs ? `${liveBase}?${liveQs}` : liveBase;
   }
@@ -91,6 +97,7 @@
       <% if (canDelete && row.deleteHref) { %>
         <form method="post" action="<%= row.deleteHref %>" data-docs-live data-confirm="<%= t('cases.confirmDeleteDoc') %>">
           <% if (fromList) { %><%- include("list-return-fields") %><% } %>
+          <% if (docPage > 1) { %><input type="hidden" name="docPage" value="<%= docPage %>"><% } %>
           <button class="icon-btn doc-item-delete" type="submit" aria-label="<%= t('common.delete') %>" title="<%= t('common.delete') %>">
             <%- icon("trash-2") %>
           </button>
@@ -101,6 +108,16 @@
   </li>
   <% }) %>
 </ul>
+<% if (!compact && docPages > 1) { %>
+<footer class="doc-pager">
+  <span><%= t("cases.docRange", { from: docStart + 1, to: docStart + shown.length, total: rows.length }) %></span>
+  <nav class="pager-pages" aria-label="<%= t("cases.tabDocuments") %>">
+    <button type="button" class="pager-nav" data-docs-page="<%= docPage - 1 %>" aria-label="‹" <%= docPage <= 1 ? "disabled" : "" %>>‹</button>
+    <span class="doc-pager-at"><%= t("cases.docPageOf", { page: docPage, pages: docPages }) %></span>
+    <button type="button" class="pager-nav" data-docs-page="<%= docPage + 1 %>" aria-label="›" <%= docPage >= docPages ? "disabled" : "" %>>›</button>
+  </nav>
+</footer>
+<% } %>
 <% if (canDelete && locals.clearHref && rows.length > 1) { %>
 <form class="doc-clear" method="post" action="<%= clearHref %>" data-docs-live data-confirm="<%= t('cases.confirmDeleteAllDocs', { n: rows.length }) %>">
   <% if (fromList) { %><%- include("list-return-fields") %><% } %>

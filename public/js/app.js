@@ -233,6 +233,39 @@
 
   window.setInterval(pollDocs, DOCS_POLL_MS);
 
+  // Paging reuses the live endpoint, so the panel keeps its page while it polls.
+  const showDocsPage = async (page) => {
+    const root = liveDocsRoot();
+    if (!root || liveBusy) return;
+    liveBusy = true;
+    try {
+      const url = new URL(root.dataset.docsLiveUrl, location.origin);
+      url.searchParams.set("docPage", page);
+      const res = await fetch(url.toString(), {
+        credentials: "same-origin",
+        headers: { Accept: "application/json", "X-Requested-With": "docs" },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.ok || data.docsHtml == null) return;
+      const next = new DOMParser().parseFromString(data.docsHtml, "text/html").querySelector("[data-docs-root]");
+      if (!next) return;
+      root.innerHTML = next.innerHTML;
+      root.dataset.docsLiveUrl = next.dataset.docsLiveUrl || url.toString();
+    } catch {
+      /* offline or navigating away */
+    } finally {
+      liveBusy = false;
+    }
+  };
+
+  document.addEventListener("click", (event) => {
+    const btn = event.target instanceof Element ? event.target.closest("[data-docs-page]") : null;
+    if (!btn) return;
+    event.preventDefault();
+    showDocsPage(btn.getAttribute("data-docs-page"));
+  });
+
   document.addEventListener("change", (event) => {
     const el = event.target.closest("[data-auto-submit]");
     if (!el?.form) return;

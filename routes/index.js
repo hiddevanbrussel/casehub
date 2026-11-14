@@ -655,6 +655,7 @@ async function sendLiveDocs(req, res, owner, basePath, empty) {
       fromList: src.from === "list",
       liveBase: empty.liveBase,
       clearHref: `${basePath}/documenten/verwijderen`,
+      docPage: src.docPage,
       canDelete: empty.canDelete !== false,
       emptyTitle: empty.title,
       emptyHint: empty.hint,

@@ -48,7 +48,7 @@ const { setLangCookie } = require("../lib/i18n");
 const { appProfile, isHr, isCases } = require("../lib/profile");
 const { parseChrome } = require("../lib/theme");
 const processLib = require("../lib/process");
-const { documentRows } = require("../lib/docs");
+const { documentRows, formatFileSize } = require("../lib/docs");
 const { BULK_COUNT: BULK_DEMO_COUNT } = require("../lib/demo-bulk");
 
 const upload = multer({
@@ -914,7 +914,7 @@ function chunkList(list, size) {
 
 // Thousands of recipients go to Create block by block, in the background, with one
 // job row per block so the documents tab shows how far the run is.
-async function generateChunkedDocuments(req, res, { owner, recipe, settings, targets, docsUrl, chunkSize }) {
+async function generateChunkedDocuments(req, res, { owner, recipe, settings, targets, docsUrl, chunkSize, wantedChunk, fit }) {
   try {
     await create.getToken(settings);
   } catch (err) {
@@ -951,6 +951,8 @@ async function generateChunkedDocuments(req, res, { owner, recipe, settings, tar
       body: {
         count: targets.length,
         chunkSize: size,
+        itemSize: formatFileSize(fit?.itemBytes),
+        blockSize: formatFileSize((fit?.itemBytes || 0) * size),
         data: create.clipJson(create.auditRequest({ body: targets[0].data }).body),
       },
     }
@@ -980,13 +982,23 @@ async function generateChunkedDocuments(req, res, { owner, recipe, settings, tar
         } catch (err) {
           store.updateDocumentJob(job.id, { status: "error", error: err.message }, actor);
           store.patchCreate({ lastError: err.message });
+          // An oversized block means every later block fails too, so stop here.
+          if (create.isPayloadTooLarge(err)) {
+            for (let rest = index + 1; rest < chunks.length; rest += 1) {
+              store.updateDocumentJob(jobs[rest].id, { status: "error", error: err.message }, actor);
+            }
+            break;
+          }
         }
       }
     });
   });
+  const trimmed = wantedChunk && size < wantedChunk;
   return generateReply(req, res, {
     next: docsUrl,
-    message: req.t("toast.batchStarted", { n: targets.length, chunks: chunks.length }),
+    message: trimmed
+      ? req.t("toast.batchStartedFit", { n: targets.length, chunks: chunks.length, size })
+      : req.t("toast.batchStarted", { n: targets.length, chunks: chunks.length }),
   });
 }
 
@@ -1127,9 +1139,20 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
   }
   const batchTargets = !interactive && Array.isArray(targets) && targets.length > 1 ? targets : null;
   if (batchTargets) {
-    const chunkSize = parseChunkSize(req.body.chunkSize, parseChunkSize(store.meta().batchChunkSize));
+    const wantedChunk = parseChunkSize(req.body.chunkSize, parseChunkSize(store.meta().batchChunkSize));
+    const fit = create.batchFit(batchTargets);
+    if (!fit.maxItems) {
+      return generateReply(req, res, {
+        next: docsUrl,
+        message: req.t("toast.batchItemTooBig", {
+          size: formatFileSize(fit.itemBytes),
+          max: formatFileSize(fit.maxBytes),
+        }),
+      });
+    }
+    const chunkSize = Math.min(wantedChunk, fit.maxItems);
     return batchTargets.length > chunkSize
-      ? generateChunkedDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl, chunkSize })
+      ? generateChunkedDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl, chunkSize, wantedChunk, fit })
       : generateBatchOwnerDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl });
   }
   const target = Array.isArray(targets) && targets[0] ? targets[0] : null;

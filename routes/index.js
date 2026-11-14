@@ -244,6 +244,12 @@ function wantsLivePartial(req) {
   return live || requested === "process" || requested === "docs" || accept.includes("application/json");
 }
 
+// The generate dialog can cap a bulk run, handy to try a few letters before sending them all.
+function limitTargets(list, value) {
+  const limit = Math.floor(Number(value) || 0);
+  return limit > 0 ? list.slice(0, limit) : list;
+}
+
 const PAGE_SIZE_OPTS = [5, 10, 25, 50];
 
 function listPageSize(value) {
@@ -2529,8 +2535,9 @@ function routes() {
     const recipeName = (recipe && recipe.name) || "document";
     const meta = store.meta();
     const images = create.caseImages(zaak, req.store?.dataDir);
+    const picked = create.sameKindTargets(create.pickStakeholders(zaak, bodyValues(req.body.stakeholder)));
     // A case can have thousands of stakeholders, so a payload is only built when it is used.
-    const targets = create.sameKindTargets(create.pickStakeholders(zaak, bodyValues(req.body.stakeholder))).map((stake) => {
+    const targets = limitTargets(picked, req.body.limit).map((stake) => {
       let payload = null;
       return {
         ...stake,

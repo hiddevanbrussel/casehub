@@ -3202,6 +3202,15 @@ html[data-theme="dark"] .login-body.has-hero .login-card {
   font-weight: 650;
 }
 .generate-modal .stake-picker .tpl-picker-list { max-height: 160px; }
+.generate-modal .generate-limit {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+.generate-modal .generate-limit input { width: 140px; }
 @media (max-height: 700px) {
   .modal-body { overflow: auto; }
 }

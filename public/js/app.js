@@ -1022,9 +1022,13 @@
     const checkedStakes = () =>
       [...generateModal.querySelectorAll("[data-generate-stakeholders] input[type=checkbox]")]
         .filter((box) => box.checked);
-    // One checkbox can stand for a whole group of stakeholders.
-    const checkedStakeCount = () =>
-      checkedStakes().reduce((total, box) => total + (Number(box.dataset.stakeCount) || 1), 0);
+    const limitInput = generateModal.querySelector("[data-generate-limit]");
+    // One checkbox can stand for a whole group of stakeholders, the limit field can trim it again.
+    const checkedStakeCount = () => {
+      const picked = checkedStakes().reduce((total, box) => total + (Number(box.dataset.stakeCount) || 1), 0);
+      const limit = Math.floor(Number(limitInput?.value) || 0);
+      return limit > 0 ? Math.min(picked, limit) : picked;
+    };
     const tooManyForInteractive = () => modeInput?.value === "interactive" && checkedStakeCount() > 1;
 
     const syncBatchHint = () => {
@@ -1047,6 +1051,8 @@
       }
       syncBatchHint();
     });
+
+    limitInput?.addEventListener("input", syncBatchHint);
 
     const setGenerateBusy = (busy) => {
       const i18n = window.I18N || {};

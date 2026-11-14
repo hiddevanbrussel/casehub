@@ -86,6 +86,10 @@
         <% if (manyPeople || manyCompanies) { %>
         <p class="hint"><%= t("cases.generateChunkHint", { size: locals.batchChunkSize || 500 }) %></p>
         <% } %>
+        <label class="generate-limit"><%= t("cases.generateLimit") %>
+          <input type="number" name="limit" min="1" step="1" inputmode="numeric" placeholder="<%= t('cases.generateLimitAll') %>" data-generate-limit autocomplete="off">
+        </label>
+        <p class="hint"><%= t("cases.generateLimitHint") %></p>
       </div>
       <% } %>
       <% if (recipeList.length) { %>

@@ -1022,7 +1022,10 @@
     const checkedStakes = () =>
       [...generateModal.querySelectorAll("[data-generate-stakeholders] input[type=checkbox]")]
         .filter((box) => box.checked);
-    const tooManyForInteractive = () => modeInput?.value === "interactive" && checkedStakes().length > 1;
+    // One checkbox can stand for a whole group of stakeholders.
+    const checkedStakeCount = () =>
+      checkedStakes().reduce((total, box) => total + (Number(box.dataset.stakeCount) || 1), 0);
+    const tooManyForInteractive = () => modeInput?.value === "interactive" && checkedStakeCount() > 1;
 
     const syncBatchHint = () => {
       const interactive = modeInput?.value === "interactive";

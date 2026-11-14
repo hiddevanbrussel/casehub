@@ -49,6 +49,7 @@ const { appProfile, isHr, isCases } = require("../lib/profile");
 const { parseChrome } = require("../lib/theme");
 const processLib = require("../lib/process");
 const { documentRows } = require("../lib/docs");
+const { BULK_COUNT: BULK_DEMO_COUNT } = require("../lib/demo-bulk");
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -65,6 +66,9 @@ const upload = multer({
 });
 
 const IMAGE_MIME = /^image\/(jpeg|png|gif|webp)$/i;
+
+// Above this many recipients a run is split into blocks instead of one Create request.
+const BATCH_CHUNK_SIZE = 500;
 
 const imageUpload = multer({
   storage: multer.diskStorage({
@@ -114,6 +118,10 @@ function generateReply(req, res, { open = "", next = "", message = "" }) {
 
 function toastT(req, res, path, key, vars) {
   toast(res, path, req.t(key, vars));
+}
+
+function countLabel(req, value) {
+  return new Intl.NumberFormat(req.lang || "nl").format(Number(value) || 0);
 }
 
 function uploadsFile(req, stored) {
@@ -873,6 +881,89 @@ async function startStufOwnerDocument(req, res, { owner, recipe, settings, stuf,
   return generateReply(req, res, { next: docsUrl, message: req.t("toast.noFinalize") });
 }
 
+function chunkList(list, size) {
+  const chunks = [];
+  for (let index = 0; index < list.length; index += size) chunks.push(list.slice(index, index + size));
+  return chunks;
+}
+
+// Thousands of recipients go to Create block by block, in the background, with one
+// job row per block so the documents tab shows how far the run is.
+async function generateChunkedDocuments(req, res, { owner, recipe, settings, targets, docsUrl }) {
+  try {
+    await create.getToken(settings);
+  } catch (err) {
+    store.patchCreate({ lastError: err.message });
+    return generateReply(req, res, { next: docsUrl, message: `Create: ${err.message}` });
+  }
+  const chunks = chunkList(targets, BATCH_CHUNK_SIZE);
+  const jobs = store.addDocumentJobs(
+    chunks.map((part, index) => ({
+      zaakId: owner.zaakId || "",
+      werknemerId: owner.werknemerId || "",
+      recipeId: recipe.itemId,
+      recipeName: recipe.name,
+      mode: "generate",
+      status: "prepared",
+      recipientCount: part.length,
+      stakeholderName: req.t("cases.docBlock", { i: index + 1, total: chunks.length, n: part.length }),
+    })),
+    req.user
+  );
+  const sample = create.generateBatchAsyncRequest(settings, {
+    recipeId: recipe.itemId,
+    items: [create.batchItem({ data: targets[0].data })],
+  });
+  store.log(
+    req.user,
+    "genereren",
+    "document",
+    jobs[0].id,
+    `${recipe.name} · ${sample.method} ${sample.path} · ${targets.length} betrokkenen in ${chunks.length} blokken`,
+    {
+      ...sample,
+      body: {
+        count: targets.length,
+        chunkSize: BATCH_CHUNK_SIZE,
+        data: create.clipJson(create.auditRequest({ body: targets[0].data }).body),
+      },
+    }
+  );
+  const tenant = req.store;
+  const actor = req.user;
+  setImmediate(() => {
+    runWithStore(tenant, async () => {
+      for (let index = 0; index < chunks.length; index += 1) {
+        const job = jobs[index];
+        const part = chunks[index];
+        try {
+          const results = await create.generateBatchAsync(settings, {
+            recipeId: recipe.itemId,
+            items: part.map((target) => create.batchItem({ data: target.data })),
+            mimeType: "application/pdf",
+          });
+          const failed = results.filter((row) => !row.success).length;
+          const queued = results.length - failed;
+          store.updateDocumentJob(
+            job.id,
+            queued
+              ? { status: "queued", recipientCount: queued, error: "" }
+              : { status: "error", error: results.find((row) => row.message)?.message || "Batch enqueue failed" },
+            actor
+          );
+        } catch (err) {
+          store.updateDocumentJob(job.id, { status: "error", error: err.message }, actor);
+          store.patchCreate({ lastError: err.message });
+        }
+      }
+    });
+  });
+  return generateReply(req, res, {
+    next: docsUrl,
+    message: req.t("toast.batchStarted", { n: targets.length, chunks: chunks.length }),
+  });
+}
+
 async function generateBatchOwnerDocuments(req, res, { owner, recipe, settings, targets, docsUrl }) {
   try {
     await create.getToken(settings);
@@ -1010,7 +1101,9 @@ async function generateOwnerDocument(req, res, { owner, data, fileName, docsUrl,
   }
   const batchTargets = !interactive && Array.isArray(targets) && targets.length > 1 ? targets : null;
   if (batchTargets) {
-    return generateBatchOwnerDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl });
+    return batchTargets.length > BATCH_CHUNK_SIZE
+      ? generateChunkedDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl })
+      : generateBatchOwnerDocuments(req, res, { owner, recipe, settings, targets: batchTargets, docsUrl });
   }
   const target = Array.isArray(targets) && targets[0] ? targets[0] : null;
   const payload = target?.data || data;
@@ -1925,6 +2018,11 @@ function routes() {
   r.use(requireAuth);
 
   r.use((req, res, next) => {
+    res.locals.batchChunkSize = BATCH_CHUNK_SIZE;
+    next();
+  });
+
+  r.use((req, res, next) => {
     if (req.store) return next();
     const route = req.path || "";
     const platformOnly =
@@ -2200,7 +2298,8 @@ function routes() {
         deadline: req.body.deadline,
         behandelaarId: req.body.behandelaarId,
         bedrijfIds: ids(req.body.bedrijfIds),
-        persoonIds: ids(req.body.persoonIds),
+        // Too many stakeholders to edit one by one: the form keeps the existing links.
+        persoonIds: req.body.keepPersoonIds === "1" ? zaak.persoonIds : ids(req.body.persoonIds),
       },
       req.user
     );
@@ -2411,13 +2510,22 @@ function routes() {
     const fromList = req.body.from === "list";
     const listBack = zakenListPath({ ...req.body, filterFocus: zaak.id, filterPeekTab: "docs" });
     const recipeName = (recipe && recipe.name) || "document";
-    const targets = create.sameKindTargets(create.pickStakeholders(zaak, bodyValues(req.body.stakeholder))).map((stake) => ({
-      ...stake,
-      data: create.prefillData(zaak, recipe || {}, { persoon: stake.persoon, bedrijf: stake.bedrijf }, store.meta(), {
-        dataDir: req.store?.dataDir,
-      }),
-      fileName: `${recipeName}-${zaak.zaaknummer}${stake.name ? `-${stake.name}` : ""}.pdf`,
-    }));
+    const meta = store.meta();
+    const images = create.caseImages(zaak, req.store?.dataDir);
+    // A case can have thousands of stakeholders, so a payload is only built when it is used.
+    const targets = create.sameKindTargets(create.pickStakeholders(zaak, bodyValues(req.body.stakeholder))).map((stake) => {
+      let payload = null;
+      return {
+        ...stake,
+        fileName: `${recipeName}-${zaak.zaaknummer}${stake.name ? `-${stake.name}` : ""}.pdf`,
+        get data() {
+          if (!payload) {
+            payload = create.prefillData(zaak, recipe || {}, { persoon: stake.persoon, bedrijf: stake.bedrijf }, meta, { images });
+          }
+          return payload;
+        },
+      };
+    });
     await generateOwnerDocument(req, res, {
       owner: { zaakId: zaak.id },
       data: targets[0]?.data || create.prefillData(zaak, recipe || {}, {}, store.meta(), { dataDir: req.store?.dataDir }),
@@ -3105,11 +3213,14 @@ function routes() {
 
   r.get("/instellingen/algemeen", requireRole("admin"), (req, res) => {
     const meta = store.meta();
+    const bulk = store.bulkDemoSummary();
     res.render("instellingen/algemeen", {
       title: req.t("settings.generalTitle"),
       meta,
       chrome: parseChrome(meta.chrome),
       timeZoneOptions: timeZones(),
+      bulkCount: countLabel(req, BULK_DEMO_COUNT),
+      bulkDemo: bulk ? { ...bulk, personenLabel: countLabel(req, bulk.personen) } : null,
     });
   });
 
@@ -3141,6 +3252,17 @@ function routes() {
       return toastT(req, res, "/instellingen/algemeen", "toast.demoAlready");
     }
     toastT(req, res, "/instellingen/algemeen", "toast.demoImported", result);
+  });
+
+  r.post("/instellingen/algemeen/demo-groot", requireRole("admin"), (req, res) => {
+    const result = store.importBulkDemo(req.lang, req.user);
+    if (!result.created) return toastT(req, res, "/instellingen/algemeen", "toast.bulkAlready");
+    toastT(req, res, "/instellingen/algemeen", "toast.bulkImported", { n: countLabel(req, result.personen) });
+  });
+
+  r.post("/instellingen/algemeen/demo-groot/verwijderen", requireRole("admin"), (req, res) => {
+    const result = store.removeBulkDemo(req.user);
+    toastT(req, res, "/instellingen/algemeen", "toast.bulkRemoved", { n: countLabel(req, result.personen) });
   });
 
   r.get("/instellingen/zaaktypen", requireRole("admin"), (req, res) => {

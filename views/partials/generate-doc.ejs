@@ -10,6 +10,10 @@
   const generateCompanies = generateStakeholders.filter(function (item) { return generateStakeKind(item) === "bedrijf"; });
   const bulkPeople = generatePeople.length > 1;
   const bulkCompanies = generateCompanies.length > 1;
+  // Beyond this a per-stakeholder checkbox list is unworkable, so the picker offers the whole group.
+  const stakeListMax = 100;
+  const manyPeople = generatePeople.length > stakeListMax;
+  const manyCompanies = generateCompanies.length > stakeListMax;
   const showStakePicker = bulkPeople || bulkCompanies;
   const defaultBulkKind = bulkPeople ? "persoon" : (bulkCompanies ? "bedrijf" : "");
   const stufOn = Boolean(typeof stufReady !== "undefined" && stufReady);
@@ -43,12 +47,19 @@
         <div class="stake-picker-group">
           <p class="stake-picker-label"><%= t("nav.persons") %></p>
           <div class="tpl-picker-list">
+            <% if (manyPeople) { %>
+            <label class="check-item">
+              <input type="checkbox" name="stakeholder" value="alle:persoon" data-stake-kind="persoon" data-stake-count="<%= generatePeople.length %>" <%= defaultBulkKind === "persoon" ? "checked" : "" %>>
+              <span><%= t("cases.generateEveryone", { n: generatePeople.length.toLocaleString(locals.lang || "nl") }) %></span>
+            </label>
+            <% } else { %>
             <% generatePeople.forEach(function (stake) { %>
             <label class="check-item">
               <input type="checkbox" name="stakeholder" value="<%= stake.key %>" data-stake-kind="persoon" <%= defaultBulkKind === "persoon" ? "checked" : "" %>>
               <span><%= stake.name %></span>
             </label>
             <% }) %>
+            <% } %>
           </div>
         </div>
         <% } %>
@@ -56,14 +67,24 @@
         <div class="stake-picker-group">
           <p class="stake-picker-label"><%= t("nav.companies") %></p>
           <div class="tpl-picker-list">
+            <% if (manyCompanies) { %>
+            <label class="check-item">
+              <input type="checkbox" name="stakeholder" value="alle:bedrijf" data-stake-kind="bedrijf" data-stake-count="<%= generateCompanies.length %>" <%= defaultBulkKind === "bedrijf" ? "checked" : "" %>>
+              <span><%= t("cases.generateEveryCompany", { n: generateCompanies.length.toLocaleString(locals.lang || "nl") }) %></span>
+            </label>
+            <% } else { %>
             <% generateCompanies.forEach(function (stake) { %>
             <label class="check-item">
               <input type="checkbox" name="stakeholder" value="<%= stake.key %>" data-stake-kind="bedrijf" <%= defaultBulkKind === "bedrijf" ? "checked" : "" %>>
               <span><%= stake.name %></span>
             </label>
             <% }) %>
+            <% } %>
           </div>
         </div>
+        <% } %>
+        <% if (manyPeople || manyCompanies) { %>
+        <p class="hint"><%= t("cases.generateChunkHint", { size: locals.batchChunkSize || 500 }) %></p>
         <% } %>
       </div>
       <% } %>

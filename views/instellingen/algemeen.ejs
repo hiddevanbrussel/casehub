@@ -156,4 +156,26 @@
     <button class="ghost" type="submit"><%= t("settings.demoImport") %></button>
   </form>
 </section>
+
+<section class="set-demo">
+  <div>
+    <h2><%= t("settings.bulkTitle") %></h2>
+    <p><%= t("settings.bulkLede", { n: bulkCount }) %></p>
+    <% if (locals.bulkDemo) { %>
+    <p class="hint">
+      <a href="/zaken?focus=<%= bulkDemo.id %>"><%= bulkDemo.zaaknummer %> · <%= bulkDemo.titel %></a>
+      — <%= t("settings.bulkCurrent", { n: bulkDemo.personenLabel }) %>
+    </p>
+    <% } %>
+  </div>
+  <% if (locals.bulkDemo) { %>
+  <form method="post" action="/instellingen/algemeen/demo-groot/verwijderen" data-confirm="<%= t('settings.bulkRemoveConfirm', { n: bulkDemo.personenLabel }) %>">
+    <button class="ghost" type="submit"><%= t("settings.bulkRemove") %></button>
+  </form>
+  <% } else { %>
+  <form method="post" action="/instellingen/algemeen/demo-groot" data-confirm="<%= t('settings.bulkConfirm', { n: bulkCount }) %>">
+    <button class="ghost" type="submit"><%= t("settings.bulkImport") %></button>
+  </form>
+  <% } %>
+</section>
 <% } %>

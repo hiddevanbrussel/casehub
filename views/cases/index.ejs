@@ -292,6 +292,10 @@
       <% const peekCompanies = peekCase.bedrijven || []; %>
       <% const peekDocRows = documentRows(peekCase, { basePath: "/zaken/" + peekCase.id }); %>
       <% const peekHolderCount = peekPeople.length + peekCompanies.length; %>
+      <% const stakeListMax = 50; %>
+      <% const peekManyPeople = peekPeople.length > stakeListMax; %>
+      <% const peekPeopleShown = peekManyPeople ? peekPeople.slice(0, stakeListMax) : peekPeople; %>
+      <% const peekPeopleRest = peekPeople.length - peekPeopleShown.length; %>
       <% const peekProc = peekCase.process; %>
       <% const hasTasksTab = Boolean(peekProc && peekProc.enabled && !peekProc.done); %>
       <% const peekOpenTasks = hasTasksTab ? peekProc.tasks.filter(function (task) { return !task.done; }).length : 0; %>
@@ -462,6 +466,10 @@
         <section class="peek-holders peek-edit" data-stakeholder-picker>
           <h3><%= t("cases.stakeholders") %></h3>
           <div class="holders" data-stake-list>
+            <% if (peekManyPeople) { %>
+              <p class="hint"><%= t("cases.stakeholdersLocked", { n: peekPeople.length.toLocaleString(lang) }) %></p>
+              <input type="hidden" name="keepPersoonIds" value="1">
+            <% } else { %>
             <% peekPeople.forEach(function (p) { %>
               <details class="holder" data-kind="person" data-id="<%= p.id %>">
                 <summary>
@@ -474,6 +482,7 @@
               </details>
               <input type="hidden" name="persoonIds" value="<%= p.id %>">
             <% }) %>
+            <% } %>
             <% peekCompanies.forEach(function (b) { %>
               <details class="holder" data-kind="company" data-id="<%= b.id %>">
                 <summary>
@@ -506,7 +515,7 @@
         </button>
         <% } %>
         <button type="button" class="<%= activePeekTab === "holders" ? "is-active" : "" %>" role="tab" id="peek-tab-holders" aria-controls="peek-panel-holders" aria-selected="<%= activePeekTab === "holders" ? "true" : "false" %>" tabindex="<%= activePeekTab === "holders" ? "0" : "-1" %>" data-peek-tab="holders">
-          <%= t("cases.stakeholders") %><% if (peekHolderCount) { %><span class="peek-count"><%= peekHolderCount %></span><% } %>
+          <%= t("cases.stakeholders") %><% if (peekHolderCount) { %><span class="peek-count"><%= peekHolderCount.toLocaleString(lang) %></span><% } %>
         </button>
         <button type="button" class="<%= activePeekTab === "activity" ? "is-active" : "" %>" role="tab" id="peek-tab-activity" aria-controls="peek-panel-activity" aria-selected="<%= activePeekTab === "activity" ? "true" : "false" %>" tabindex="<%= activePeekTab === "activity" ? "0" : "-1" %>" data-peek-tab="activity">
           <%= t("cases.recentActivity") %>
@@ -525,12 +534,15 @@
           <p class="muted"><%= t("cases.noStakeholders") %></p>
         <% } else { %>
           <ul class="peek-stake-list">
-            <% peekPeople.forEach(function (p) { %>
+            <% peekPeopleShown.forEach(function (p) { %>
               <li>
                 <span class="who-avatar assignee-av tone-<%= p.id.charCodeAt(0) % 4 %>" aria-hidden="true"><%= String(p.naam || "?").split(/\s+/).map(function (part) { return part[0]; }).filter(Boolean).slice(0, 2).join("").toUpperCase() %></span>
                 <a href="/personen?focus=<%= p.id %>"><%= p.naam %></a>
               </li>
             <% }) %>
+            <% if (peekPeopleRest > 0) { %>
+              <li class="muted"><%= t("cases.stakeholdersMore", { n: peekPeopleRest.toLocaleString(lang) }) %></li>
+            <% } %>
             <% peekCompanies.forEach(function (b) { %>
               <li>
                 <span class="who-avatar assignee-av tone-1" aria-hidden="true"><%- icon("building-2") %></span>

@@ -16,6 +16,7 @@
     if (code === "success") return t("cases.docCompleted");
     if (code === "error") return t("cases.docFailed");
     if (code === "generating") return t("cases.docGenerating");
+    if (code === "queued") return t("cases.docQueued");
     if (code === "webhook-empty") return t("cases.docWebhookEmpty");
     if (code === "webhook") return t("cases.docWebhookReceived");
     return t("cases.docWaitingWebhook");
@@ -28,7 +29,7 @@
   function docBadge(code) {
     if (code === "error" || code === "webhook-empty") return "wacht_op_info";
     if (code === "uploaded" || code === "success") return "afgerond";
-    if (code === "webhook") return "in_behandeling";
+    if (code === "webhook" || code === "queued") return "in_behandeling";
     return "nieuw";
   }
   // Documents arrive asynchronously via Create and StUF-DCR, so this list polls itself.

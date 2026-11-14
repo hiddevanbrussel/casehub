@@ -5,6 +5,11 @@
   const generateMode = stufOn && !createOn ? "interactive" : "generate";
   const persons = zaak.personen || [];
   const companies = zaak.bedrijven || [];
+  // A case can hold thousands of people; the panels show a sample plus the rest as a count.
+  const personsSide = persons.slice(0, 8);
+  const personsSideRest = persons.length - personsSide.length;
+  const personsFull = persons.slice(0, 50);
+  const personsFullRest = persons.length - personsFull.length;
   const events = typeof activity !== "undefined" ? activity : [];
   const recentEvents = events.slice(0, 3);
   const docRows = documentRows(zaak, { basePath: "/zaken/" + zaak.id });
@@ -174,12 +179,15 @@
           <p class="muted"><%= t("cases.noStakeholders") %></p>
         <% } else { %>
           <ul class="case-people">
-            <% persons.forEach(function (p) { %>
+            <% personsSide.forEach(function (p) { %>
             <li>
               <span class="who-avatar assignee-av tone-<%= p.id.charCodeAt(0) % 4 %>" aria-hidden="true"><%= String(p.naam || "?").split(/\s+/).map(function (part) { return part[0]; }).slice(0, 2).join("").toUpperCase() %></span>
               <a href="/personen?focus=<%= p.id %>"><%= p.naam %></a>
             </li>
             <% }) %>
+            <% if (personsSideRest > 0) { %>
+            <li class="muted"><%= t("cases.stakeholdersMore", { n: personsSideRest.toLocaleString(lang) }) %></li>
+            <% } %>
             <% companies.forEach(function (b) { %>
             <li>
               <span class="who-avatar assignee-av tone-1" aria-hidden="true">
@@ -241,7 +249,7 @@
       <% if (persons.length) { %>
         <h3 class="case-sub"><%= t("cases.persons") %></h3>
         <ul class="case-people">
-          <% persons.forEach(function (p) { %>
+          <% personsFull.forEach(function (p) { %>
           <li>
             <span class="who-avatar assignee-av tone-<%= p.id.charCodeAt(0) % 4 %>" aria-hidden="true"><%= String(p.naam || "?").split(/\s+/).map(function (part) { return part[0]; }).slice(0, 2).join("").toUpperCase() %></span>
             <div>
@@ -250,6 +258,9 @@
             </div>
           </li>
           <% }) %>
+          <% if (personsFullRest > 0) { %>
+          <li class="muted"><%= t("cases.stakeholdersMore", { n: personsFullRest.toLocaleString(lang) }) %></li>
+          <% } %>
         </ul>
       <% } %>
       <% if (companies.length) { %>

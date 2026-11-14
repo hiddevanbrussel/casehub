@@ -244,6 +244,12 @@ function wantsLivePartial(req) {
   return live || requested === "process" || requested === "docs" || accept.includes("application/json");
 }
 
+const PAGE_SIZE_OPTS = [5, 10, 25, 50];
+
+function listPageSize(value) {
+  return PAGE_SIZE_OPTS.includes(Number(value)) ? Number(value) : 10;
+}
+
 function listFormLocals(body) {
   return {
     q: body.filterQ,
@@ -270,12 +276,16 @@ function nawListPath(base, src) {
   const map = {
     q: src.filterQ,
     group: src.filterGroup,
+    page: src.filterPage,
+    pageSize: src.filterPageSize,
     focus: src.filterFocus,
     peekTab: src.filterPeekTab,
   };
   Object.keys(map).forEach((key) => {
     const value = map[key];
     if (!value) return;
+    if (key === "page" && Number(value) === 1) return;
+    if (key === "pageSize" && Number(value) === 10) return;
     params.set(key, value);
   });
   const qs = params.toString();
@@ -2083,8 +2093,7 @@ function routes() {
   r.get("/zaken", (req, res) => {
     const { fragment, lazyPending } = listRequest(req);
     if (fragment) res.locals.layout = false;
-    const pageSizeOpts = [5, 10, 25, 50];
-    const pageSize = pageSizeOpts.includes(Number(req.query.pageSize)) ? Number(req.query.pageSize) : 10;
+    const pageSize = listPageSize(req.query.pageSize);
     const composing = String(req.query.nieuw || "") === "1";
     const view = composing ? "overview" : parseView(req.query.view);
     if (view !== "board") res.locals.contentMod = " is-split-list";
@@ -2096,7 +2105,7 @@ function routes() {
         page: 1,
         pages: 1,
         pageSize,
-        pageSizeOpts,
+        pageSizeOpts: PAGE_SIZE_OPTS,
         from: 0,
         to: 0,
         q: req.query.q || "",
@@ -2153,7 +2162,7 @@ function routes() {
       page,
       pages,
       pageSize,
-      pageSizeOpts,
+      pageSizeOpts: PAGE_SIZE_OPTS,
       from: total ? start + 1 : 0,
       to: Math.min(total, start + pageSize),
       q: req.query.q || "",
@@ -2650,11 +2659,19 @@ function routes() {
     const { fragment, lazyPending } = listRequest(req);
     if (fragment) res.locals.layout = false;
     const canWrite = canWriteMaster(req.user);
+    const pageSize = listPageSize(req.query.pageSize);
     res.locals.contentMod = " is-split-list";
     if (lazyPending) {
       return res.render("personen/index", {
         title: req.t("nav.persons"),
         personen: [],
+        total: 0,
+        page: 1,
+        pages: 1,
+        pageSize,
+        pageSizeOpts: PAGE_SIZE_OPTS,
+        from: 0,
+        to: 0,
         q: req.query.q || "",
         group: req.query.group || "",
         groups: PERSON_GROUPS,
@@ -2670,14 +2687,30 @@ function routes() {
     }
     const composing = canWrite && String(req.query.nieuw || "") === "1";
     const all = store.personen(req.query.q, req.query.group);
+    const total = all.length;
+    const pages = Math.max(1, Math.ceil(total / pageSize) || 1);
     let focusId = composing ? "" : String(req.query.focus || "");
     if (focusId && !store.persoon(focusId)) focusId = "";
-    if (!composing && !focusId && all[0]) focusId = all[0].id;
+    let page = Math.min(pages, Math.max(1, Number(req.query.page) || 1));
+    if (focusId && !req.query.page) {
+      const focusIndex = all.findIndex((p) => p.id === focusId);
+      if (focusIndex >= 0) page = Math.floor(focusIndex / pageSize) + 1;
+    }
+    const start = (page - 1) * pageSize;
+    const pagePersonen = all.slice(start, start + pageSize);
+    if (!composing && !focusId && pagePersonen[0]) focusId = pagePersonen[0].id;
     const peek = composing ? draftPersoon() : (focusId ? store.persoon(focusId) : null);
     const peekTab = String(req.query.peekTab || "") === "cases" ? "cases" : "";
     res.render("personen/index", {
       title: req.t("nav.persons"),
-      personen: all,
+      personen: pagePersonen,
+      total,
+      page,
+      pages,
+      pageSize,
+      pageSizeOpts: PAGE_SIZE_OPTS,
+      from: total ? start + 1 : 0,
+      to: Math.min(total, start + pageSize),
       q: req.query.q || "",
       group: req.query.group || "",
       groups: PERSON_GROUPS,

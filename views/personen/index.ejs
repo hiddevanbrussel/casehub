@@ -3,12 +3,16 @@
     const src = Object.assign({
       q: q,
       group: group,
+      page: typeof page !== "undefined" ? page : 1,
+      pageSize: typeof pageSize !== "undefined" ? pageSize : 10,
       focus: typeof focus !== "undefined" ? focus : "",
     }, overrides || {});
     const params = [];
     Object.keys(src).forEach(function (key) {
       const value = src[key];
       if (!value) return;
+      if (key === "page" && Number(value) === 1) return;
+      if (key === "pageSize" && Number(value) === 10) return;
       params.push(encodeURIComponent(key) + "=" + encodeURIComponent(value));
     });
     return params.length ? "?" + params.join("&") : "";
@@ -52,6 +56,7 @@
           <% }) %>
         </select>
       </div>
+      <input type="hidden" name="pageSize" value="<%= pageSize %>">
       <% if (focusId) { %><input type="hidden" name="focus" value="<%= focusId %>"><% } %>
     </form>
 
@@ -68,6 +73,7 @@
     <% if (canDelete) { %>
       <% if (q) { %><input type="hidden" name="filterQ" value="<%= q %>"><% } %>
       <% if (group) { %><input type="hidden" name="filterGroup" value="<%= group %>"><% } %>
+      <%- include("../partials/list-page-fields") %>
     <% } %>
     <div class="queue<%= canDelete ? " has-checks" : "" %>" data-queue>
       <% if (canDelete) { %>
@@ -111,6 +117,15 @@
     <% if (canDelete) { %>
       <%- include("../partials/list-bulk-delete") %>
     </form>
+    <% } %>
+    <% if (personen.length) { %>
+    <%- include("../partials/list-pager", {
+      rangeLabel: t("persons.pageRange", { from: from, to: to, total: total }),
+      navLabel: t("nav.persons"),
+      action: "/personen",
+      pageHref: function (n) { return listQs({ page: n }); },
+      keep: { q: q, group: group, focus: focusId },
+    }) %>
     <% } %>
     <% } %>
     </div>
@@ -164,6 +179,7 @@
                 <input type="hidden" name="from" value="list">
                 <% if (q) { %><input type="hidden" name="filterQ" value="<%= q %>"><% } %>
                 <% if (group) { %><input type="hidden" name="filterGroup" value="<%= group %>"><% } %>
+                <%- include("../partials/list-page-fields") %>
                 <input type="hidden" name="filterFocus" value="<%= peekPerson.id %>">
                 <button type="submit"><%= t("persons.anonymise") %></button>
               </form>
@@ -173,6 +189,7 @@
                 <input type="hidden" name="from" value="list">
                 <% if (q) { %><input type="hidden" name="filterQ" value="<%= q %>"><% } %>
                 <% if (group) { %><input type="hidden" name="filterGroup" value="<%= group %>"><% } %>
+                <%- include("../partials/list-page-fields") %>
                 <button class="danger-text" type="submit"><%= t("common.delete") %></button>
               </form>
               <% } %>
@@ -196,6 +213,7 @@
         <input type="hidden" name="from" value="list">
         <% if (q) { %><input type="hidden" name="filterQ" value="<%= q %>"><% } %>
         <% if (group) { %><input type="hidden" name="filterGroup" value="<%= group %>"><% } %>
+        <%- include("../partials/list-page-fields") %>
         <% if (!composing) { %><input type="hidden" name="filterFocus" value="<%= peekPerson.id %>"><% } %>
         <p class="peek-id"><%= composing ? t("cases.caseIdSoon") : peekPerson.nummer %></p>
         <h2 class="peek-subject peek-view"><%= peekPerson.naam || t("persons.anonymised") %></h2>

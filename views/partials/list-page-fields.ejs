@@ -1,0 +1,2 @@
+<% if (typeof page !== "undefined" && Number(page) !== 1) { %><input type="hidden" name="filterPage" value="<%= page %>"><% } %>
+<% if (typeof pageSize !== "undefined" && Number(pageSize) !== 10) { %><input type="hidden" name="filterPageSize" value="<%= pageSize %>"><% } %>

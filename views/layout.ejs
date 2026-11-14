@@ -120,7 +120,7 @@
   <% if (toast) { %>
   <div class="toast" role="status"><%= toast %></div>
   <% } %>
-  <script>window.I18N = <%- JSON.stringify({ nothing: t("search.nothing"), cases: t("nav.cases"), companies: t("nav.companies"), persons: t("nav.persons"), employees: t("nav.employees"), selected: t("templates.selected"), allAllowed: t("templates.allAllowed"), download: t("common.download"), generateDoc: t("cases.generateDoc"), generateInteractive: t("cases.generateInteractive"), generating: t("cases.generating"), stakeNoMatch: t("cases.stakeholderNoMatch"), loading: t("common.loading"), loadError: t("common.loadError") }) %>;</script>
+  <script>window.I18N = <%- JSON.stringify({ nothing: t("search.nothing"), cases: t("nav.cases"), companies: t("nav.companies"), persons: t("nav.persons"), employees: t("nav.employees"), selected: t("templates.selected"), allAllowed: t("templates.allAllowed"), download: t("common.download"), generateDoc: t("cases.generateDoc"), generateDocs: t("cases.generateDocs", { n: "{n}" }), generateInteractive: t("cases.generateInteractive"), generating: t("cases.generating"), stakeNoMatch: t("cases.stakeholderNoMatch"), loading: t("common.loading"), loadError: t("common.loadError") }) %>;</script>
   <template id="icon-chevron-down"><%- icon("chevron-down") %></template>
   <div class="tour" id="tour" hidden>
     <div class="tour-scrim" data-tour-scrim></div>

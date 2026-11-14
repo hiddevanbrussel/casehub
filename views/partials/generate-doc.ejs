@@ -6,16 +6,29 @@
     if (item.kind === "persoon" || item.kind === "bedrijf") return item.kind;
     return String(item.key || "").indexOf("bedrijf:") === 0 ? "bedrijf" : "persoon";
   }
+  function generateStakeInitials(name) {
+    return String(name || "?").split(/\s+/).map(function (part) { return part[0]; }).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  }
+  function generateStakeTone(key) {
+    const id = String(key || "").split(":")[1] || "a";
+    return id.charCodeAt(0) % 4;
+  }
+  const generateLang = locals.lang || "nl";
   const generatePeople = generateStakeholders.filter(function (item) { return generateStakeKind(item) === "persoon"; });
   const generateCompanies = generateStakeholders.filter(function (item) { return generateStakeKind(item) === "bedrijf"; });
-  const bulkPeople = generatePeople.length > 1;
-  const bulkCompanies = generateCompanies.length > 1;
   // Beyond this a per-stakeholder checkbox list is unworkable, so the picker offers the whole group.
   const stakeListMax = 100;
   const manyPeople = generatePeople.length > stakeListMax;
   const manyCompanies = generateCompanies.length > stakeListMax;
-  const showStakePicker = bulkPeople || bulkCompanies;
-  const defaultBulkKind = bulkPeople ? "persoon" : (bulkCompanies ? "bedrijf" : "");
+  // A search field only earns its place once scanning the list stops being instant.
+  const stakeSearchMin = 8;
+  const showStakePicker = generateStakeholders.length > 0;
+  const showStakeTabs = generatePeople.length > 0 && generateCompanies.length > 0;
+  const defaultBulkKind = generatePeople.length ? "persoon" : "bedrijf";
+  const stakeGroups = [
+    { kind: "persoon", label: t("nav.persons"), items: generatePeople, many: manyPeople, allLabel: t("cases.generateEveryone", { n: generatePeople.length.toLocaleString(generateLang) }) },
+    { kind: "bedrijf", label: t("nav.companies"), items: generateCompanies, many: manyCompanies, allLabel: t("cases.generateEveryCompany", { n: generateCompanies.length.toLocaleString(generateLang) }) },
+  ].filter(function (group) { return group.items.length > 0; });
   const stufOn = Boolean(typeof stufReady !== "undefined" && stufReady);
   const createOn = Boolean(typeof createEnabled !== "undefined" && createEnabled);
   const defaultMode = stufOn && !createOn ? "interactive" : "generate";
@@ -40,81 +53,99 @@
       <input type="hidden" name="mode" value="<%= defaultMode %>" data-generate-mode>
       <% if (locals.fromList) { %><%- include("list-return-fields") %><% } %>
       <% if (showStakePicker) { %>
-      <p class="hint" data-generate-hint="batch"><%= t("cases.generateBatchHint") %></p>
-      <p class="hint" data-generate-hint="interactive" hidden><%= t("cases.generateBatchInteractive") %></p>
-      <div class="tpl-picker stake-picker" data-generate-stakeholders>
-        <% if (bulkPeople) { %>
-        <div class="stake-picker-group">
-          <p class="stake-picker-label"><%= t("nav.persons") %></p>
-          <div class="tpl-picker-list">
-            <% if (manyPeople) { %>
-            <label class="check-item">
-              <input type="checkbox" name="stakeholder" value="alle:persoon" data-stake-kind="persoon" data-stake-count="<%= generatePeople.length %>" <%= defaultBulkKind === "persoon" ? "checked" : "" %>>
-              <span><%= t("cases.generateEveryone", { n: generatePeople.length.toLocaleString(locals.lang || "nl") }) %></span>
+      <section class="gen-section" data-generate-stakeholders>
+        <div class="gen-section-head">
+          <h2 class="gen-section-title"><%= t("cases.recipients") %></h2>
+          <p class="gen-count" data-stake-count hidden data-stake-count-template="<%= t('cases.recipientsSelected', { n: '{n}', total: '{total}' }) %>"></p>
+        </div>
+        <p class="hint" data-generate-hint="interactive" hidden><%= t("cases.generateBatchInteractive") %></p>
+        <% if (showStakeTabs) { %>
+        <div class="gen-kinds" role="tablist" aria-label="<%= t("cases.recipients") %>">
+          <% stakeGroups.forEach(function (group) { %>
+          <button type="button" class="gen-kind<%= group.kind === defaultBulkKind ? ' is-active' : '' %>" role="tab" id="gen-kind-<%= group.kind %>" aria-controls="gen-panel-<%= group.kind %>" aria-selected="<%= group.kind === defaultBulkKind ? 'true' : 'false' %>" tabindex="<%= group.kind === defaultBulkKind ? '0' : '-1' %>" data-stake-tab="<%= group.kind %>">
+            <%= group.label %><span class="gen-kind-count"><%= group.items.length.toLocaleString(generateLang) %></span>
+          </button>
+          <% }) %>
+        </div>
+        <% } %>
+        <% stakeGroups.forEach(function (group) { %>
+        <div class="gen-list" id="gen-panel-<%= group.kind %>" data-stake-panel="<%= group.kind %>" data-stake-total="<%= group.items.length %>"<% if (showStakeTabs) { %> role="tabpanel" aria-labelledby="gen-kind-<%= group.kind %>"<% } %><% if (group.kind !== defaultBulkKind) { %> hidden<% } %>>
+          <% if (!group.many && group.items.length >= stakeSearchMin) { %>
+          <div class="gen-list-bar">
+            <input type="search" data-stake-filter placeholder="<%= t('cases.recipientsSearch') %>" aria-label="<%= t('cases.recipientsSearch') %>" autocomplete="off">
+          </div>
+          <% } %>
+          <div class="gen-rows">
+            <% if (group.many) { %>
+            <label class="gen-row">
+              <input type="checkbox" name="stakeholder" value="alle:<%= group.kind %>" data-stake-kind="<%= group.kind %>" data-stake-count="<%= group.items.length %>" <%= group.kind === defaultBulkKind ? "checked" : "" %>>
+              <span class="gen-row-name"><%= group.allLabel %></span>
             </label>
             <% } else { %>
-            <% generatePeople.forEach(function (stake) { %>
-            <label class="check-item">
-              <input type="checkbox" name="stakeholder" value="<%= stake.key %>" data-stake-kind="persoon" <%= defaultBulkKind === "persoon" ? "checked" : "" %>>
-              <span><%= stake.name %></span>
+            <% if (group.items.length > 1) { %>
+            <label class="gen-row gen-row-all">
+              <input type="checkbox" data-stake-all="<%= group.kind %>" <%= group.kind === defaultBulkKind ? "checked" : "" %>>
+              <span class="gen-row-name"><%= group.allLabel %></span>
+            </label>
+            <% } %>
+            <% group.items.forEach(function (stake) { %>
+            <label class="gen-row">
+              <input type="checkbox" name="stakeholder" value="<%= stake.key %>" data-stake-kind="<%= group.kind %>" <%= group.kind === defaultBulkKind ? "checked" : "" %>>
+              <% if (group.kind === "bedrijf") { %>
+              <span class="who-avatar assignee-av tone-1" aria-hidden="true"><%- icon("building-2") %></span>
+              <% } else { %>
+              <span class="who-avatar assignee-av tone-<%= generateStakeTone(stake.key) %>" aria-hidden="true"><%= generateStakeInitials(stake.name) %></span>
+              <% } %>
+              <span class="gen-row-name"><%= stake.name %></span>
             </label>
             <% }) %>
+            <p class="gen-empty" data-stake-empty hidden><%= t("cases.stakeholderNoMatch") %></p>
             <% } %>
           </div>
         </div>
-        <% } %>
-        <% if (bulkCompanies) { %>
-        <div class="stake-picker-group">
-          <p class="stake-picker-label"><%= t("nav.companies") %></p>
-          <div class="tpl-picker-list">
-            <% if (manyCompanies) { %>
-            <label class="check-item">
-              <input type="checkbox" name="stakeholder" value="alle:bedrijf" data-stake-kind="bedrijf" data-stake-count="<%= generateCompanies.length %>" <%= defaultBulkKind === "bedrijf" ? "checked" : "" %>>
-              <span><%= t("cases.generateEveryCompany", { n: generateCompanies.length.toLocaleString(locals.lang || "nl") }) %></span>
-            </label>
-            <% } else { %>
-            <% generateCompanies.forEach(function (stake) { %>
-            <label class="check-item">
-              <input type="checkbox" name="stakeholder" value="<%= stake.key %>" data-stake-kind="bedrijf" <%= defaultBulkKind === "bedrijf" ? "checked" : "" %>>
-              <span><%= stake.name %></span>
-            </label>
-            <% }) %>
-            <% } %>
-          </div>
-        </div>
-        <% } %>
+        <% }) %>
         <% if (manyPeople || manyCompanies) { %>
         <p class="hint"><%= t("cases.generateChunkHint", { size: locals.batchChunkSize || 500 }) %></p>
         <% } %>
-        <label class="generate-limit"><%= t("cases.generateLimit") %>
+        <label class="gen-limit" data-generate-limit-row hidden>
+          <span class="gen-limit-label"><%= t("cases.generateLimit") %></span>
           <input type="number" name="limit" min="1" step="1" inputmode="numeric" placeholder="<%= t('cases.generateLimitAll') %>" data-generate-limit autocomplete="off">
+          <span class="hint"><%= t("cases.generateLimitHint") %></span>
         </label>
-        <p class="hint"><%= t("cases.generateLimitHint") %></p>
-      </div>
+      </section>
       <% } %>
       <% if (recipeList.length) { %>
-      <p class="hint"><%= t('cases.pickTemplate') %></p>
-      <div class="tpl-picker" data-generate-picker>
-        <% if (recipeList.length > 6) { %>
-        <div class="tpl-picker-bar">
-          <input type="search" data-generate-filter placeholder="<%= t('templates.search') %>" autocomplete="off">
+      <section class="gen-section">
+        <div class="gen-section-head">
+          <h2 class="gen-section-title"><%= t("cases.templateLabel") %></h2>
         </div>
-        <% } %>
-        <div class="tpl-picker-list">
-          <% recipeList.forEach(function (recipe, index) { %>
-          <label class="check-item">
-            <input type="radio" name="recipeId" value="<%= recipe.itemId %>" <%= index === 0 ? "checked" : "" %> <%= stufOn ? "" : "required" %>>
-            <span><%= recipe.name %> <small class="tpl-type"><%= recipe.recipeType || "" %></small></span>
-          </label>
-          <% }) %>
+        <div class="tpl-picker" data-generate-picker>
+          <% if (recipeList.length > 6) { %>
+          <div class="tpl-picker-bar">
+            <input type="search" data-generate-filter placeholder="<%= t('templates.search') %>" aria-label="<%= t('templates.search') %>" autocomplete="off">
+          </div>
+          <% } %>
+          <div class="tpl-picker-list">
+            <% recipeList.forEach(function (recipe, index) { %>
+            <label class="check-item">
+              <input type="radio" name="recipeId" value="<%= recipe.itemId %>" <%= index === 0 ? "checked" : "" %> <%= stufOn ? "" : "required" %>>
+              <span><%= recipe.name %> <small class="tpl-type"><%= recipe.recipeType || "" %></small></span>
+            </label>
+            <% }) %>
+          </div>
         </div>
-      </div>
+      </section>
       <% } %>
       <% if (stufOn) { %>
-      <p class="hint"><%= t("stuf.templateIdHint") %></p>
-      <label><%= t("stuf.templateId") %>
-        <input name="stufTemplateId" <%= recipeList.length ? "" : "required" %> placeholder="1859ef9a-7331-42a0-a9b6-05547ce91452" autocomplete="off">
-      </label>
+      <section class="gen-section">
+        <div class="gen-section-head">
+          <h2 class="gen-section-title"><%= t("stuf.templateId") %></h2>
+        </div>
+        <label class="gen-field">
+          <input name="stufTemplateId" <%= recipeList.length ? "" : "required" %> placeholder="1859ef9a-7331-42a0-a9b6-05547ce91452" autocomplete="off">
+          <span class="hint"><%= t("stuf.templateIdHint") %></span>
+        </label>
+      </section>
       <% } %>
     </div>
     <footer class="modal-foot">

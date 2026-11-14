@@ -1052,17 +1052,55 @@
     };
 
     const interactiveHint = generateModal.querySelector('[data-generate-hint="interactive"]');
-    const checkedStakes = () =>
-      [...generateModal.querySelectorAll("[data-generate-stakeholders] input[type=checkbox]")]
-        .filter((box) => box.checked);
+    const stakeBox = generateModal.querySelector("[data-generate-stakeholders]");
+    const stakeTabs = [...generateModal.querySelectorAll("[data-stake-tab]")];
+    const stakePanels = [...generateModal.querySelectorAll("[data-stake-panel]")];
+    const stakeCount = generateModal.querySelector("[data-stake-count]");
+    const limitRow = generateModal.querySelector("[data-generate-limit-row]");
     const limitInput = generateModal.querySelector("[data-generate-limit]");
+    const activePanel = () => stakePanels.find((panel) => !panel.hidden) || stakePanels[0] || null;
+    const panelBoxes = (panel) => [...(panel?.querySelectorAll("input[name=stakeholder]") || [])];
+    const checkedStakes = () => panelBoxes(activePanel()).filter((box) => box.checked);
     // One checkbox can stand for a whole group of stakeholders, the limit field can trim it again.
+    const pickedStakeCount = () =>
+      checkedStakes().reduce((total, box) => total + (Number(box.dataset.stakeCount) || 1), 0);
     const checkedStakeCount = () => {
-      const picked = checkedStakes().reduce((total, box) => total + (Number(box.dataset.stakeCount) || 1), 0);
+      const picked = pickedStakeCount();
       const limit = Math.floor(Number(limitInput?.value) || 0);
       return limit > 0 ? Math.min(picked, limit) : picked;
     };
     const tooManyForInteractive = () => modeInput?.value === "interactive" && checkedStakeCount() > 1;
+
+    const submitLabel = (mode) => {
+      if (mode === "interactive") return generateLabel(mode);
+      const n = checkedStakeCount();
+      if (n < 2) return generateLabel(mode);
+      const i18n = window.I18N || {};
+      return (i18n.generateDocs || "Generate {n} documents").replace("{n}", n.toLocaleString(document.documentElement.lang || "nl"));
+    };
+
+    const syncStakes = () => {
+      const panel = activePanel();
+      const boxes = panelBoxes(panel);
+      const total = Number(panel?.dataset.stakeTotal) || boxes.length;
+      const picked = pickedStakeCount();
+      const allBox = panel?.querySelector("[data-stake-all]");
+      if (allBox) {
+        allBox.checked = picked > 0 && picked === total;
+        allBox.indeterminate = picked > 0 && picked < total;
+      }
+      if (stakeCount) {
+        const template = stakeCount.dataset.stakeCountTemplate || "{n}/{total}";
+        const lang = document.documentElement.lang || "nl";
+        stakeCount.hidden = total < 2;
+        stakeCount.textContent = template
+          .replace("{n}", picked.toLocaleString(lang))
+          .replace("{total}", total.toLocaleString(lang));
+      }
+      // The cap only means something once the run covers more than one recipient.
+      if (limitRow) limitRow.hidden = total < 2 || modeInput?.value === "interactive";
+      if (submit && generateModal.dataset.busy !== "1") submit.textContent = submitLabel(modeInput?.value);
+    };
 
     const syncBatchHint = () => {
       const interactive = modeInput?.value === "interactive";
@@ -1070,19 +1108,58 @@
         el.hidden = interactive ? el.dataset.generateHint !== "interactive" : el.dataset.generateHint !== "batch";
       });
       if (!tooManyForInteractive()) interactiveHint?.classList.remove("is-error");
+      syncStakes();
     };
 
-    generateModal.querySelector("[data-generate-stakeholders]")?.addEventListener("change", (event) => {
+    // A batch run reaches one kind of stakeholder at a time, so a tab owns the whole selection.
+    const selectKind = (kind) => {
+      stakeTabs.forEach((tab) => {
+        const on = tab.dataset.stakeTab === kind;
+        tab.classList.toggle("is-active", on);
+        tab.setAttribute("aria-selected", on ? "true" : "false");
+        tab.tabIndex = on ? 0 : -1;
+      });
+      stakePanels.forEach((panel) => {
+        const on = panel.dataset.stakePanel === kind;
+        panel.hidden = !on;
+        panelBoxes(panel).forEach((box) => { box.checked = on; });
+      });
+      syncBatchHint();
+    };
+
+    stakeTabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => selectKind(tab.dataset.stakeTab));
+      tab.addEventListener("keydown", (event) => {
+        const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+        if (!step) return;
+        event.preventDefault();
+        const next = stakeTabs[(index + step + stakeTabs.length) % stakeTabs.length];
+        selectKind(next.dataset.stakeTab);
+        next.focus();
+      });
+    });
+
+    stakeBox?.addEventListener("change", (event) => {
       const input = event.target;
-      if (input instanceof HTMLInputElement && input.type === "checkbox" && input.checked) {
-        const kind = input.getAttribute("data-stake-kind");
-        if (kind) {
-          generateModal.querySelectorAll("[data-generate-stakeholders] input[data-stake-kind]").forEach((box) => {
-            if (box.getAttribute("data-stake-kind") !== kind) box.checked = false;
-          });
-        }
+      if (input instanceof HTMLInputElement && input.dataset.stakeAll) {
+        panelBoxes(activePanel()).forEach((box) => { box.checked = input.checked; });
       }
       syncBatchHint();
+    });
+
+    stakeBox?.addEventListener("input", (event) => {
+      const field = event.target;
+      if (!(field instanceof HTMLInputElement) || !field.matches("[data-stake-filter]")) return;
+      const panel = field.closest("[data-stake-panel]");
+      const q = field.value.trim().toLowerCase();
+      let shown = 0;
+      panel?.querySelectorAll(".gen-row:not(.gen-row-all)").forEach((row) => {
+        const hide = Boolean(q) && !row.textContent.toLowerCase().includes(q);
+        row.classList.toggle("is-hidden", hide);
+        if (!hide) shown += 1;
+      });
+      const empty = panel?.querySelector("[data-stake-empty]");
+      if (empty) empty.hidden = shown > 0;
     });
 
     limitInput?.addEventListener("input", syncBatchHint);
@@ -1097,7 +1174,7 @@
       submit.classList.toggle("is-busy", busy);
       submit.textContent = busy
         ? (i18n.generating || "Generating…")
-        : generateLabel(modeInput?.value);
+        : submitLabel(modeInput?.value);
     };
 
     const openCreateTab = (label) => {
@@ -1124,6 +1201,11 @@
         if (modeInput) modeInput.value = mode;
         if (title) title.textContent = label;
         if (submit && generateModal.dataset.busy !== "1") submit.textContent = label;
+        // An interactive letter is written for one recipient, so start there instead of the whole group.
+        if (mode === "interactive") {
+          const single = panelBoxes(activePanel()).filter((box) => !box.dataset.stakeCount);
+          if (single.length > 1) single.forEach((box, index) => { box.checked = index === 0; });
+        }
         syncBatchHint();
         generateModal.showModal();
       }, { signal });

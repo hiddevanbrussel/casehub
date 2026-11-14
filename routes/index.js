@@ -2174,6 +2174,8 @@ function routes() {
     const peekTab = ["holders", "activity", "docs", "tasks"].includes(String(req.query.peekTab || ""))
       ? String(req.query.peekTab)
       : "holders";
+    const holderKind = String(req.query.holderKind || "") === "bedrijf" ? "bedrijf" : "persoon";
+    const holderPage = Math.max(1, Number(req.query.holderPage) || 1);
     res.render("cases/index", {
       title: req.t("nav.cases"),
       zaken: pageZaken,
@@ -2194,6 +2196,8 @@ function routes() {
       peek,
       peekActivity: composing || !peek ? [] : store.zaakActivity(peek, 8),
       peekTab,
+      holderKind,
+      holderPage,
       recipes: composing ? [] : recipesForZaak(peek),
       templatesLinked: Boolean(peekType?.recipeIds?.length),
       createReady: documentChannelReady(),

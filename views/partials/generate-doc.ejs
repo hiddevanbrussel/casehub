@@ -63,10 +63,10 @@
         </div>
         <p class="hint" data-generate-hint="interactive" hidden><%= t("cases.generateBatchInteractive") %></p>
         <% if (showStakeTabs) { %>
-        <div class="gen-kinds" role="tablist" aria-label="<%= t("cases.recipients") %>">
+        <div class="kind-tabs" role="tablist" aria-label="<%= t("cases.recipients") %>">
           <% stakeGroups.forEach(function (group) { %>
-          <button type="button" class="gen-kind<%= group.kind === defaultBulkKind ? ' is-active' : '' %>" role="tab" id="gen-kind-<%= group.kind %>" aria-controls="gen-panel-<%= group.kind %>" aria-selected="<%= group.kind === defaultBulkKind ? 'true' : 'false' %>" tabindex="<%= group.kind === defaultBulkKind ? '0' : '-1' %>" data-stake-tab="<%= group.kind %>">
-            <%= group.label %><span class="gen-kind-count"><%= group.items.length.toLocaleString(generateLang) %></span>
+          <button type="button" class="kind-tab<%= group.kind === defaultBulkKind ? ' is-active' : '' %>" role="tab" id="gen-kind-<%= group.kind %>" aria-controls="gen-panel-<%= group.kind %>" aria-selected="<%= group.kind === defaultBulkKind ? 'true' : 'false' %>" tabindex="<%= group.kind === defaultBulkKind ? '0' : '-1' %>" data-stake-tab="<%= group.kind %>">
+            <%= group.label %><span class="kind-tab-count"><%= group.items.length.toLocaleString(generateLang) %></span>
           </button>
           <% }) %>
         </div>

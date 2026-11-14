@@ -1,0 +1,101 @@
+<%
+  const stakePersons = Array.isArray(locals.persons) ? locals.persons : [];
+  const stakeCompanies = Array.isArray(locals.companies) ? locals.companies : [];
+  const stakeLang = locals.lang || "nl";
+  const stakeGroups = [
+    { kind: "persoon", label: t("nav.persons"), items: stakePersons },
+    { kind: "bedrijf", label: t("nav.companies"), items: stakeCompanies },
+  ].filter(function (group) { return group.items.length > 0; });
+  const stakeKind = stakeGroups.some(function (group) { return group.kind === locals.kind; })
+    ? locals.kind
+    : (stakeGroups[0] ? stakeGroups[0].kind : "persoon");
+  const stakeGroup = stakeGroups.find(function (group) { return group.kind === stakeKind; }) || { kind: stakeKind, label: "", items: [] };
+  // A case can hold thousands of people, so the panel walks through them per page.
+  const stakePageSize = Number(locals.pageSize) || 10;
+  const stakePages = Math.max(1, Math.ceil(stakeGroup.items.length / stakePageSize));
+  const stakePage = Math.min(stakePages, Math.max(1, Number(locals.page) || 1));
+  const stakeStart = (stakePage - 1) * stakePageSize;
+  const stakeShown = stakeGroup.items.slice(stakeStart, stakeStart + stakePageSize);
+  function stakeInitials(name) {
+    return String(name || "?").split(/\s+/).map(function (part) { return part[0]; }).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  }
+  function stakeTone(id) {
+    return String(id || "a").charCodeAt(0) % 4;
+  }
+  function stakeEntry(item) {
+    if (stakeKind === "bedrijf") {
+      return {
+        href: "/bedrijven?focus=" + item.id,
+        name: item.handelsnaam || "—",
+        meta: [item.plaats, item.kvk].filter(Boolean).join(" · "),
+      };
+    }
+    return {
+      href: "/personen?focus=" + item.id,
+      name: item.naam || "—",
+      meta: [item.email, item.plaats || item.nummer].filter(Boolean).join(" · "),
+    };
+  }
+  function stakePagerItems(current, total) {
+    if (total <= 5) {
+      return Array.from({ length: total }, function (_, i) { return i + 1; });
+    }
+    const items = [1];
+    const first = Math.max(2, current - 1);
+    const last = Math.min(total - 1, current + 1);
+    if (first > 2) items.push("…");
+    for (let i = first; i <= last; i += 1) items.push(i);
+    if (last < total - 1) items.push("…");
+    items.push(total);
+    return items;
+  }
+%>
+<div class="stake-view">
+  <% if (stakeGroups.length > 1) { %>
+  <nav class="kind-tabs" aria-label="<%= t("cases.stakeholders") %>">
+    <% stakeGroups.forEach(function (group) { %>
+    <a class="kind-tab<%= group.kind === stakeKind ? " is-active" : "" %>" href="<%= pageHref(group.kind, 1) %>"<%= group.kind === stakeKind ? ' aria-current="true"' : "" %>>
+      <%= group.label %><span class="kind-tab-count"><%= group.items.length.toLocaleString(stakeLang) %></span>
+    </a>
+    <% }) %>
+  </nav>
+  <% } %>
+  <ul class="stake-rows">
+    <% stakeShown.forEach(function (item) { %>
+    <% const entry = stakeEntry(item); %>
+    <li>
+      <a class="stake-row" href="<%= entry.href %>">
+        <% if (stakeKind === "bedrijf") { %>
+        <span class="who-avatar assignee-av tone-1" aria-hidden="true"><%- icon("building-2") %></span>
+        <% } else { %>
+        <span class="who-avatar assignee-av tone-<%= stakeTone(item.id) %>" aria-hidden="true"><%= stakeInitials(entry.name) %></span>
+        <% } %>
+        <span class="stake-row-body">
+          <strong><%= entry.name %></strong>
+          <% if (entry.meta) { %><small><%= entry.meta %></small><% } %>
+        </span>
+      </a>
+    </li>
+    <% }) %>
+  </ul>
+  <% if (stakePages > 1) { %>
+  <footer class="stake-pager">
+    <span><%= t("cases.stakeRange", {
+      from: (stakeStart + 1).toLocaleString(stakeLang),
+      to: (stakeStart + stakeShown.length).toLocaleString(stakeLang),
+      total: stakeGroup.items.length.toLocaleString(stakeLang),
+    }) %></span>
+    <nav class="pager-pages" aria-label="<%= stakeGroup.label %>">
+      <a class="pager-nav<%= stakePage <= 1 ? " is-disabled" : "" %>" href="<%= stakePage <= 1 ? "#" : pageHref(stakeKind, stakePage - 1) %>" aria-label="‹">‹</a>
+      <% stakePagerItems(stakePage, stakePages).forEach(function (item) { %>
+        <% if (item === "…") { %>
+        <span class="pager-gap">…</span>
+        <% } else { %>
+        <a class="<%= item === stakePage ? "is-active" : "" %>" href="<%= pageHref(stakeKind, item) %>"><%= item.toLocaleString(stakeLang) %></a>
+        <% } %>
+      <% }) %>
+      <a class="pager-nav<%= stakePage >= stakePages ? " is-disabled" : "" %>" href="<%= stakePage >= stakePages ? "#" : pageHref(stakeKind, stakePage + 1) %>" aria-label="›">›</a>
+    </nav>
+  </footer>
+  <% } %>
+</div>

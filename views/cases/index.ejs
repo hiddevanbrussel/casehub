@@ -262,8 +262,8 @@
       <% const peekHolderCount = peekPeople.length + peekCompanies.length; %>
       <% const stakeListMax = 50; %>
       <% const peekManyPeople = peekPeople.length > stakeListMax; %>
-      <% const peekPeopleShown = peekManyPeople ? peekPeople.slice(0, stakeListMax) : peekPeople; %>
-      <% const peekPeopleRest = peekPeople.length - peekPeopleShown.length; %>
+      <% const peekHolderKind = typeof holderKind !== "undefined" ? holderKind : "persoon"; %>
+      <% const peekHolderPage = typeof holderPage !== "undefined" ? holderPage : 1; %>
       <% const peekProc = peekCase.process; %>
       <% const hasTasksTab = Boolean(peekProc && peekProc.enabled && !peekProc.done); %>
       <% const peekOpenTasks = hasTasksTab ? peekProc.tasks.filter(function (task) { return !task.done; }).length : 0; %>
@@ -501,23 +501,19 @@
         <% if (!peekHolderCount) { %>
           <p class="muted"><%= t("cases.noStakeholders") %></p>
         <% } else { %>
-          <ul class="peek-stake-list">
-            <% peekPeopleShown.forEach(function (p) { %>
-              <li>
-                <span class="who-avatar assignee-av tone-<%= p.id.charCodeAt(0) % 4 %>" aria-hidden="true"><%= String(p.naam || "?").split(/\s+/).map(function (part) { return part[0]; }).filter(Boolean).slice(0, 2).join("").toUpperCase() %></span>
-                <a href="/personen?focus=<%= p.id %>"><%= p.naam %></a>
-              </li>
-            <% }) %>
-            <% if (peekPeopleRest > 0) { %>
-              <li class="muted"><%= t("cases.stakeholdersMore", { n: peekPeopleRest.toLocaleString(lang) }) %></li>
-            <% } %>
-            <% peekCompanies.forEach(function (b) { %>
-              <li>
-                <span class="who-avatar assignee-av tone-1" aria-hidden="true"><%- icon("building-2") %></span>
-                <a href="/bedrijven?focus=<%= b.id %>"><%= b.handelsnaam %></a>
-              </li>
-            <% }) %>
-          </ul>
+          <%- include("../partials/stake-list", {
+            persons: peekPeople,
+            companies: peekCompanies,
+            kind: peekHolderKind,
+            page: peekHolderPage,
+            pageHref: function (kind, n) {
+              return listQs({
+                peekTab: "holders",
+                holderKind: kind === "bedrijf" ? "bedrijf" : "",
+                holderPage: n > 1 ? n : "",
+              });
+            },
+          }) %>
         <% } %>
       </section>
       <section class="peek-panel peek-view" role="tabpanel" id="peek-panel-activity" aria-labelledby="peek-tab-activity" data-peek-panel="activity"<% if (activePeekTab !== "activity") { %> hidden<% } %>>

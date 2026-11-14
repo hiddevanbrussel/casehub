@@ -1573,6 +1573,68 @@ html[data-theme="dark"] .peek-empty-art-dark { display: block; }
   text-underline-offset: 3px;
 }
 .peek-stake-list a:hover { color: var(--accent); }
+.stake-view { display: grid; gap: 10px; }
+.stake-view .kind-tabs { justify-self: start; }
+.stake-view .kind-tab { flex: 0 0 auto; min-width: 124px; }
+.stake-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.stake-rows li + li { border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.stake-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  color: var(--text);
+  text-decoration: none;
+}
+.stake-row:hover { background: var(--hover); text-decoration: none; }
+.stake-row .who-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+  flex: none;
+}
+.stake-row .who-avatar .ico { width: 14px; height: 14px; }
+.stake-row-body { min-width: 0; }
+.stake-row-body strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stake-row-body small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stake-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.stake-pager .pager-pages { flex-wrap: wrap; }
+.stake-pager .pager-pages a, .stake-pager .pager-pages span {
+  min-width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
 .peek-contact-list {
   flex-direction: column;
   flex-wrap: nowrap;
@@ -3236,14 +3298,14 @@ html[data-theme="dark"] .login-body.has-hero .login-card {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.gen-kinds {
+.kind-tabs {
   display: flex;
   gap: 4px;
   padding: 3px;
   border-radius: 11px;
   background: var(--surface-2);
 }
-.gen-kind {
+.kind-tab {
   flex: 1;
   display: inline-flex;
   align-items: center;
@@ -3257,23 +3319,24 @@ html[data-theme="dark"] .login-body.has-hero .login-card {
   font: inherit;
   font-size: 13px;
   font-weight: 650;
+  text-decoration: none;
   cursor: pointer;
 }
-.gen-kind:hover { color: var(--text); }
-.gen-kind.is-active {
+.kind-tab:hover { color: var(--text); text-decoration: none; }
+.kind-tab.is-active {
   background: var(--surface);
   border-color: var(--line);
   color: var(--text);
   box-shadow: 0 1px 2px rgba(16, 18, 24, 0.08);
 }
-.gen-kind-count {
+.kind-tab-count {
   font-size: 11px;
   font-weight: 700;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.gen-kind.is-active .gen-kind-count { color: var(--accent); }
-.gen-kind:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.kind-tab.is-active .kind-tab-count { color: var(--accent); }
+.kind-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .gen-list {
   border: 1px solid var(--line);
   border-radius: 10px;

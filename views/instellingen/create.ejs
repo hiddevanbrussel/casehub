@@ -4,10 +4,21 @@
     { id: "webhooks", label: t("create.tabWebhooks") },
   ];
   const activeTab = tabs.some(function (tab) { return tab.id === createTab; }) ? createTab : "connection";
+  const catalog = typeof createCatalog === "undefined" || !createCatalog
+    ? { organizations: [], units: [], organizationId: create.organizationId || "", error: "", needsCredentials: true }
+    : createCatalog;
+  const orgOptions = Array.isArray(catalog.organizations) ? catalog.organizations : [];
+  const unitOptions = Array.isArray(catalog.units) ? catalog.units : [];
+  const useOrgSelect = orgOptions.length > 0;
+  const selectedOrg = catalog.organizationId || create.organizationId || "";
+  const selectedUnit = create.unitId || "";
+  const orgInList = orgOptions.some(function (org) { return org.id === selectedOrg; });
+  const unitInList = unitOptions.some(function (unit) { return unit.id === selectedUnit; });
 %>
 <p class="back-link"><a href="/instellingen/integraties"><%= t("integrations.back") %></a></p>
 <% if (create.lastError) { %><p class="alert"><%= create.lastError %></p><% } %>
-<form class="form settings-sheet" method="post" action="/instellingen/create" data-form-tabs>
+<% if (catalog.error) { %><p class="alert"><%= t("create.catalogError", { msg: catalog.error }) %></p><% } %>
+<form class="form settings-sheet" method="post" action="/instellingen/create" data-form-tabs data-create-catalog>
   <input type="hidden" name="createTab" value="<%= activeTab %>" data-form-tab-value>
   <div class="settings-sheet-head">
     <div class="settings-sheet-title">
@@ -43,14 +54,48 @@
         <input name="clientSecret" type="password" value="" placeholder="<%= create.hasSecret ? "••••••••  (" + t("create.keepSecret") + ")" : "" %>" autocomplete="new-password">
       </label>
     </div>
+    <% if (useOrgSelect) { %>
     <div class="form-row form-row-2">
+      <label><%= t("create.organizationId") %>
+        <select name="organizationId" required data-create-org>
+          <% if (orgOptions.length > 1) { %>
+          <option value=""><%= t("create.pickOrganization") %></option>
+          <% } %>
+          <% orgOptions.forEach(function (org) { %>
+          <option value="<%= org.id %>"<%= org.id === selectedOrg ? " selected" : "" %>><%= org.name %></option>
+          <% }) %>
+          <% if (selectedOrg && !orgInList) { %>
+          <option value="<%= selectedOrg %>" selected><%= selectedOrg %></option>
+          <% } %>
+        </select>
+      </label>
+      <label><%= t("create.unitId") %>
+        <select name="unitId" required data-create-unit data-empty-label="<%= t("create.pickUnit") %>"<%= selectedOrg ? "" : " disabled" %>>
+          <option value=""><%= t("create.pickUnit") %></option>
+          <% unitOptions.forEach(function (unit) { %>
+          <option value="<%= unit.id %>"<%= unit.id === selectedUnit ? " selected" : "" %>><%= unit.name %></option>
+          <% }) %>
+          <% if (selectedUnit && !unitInList) { %>
+          <option value="<%= selectedUnit %>" selected><%= selectedUnit %></option>
+          <% } %>
+        </select>
+        <span class="hint" data-create-unit-hint hidden><%= t("common.loading") %></span>
+      </label>
+    </div>
+    <% } else { %>
+    <div class="form-row form-row-2">
+      <label><%= t("create.organizationId") %>
+        <input name="organizationId" value="<%= create.organizationId %>" autocomplete="off">
+        <span class="hint"><%= catalog.needsCredentials ? t("create.catalogNeedsCredentials") : t("create.catalogEmpty") %></span>
+      </label>
       <label><%= t("create.unitId") %>
         <input name="unitId" required value="<%= create.unitId %>" autocomplete="off">
       </label>
-      <label><%= t("create.contentSourceId") %>
-        <input name="contentSourceId" required value="<%= create.contentSourceId %>" autocomplete="off">
-      </label>
     </div>
+    <% } %>
+    <label><%= t("create.contentSourceId") %>
+      <input name="contentSourceId" required value="<%= create.contentSourceId %>" autocomplete="off">
+    </label>
   </section>
 
   <section class="settings-panel" role="tabpanel" id="create-panel-webhooks" aria-labelledby="create-tab-webhooks" data-form-panel="webhooks"<% if (activeTab !== "webhooks") { %> hidden<% } %>>

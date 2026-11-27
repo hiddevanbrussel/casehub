@@ -1349,6 +1349,7 @@ function renderSetup(req, res, step, extra = {}) {
     create: {
       baseUrl: createCfg.baseUrl,
       clientId: createCfg.clientId,
+      organizationId: createCfg.organizationId,
       unitId: createCfg.unitId,
       contentSourceId: createCfg.contentSourceId,
       authDomain: createCfg.authDomain,
@@ -3481,23 +3482,43 @@ function routes() {
     toastT(req, res, "/instellingen/integraties", "toast.integrationsSaved");
   });
 
-  r.get("/instellingen/integraties/create", requireRole("admin"), (req, res) => {
+  r.get("/instellingen/integraties/create", requireRole("admin"), async (req, res) => {
     const settings = create.createSettings(store);
     const origin = create.publicOrigin(req, settings);
     const wanted = String(req.query.tab || "");
+    const catalog = await create.loadOrganizationCatalog(settings);
+    if (catalog.organizationId && catalog.organizationId !== settings.organizationId) {
+      settings.organizationId = catalog.organizationId;
+    }
     res.render("instellingen/create", {
       title: req.t("create.title"),
       create: settings,
       createTab: wanted === "webhooks" ? "webhooks" : "connection",
       createReady: create.configured(settings),
+      createCatalog: catalog,
       recipeCount: store.recipes().length,
       webhookExample: origin ? `${origin}/api/create/webhook/${settings.slug || "workspace"}/…` : "",
     });
   });
 
+  r.get("/instellingen/integraties/create/units", requireRole("admin"), async (req, res) => {
+    const settings = create.createSettings(store);
+    if (!create.canAuthenticate(settings)) {
+      return res.status(400).json({ error: req.t("create.catalogNeedsCredentials"), units: [] });
+    }
+    const organizationId = String(req.query.organizationId || "").trim();
+    if (!organizationId) return res.json({ units: [] });
+    try {
+      const units = await create.listUnits(settings, organizationId);
+      res.json({ units });
+    } catch (err) {
+      res.status(502).json({ error: err.message || String(err), units: [] });
+    }
+  });
+
   r.post("/instellingen/create", requireRole("admin"), (req, res) => {
     create.saveCreateSettings(store, req.body, req.user);
-    toastT(req, res, "/instellingen/integraties", "toast.createSaved");
+    toastT(req, res, "/instellingen/integraties/create", "toast.createSaved");
   });
 
   r.post("/instellingen/create/test", requireRole("admin"), async (req, res) => {

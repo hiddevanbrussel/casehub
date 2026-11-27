@@ -74,12 +74,12 @@ Do not commit `data/platform.json` or `data/tenants/`; they contain accounts and
 
 ## OmniDocs Create
 
-Connection uses OAuth client credentials (`POST /api/v1/oauth2/token`). Templates: `GET .../recipes/search`. Documents: `POST .../recipes/{id}/generate` (fileUri) or `POST .../generate/prepare` (interactive).
+Connection uses OAuth client credentials (`POST /api/v1/oauth2/token`). Organizations/units: `GET /api/v1/organizations` and `GET /api/v1/organizations/{organizationId}/units` (used to pick unit in Settings). Templates: `GET .../recipes/search`. Documents: `POST .../recipes/{id}/generate` (fileUri) or `POST .../generate/prepare` (interactive).
 
 Configure per workspace under **Settings → Integrations**, or via environment as a fallback:
 
 - `CREATE_CLIENT_ID` / `CREATE_CLIENT_SECRET`
-- `CREATE_UNIT_ID` / `CREATE_CONTENT_SOURCE_ID`
+- `CREATE_ORGANIZATION_ID` (optional; used to list units) / `CREATE_UNIT_ID` / `CREATE_CONTENT_SOURCE_ID`
 - optional `PUBLIC_BASE_URL` so Create can POST the finished document back onto the case (if empty, the current hostname is used; Create must be able to reach Zaakhub)
 
 Then use **Test connection** and **Sync templates**.

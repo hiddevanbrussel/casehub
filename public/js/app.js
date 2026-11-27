@@ -1511,4 +1511,58 @@
   const listWork = document.querySelector("[data-list-lazy]");
   if (listWork) initLazyList(listWork);
   else bindListUi();
+
+  const createCatalog = document.querySelector("[data-create-catalog]");
+  if (createCatalog) {
+    const orgSelect = createCatalog.querySelector("[data-create-org]");
+    const unitSelect = createCatalog.querySelector("[data-create-unit]");
+    const unitHint = createCatalog.querySelector("[data-create-unit-hint]");
+    const emptyLabel = unitSelect?.dataset.emptyLabel || unitSelect?.querySelector("option")?.textContent || "";
+    const addOption = (select, value, label, selected) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      if (selected) option.selected = true;
+      select.appendChild(option);
+    };
+    const fillUnits = (units, selected) => {
+      if (!unitSelect) return;
+      const current = selected || unitSelect.value || "";
+      unitSelect.replaceChildren();
+      addOption(unitSelect, "", emptyLabel, !current);
+      for (const unit of units) {
+        const id = String(unit.id || "");
+        if (!id) continue;
+        addOption(unitSelect, id, String(unit.name || id), id === current);
+      }
+      if (current && !units.some((unit) => String(unit.id) === current)) {
+        addOption(unitSelect, current, current, true);
+      }
+      if (current && [...unitSelect.options].some((option) => option.value === current)) unitSelect.value = current;
+      else unitSelect.value = "";
+    };
+    orgSelect?.addEventListener("change", async () => {
+      const organizationId = orgSelect.value;
+      unitSelect.disabled = true;
+      if (unitHint) unitHint.hidden = false;
+      fillUnits([], "");
+      if (!organizationId) {
+        if (unitHint) unitHint.hidden = true;
+        return;
+      }
+      try {
+        const res = await fetch(`/instellingen/integraties/create/units?organizationId=${encodeURIComponent(organizationId)}`, {
+          headers: { Accept: "application/json" },
+        });
+        const body = await res.json().catch(() => ({ units: [] }));
+        if (!res.ok) throw new Error(body.error || res.statusText);
+        fillUnits(Array.isArray(body.units) ? body.units : [], "");
+        unitSelect.disabled = false;
+      } catch {
+        fillUnits([], "");
+      } finally {
+        if (unitHint) unitHint.hidden = true;
+      }
+    });
+  }
 })();

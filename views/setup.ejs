@@ -250,13 +250,16 @@
         </label>
       </div>
       <div class="form-row form-row-2">
-        <label><%= t('create.unitId') %>
-          <input name="unitId" value="<%= values.unitId || '' %>">
+        <label><%= t('create.organizationId') %>
+          <input name="organizationId" value="<%= values.organizationId || '' %>" autocomplete="off">
         </label>
-        <label><%= t('create.contentSourceId') %>
-          <input name="contentSourceId" value="<%= values.contentSourceId || '' %>">
+        <label><%= t('create.unitId') %>
+          <input name="unitId" value="<%= values.unitId || '' %>" autocomplete="off">
         </label>
       </div>
+      <label><%= t('create.contentSourceId') %>
+        <input name="contentSourceId" value="<%= values.contentSourceId || '' %>" autocomplete="off">
+      </label>
       <label><%= t('create.authDomain') %>
         <input name="authDomain" value="<%= values.authDomain || '' %>" placeholder="auth.example.com" autocomplete="off">
       </label>
